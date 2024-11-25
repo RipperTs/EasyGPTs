@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+// @ts-ignore
 import Cookies from 'js-cookie';
 
 const ToolMenu = ({
