@@ -59,6 +59,11 @@ const ChatController = ({
     display: 'flex'
   };
 
+  const cleanMarkdownText = (text: string) => {
+    // 使用正则表达式替换 [^text^](url) 格式为纯文本
+    return text.replace(/\[\^(.+?)\^\]\([^)]+\)/g, '$1');
+  };
+
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
@@ -83,7 +88,7 @@ const ChatController = ({
           {...controlIconStyle}
           name={'copy'}
           _hover={{ color: 'primary.600' }}
-          onClick={() => copyData(chatText)}
+          onClick={() => copyData(cleanMarkdownText(chatText))}
         />
       </MyTooltip>
       {!!onDelete && !isChatting && (
