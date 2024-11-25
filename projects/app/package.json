@@ -63,6 +63,7 @@
     "remark-math": "^6.0.0",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
+    "unist-util-visit": "^5.0.0",
     "use-context-selector": "^1.4.4",
     "zustand": "^4.3.5"
   },
@@ -77,6 +78,7 @@
     "@types/react-dom": "18.3.0",
     "@types/react-syntax-highlighter": "^15.5.6",
     "@types/request-ip": "^0.0.37",
+    "@types/unist": "^3.0.3",
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.3",
     "nextjs-node-loader": "^1.1.5",

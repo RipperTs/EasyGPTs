@@ -17,6 +17,7 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 import { CodeClassNameEnum } from './utils';
+import { visit } from 'unist-util-visit';
 
 const CodeLight = dynamic(() => import('./CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -25,6 +26,22 @@ const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: 
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
+
+function remarkCustomLink() {
+  return (tree: any) => {
+    visit(tree, 'link', (node) => {
+      const text = node.children[0]?.value;
+      if (text?.startsWith('^') && text?.endsWith('^')) {
+        node.data = {
+          ...node.data,
+          hProperties: {
+            className: 'custom-reference-link'
+          }
+        };
+      }
+    });
+  };
+}
 
 const Markdown = ({
   source = '',
@@ -41,7 +58,7 @@ const Markdown = ({
       pre: RewritePre,
       p: (pProps: any) => <p {...pProps} dir="auto" />,
       code: Code,
-      a: A
+      a: CustomA // 重命名为 CustomA
     }),
     []
   );
@@ -65,9 +82,14 @@ const Markdown = ({
     <Box position={'relative'}>
       <ReactMarkdown
         className={`markdown ${styles.markdown}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
-    `}
-        remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
+          ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+        `}
+        remarkPlugins={[
+          RemarkMath,
+          remarkCustomLink, // 添加自定义插件
+          [RemarkGfm, { singleTilde: false }],
+          RemarkBreaks
+        ]}
         rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
         components={components}
         urlTransform={urlTransform}
@@ -117,8 +139,37 @@ function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
 }
 
-function A({ children, ...props }: any) {
+// 修改 A 组件为 CustomA
+function CustomA({ children, className, ...props }: any) {
   const { t } = useTranslation();
+
+  // 处理特殊引用链接
+  if (className === 'custom-reference-link') {
+    const text = React.Children.toArray(children)[0] as string;
+    const displayText = text.slice(1, -1); // 移除 ^ 符号
+
+    return (
+      <Link
+        {...props}
+        display="inline-block"
+        borderRadius="md"
+        style={{
+          textDecoration: 'none',
+          padding: '1px 8px',
+          color: '#666',
+          backgroundColor: '#eeeeee'
+        }}
+        fontSize="mini"
+        _hover={{
+          textDecoration: 'none',
+          color: '#666',
+          backgroundColor: '#dddddd'
+        }}
+      >
+        {displayText}
+      </Link>
+    );
+  }
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {
@@ -139,7 +190,7 @@ function A({ children, ...props }: any) {
     );
   }
 
-  // quote link(未使用)
+  // quote link
   if (children?.length === 1 && typeof children?.[0] === 'string') {
     const text = String(children);
     if (text === MARKDOWN_QUOTE_SIGN && props.href) {
@@ -154,7 +205,6 @@ function A({ children, ...props }: any) {
             _hover={{
               color: 'primary.700'
             }}
-            // onClick={() => getCollectionSourceAndOpen(props.href)}
           />
         </MyTooltip>
       );
