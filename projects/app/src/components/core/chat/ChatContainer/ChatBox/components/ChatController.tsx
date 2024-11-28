@@ -60,8 +60,8 @@ const ChatController = ({
   };
 
   const cleanMarkdownText = (text: string) => {
-    // 使用正则表达式替换 [^text^](url) 格式为纯文本
-    return text.replace(/\[\^(.+?)\^\]\([^)]+\)/g, '$1');
+    // 匹配 [^text^](url) 格式及其前后的空格
+    return text.replace(/\s*\[\^.+?\^\]\([^)]+\)\s*/g, '');
   };
 
   const { t } = useTranslation();
