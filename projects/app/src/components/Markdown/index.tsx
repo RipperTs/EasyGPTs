@@ -64,14 +64,14 @@ const Markdown = ({
   );
 
   const formatSource = useMemo(() => {
-    const formatSource = source
+    // 匹配 [ ... ] 格式，其中括号内部两边必须有空格 (适配 kimi 接口返回的LaTeX数学公式)
+    return source
+      .replace(/\[ (.*?) \]/g, '$$$1$$')
       .replace(
         /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
         '$1$3 $2$4'
-      ) // Chinese and english chars separated by space
+      )
       .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
-
-    return formatSource;
   }, [source]);
 
   const urlTransform = useCallback((val: string) => {
