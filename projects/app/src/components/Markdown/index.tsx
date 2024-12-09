@@ -64,9 +64,9 @@ const Markdown = ({
   );
 
   const formatSource = useMemo(() => {
-    // 匹配 [ ... ] 格式，其中括号内部两边必须有空格 (适配 kimi 接口返回的LaTeX数学公式)
     return source
-      .replace(/\[ (.*?) \]/g, '$$$1$$')
+      .replace(/\[ (.*?) \]/g, '$$$1$$') // 兼容处理LaTeX数学公式
+      .replace(/\\\[(.*?)\\\]/g, '$$$1$$') // 兼容处理LaTeX数学公式
       .replace(
         /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
         '$1$3 $2$4'
