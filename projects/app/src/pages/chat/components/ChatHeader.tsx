@@ -252,7 +252,7 @@ const SelectModelModal = ({
       iconSrc="core/workflow/inputType/selectLLM"
       onClose={onClose}
       maxW={['90vw', '700px']}
-      title={'切换应用模型'}
+      title={'切换应用及模型'}
     >
       <ModalBody py={4} pb={10}>
         <Select
@@ -375,7 +375,7 @@ export const PcHeader = ({
             <MyTag ml={2} colorSchema={'green'}>
               <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
               <Box ml={1} maxW={'200px'} cursor="pointer" className="textEllipsis" onClick={onOpen}>
-                {chatModels[0]}
+                切换应用模型
               </Box>
             </MyTag>
           </MyTooltip>

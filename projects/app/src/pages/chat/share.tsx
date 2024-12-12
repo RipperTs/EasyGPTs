@@ -228,7 +228,6 @@ const OutLink = ({
         }
       },
       onError(e: any) {
-        console.log(e);
         if (chatId) {
           onChangeChatId('');
         }
@@ -301,6 +300,7 @@ const OutLink = ({
                     outLinkUid
                   });
                 }}
+                appIntro={chatData.app.intro}
               />
             )}
 
@@ -528,7 +528,14 @@ export async function getServerSideProps(context: any) {
           ])) as alternativeModel[];
 
           // 排除掉 shareId 为当前分享的app
-          return app.filter((item) => item.shareId !== shareId);
+          return app
+            .filter((item) => item.shareId !== shareId)
+            .sort((a, b) => {
+              return a.appName.localeCompare(b.appName, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+              });
+            });
         } catch (error) {
           return [];
         }

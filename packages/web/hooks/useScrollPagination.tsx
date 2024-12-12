@@ -141,7 +141,6 @@ export function useScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      console.log('reload', 11111);
       loadData(1);
     },
     {
@@ -156,7 +155,6 @@ export function useScrollPagination<
     () => {
       if (!containerRef.current || list.length === 0) return;
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      console.log('=======', 111111);
       if (scrollTop + clientHeight >= scrollHeight - 100) {
         loadData(current + 1);
       }

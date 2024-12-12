@@ -211,6 +211,7 @@ const Chat = ({
                   customTitle: e.title
                 });
               }}
+              appIntro={chatData.app.intro}
             />
           )}
           {/* chat container */}

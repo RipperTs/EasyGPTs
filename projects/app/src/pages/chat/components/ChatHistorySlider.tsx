@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Button, Flex, useTheme, IconButton } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -13,6 +13,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import Markdown from '@/components/Markdown';
 
 type HistoryItemType = {
   id: string;
@@ -29,7 +30,8 @@ const ChatHistorySlider = ({
   onDelHistory,
   onClearHistory,
   onSetHistoryTop,
-  onSetCustomTitle
+  onSetCustomTitle,
+  appIntro
 }: {
   appId?: string;
   appName: string;
@@ -39,10 +41,12 @@ const ChatHistorySlider = ({
   onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
+  appIntro?: string | undefined;
 }) => {
   const theme = useTheme();
   const router = useRouter();
   const isUserChatPage = router.pathname === '/chat';
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const { t } = useTranslation();
 
@@ -118,6 +122,47 @@ const ChatHistorySlider = ({
             <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
               {appName}
             </Box>
+          </Flex>
+          {/*应用说明*/}
+          <Flex
+            position="relative"
+            alignItems={'start'}
+            px={[2, 5]}
+            fontSize={'sm'}
+            color={'blackAlpha.700'}
+            cursor="pointer"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <Box
+              maxH={isExpanded ? 'none' : '3em'}
+              overflow="hidden"
+              position="relative"
+              whiteSpace={'pre-wrap'}
+              className={!isExpanded ? 'line-clamp' : ''}
+              sx={{
+                '&.line-clamp': {
+                  display: '-webkit-box',
+                  WebkitLineClamp: '2',
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }
+              }}
+            >
+              <Markdown source={appIntro} />
+            </Box>
+            {appIntro && appIntro.split('\n').length > 2 && (
+              <Box
+                position="absolute"
+                bottom={0}
+                right={5}
+                bg="white"
+                px={1}
+                fontSize="xs"
+                color="primary.500"
+              >
+                {isExpanded ? '折叠' : '展开'}
+              </Box>
+            )}
           </Flex>
         </MyTooltip>
       )}
