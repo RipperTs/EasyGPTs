@@ -94,10 +94,7 @@ const Markdown = ({
           [RemarkGfm, { singleTilde: false }],
           RemarkBreaks
         ]}
-        rehypePlugins={[
-          rehypeRaw,
-          RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]
-        ]}
+        rehypePlugins={[rehypeRaw, RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
         components={components}
         urlTransform={urlTransform}
       >
@@ -110,13 +107,12 @@ const Markdown = ({
 
 export default React.memo(Markdown);
 
-
 function Details({ children, ...props }: React.HTMLAttributes<HTMLDetailsElement>) {
   const [isOpen, setIsOpen] = useState(false);
 
   // 递归处理子元素中的文本节点
   const processChildren = (children: React.ReactNode): React.ReactNode => {
-    return React.Children.map(children, child => {
+    return React.Children.map(children, (child) => {
       if (typeof child === 'string') {
         return (
           <ReactMarkdown
@@ -152,10 +148,7 @@ function Details({ children, ...props }: React.HTMLAttributes<HTMLDetailsElement
 
 function Summary({ children, ...props }: React.HTMLAttributes<HTMLElement>) {
   return (
-    <summary
-      {...props}
-      className={styles.summary}
-    >
+    <summary {...props} className={styles.summary}>
       {children}
     </summary>
   );
