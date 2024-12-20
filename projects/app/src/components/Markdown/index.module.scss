@@ -436,3 +436,56 @@
 .mermaid {
   overflow-x: auto;
 }
+
+.details {
+  margin: 1em 0;
+  padding: 0.5em;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+
+  .summary {
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+    transition: color 0.2s ease;
+    list-style: none; // 移除默认的箭头
+    display: flex;
+    align-items: center;
+
+    &::-webkit-details-marker {
+      display: none; // 移除 webkit 浏览器的默认箭头
+    }
+
+    &::before {
+      content: '▶';
+      margin-right: 8px;
+      transition: transform 0.3s ease;
+      font-size: 0.8em;
+      color: var(--chakra-colors-primary-500);
+    }
+
+    &:hover {
+      color: var(--chakra-colors-primary-500);
+    }
+  }
+
+  &[open] {
+    padding-bottom: 1em;
+
+    .summary {
+      margin-bottom: 1em;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 0.5em;
+
+      &::before {
+        transform: rotate(90deg);
+      }
+    }
+  }
+
+  // 内容区域样式
+  & > *:not(summary) {
+    margin-left: 24px; // 与箭头对齐的缩进
+  }
+}

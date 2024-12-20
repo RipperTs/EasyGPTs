@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -6,6 +6,7 @@ import RemarkBreaks from 'remark-breaks'; // Line break
 import RehypeKatex from 'rehype-katex'; // Math render
 import RemarkGfm from 'remark-gfm'; // Special markdown syntax
 import RehypeExternalLinks from 'rehype-external-links';
+import rehypeRaw from 'rehype-raw';
 
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
@@ -58,7 +59,9 @@ const Markdown = ({
       pre: RewritePre,
       p: (pProps: any) => <p {...pProps} dir="auto" />,
       code: Code,
-      a: CustomA // 重命名为 CustomA
+      a: CustomA,
+      details: Details,
+      summary: Summary
     }),
     []
   );
@@ -91,7 +94,10 @@ const Markdown = ({
           [RemarkGfm, { singleTilde: false }],
           RemarkBreaks
         ]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        rehypePlugins={[
+          rehypeRaw,
+          RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]
+        ]}
         components={components}
         urlTransform={urlTransform}
       >
@@ -103,6 +109,57 @@ const Markdown = ({
 };
 
 export default React.memo(Markdown);
+
+
+function Details({ children, ...props }: React.HTMLAttributes<HTMLDetailsElement>) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // 递归处理子元素中的文本节点
+  const processChildren = (children: React.ReactNode): React.ReactNode => {
+    return React.Children.map(children, child => {
+      if (typeof child === 'string') {
+        return (
+          <ReactMarkdown
+            remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
+            rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+          >
+            {child}
+          </ReactMarkdown>
+        );
+      }
+      if (React.isValidElement(child) && child.props.children) {
+        return React.cloneElement(child, {
+          // @ts-ignore
+          children: processChildren(child.props.children)
+        });
+      }
+      return child;
+    });
+  };
+
+  return (
+    <details
+      {...props}
+      className={`${styles.details} ${isOpen ? styles.open : ''}`}
+      onToggle={(e) => {
+        setIsOpen((e.target as HTMLDetailsElement).open);
+      }}
+    >
+      {processChildren(children)}
+    </details>
+  );
+}
+
+function Summary({ children, ...props }: React.HTMLAttributes<HTMLElement>) {
+  return (
+    <summary
+      {...props}
+      className={styles.summary}
+    >
+      {children}
+    </summary>
+  );
+}
 
 /* Custom dom */
 function Code(e: any) {
