@@ -10,6 +10,7 @@ import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat
 export const copyMarkdown = (text: string) => {
   text = text.replace(/\s*\[\^.+?\^\]\([^)]+\)\s*/g, '');
   text = text.replace(/\[.*?\]\(.*?\)/g, '');
+  text = text.replace(/<details>[\s\S]*?<\/details>/g, '');
   return text;
 };
 
