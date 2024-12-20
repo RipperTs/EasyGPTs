@@ -59,11 +59,6 @@ const ChatController = ({
     display: 'flex'
   };
 
-  const cleanMarkdownText = (text: string) => {
-    // 匹配 [^text^](url) 格式及其前后的空格
-    return text.replace(/\s*\[\^.+?\^\]\([^)]+\)\s*/g, '');
-  };
-
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
@@ -83,12 +78,12 @@ const ChatController = ({
         }
       })}
     >
-      <MyTooltip label={t('common:common.Copy')}>
+      <MyTooltip label="复制原始内容">
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
           _hover={{ color: 'primary.600' }}
-          onClick={() => copyData(cleanMarkdownText(chatText))}
+          onClick={() => copyData(chatText)}
         />
       </MyTooltip>
       {!!onDelete && !isChatting && (

@@ -7,6 +7,12 @@ import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
+export const copyMarkdown = (text: string) => {
+  text = text.replace(/\s*\[\^.+?\^\]\([^)]+\)\s*/g, '');
+  text = text.replace(/\[.*?\]\(.*?\)/g, '');
+  return text;
+};
+
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
     return { text: '', files: [] };

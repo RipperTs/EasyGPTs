@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
-import { formatChatValue2InputType } from '../utils';
+import { copyMarkdown, formatChatValue2InputType } from '../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
 import {
@@ -137,7 +137,7 @@ const ChatItem = (props: Props) => {
     return colorMap[statusBoxData.status];
   }, [statusBoxData?.status]);
 
-  /* 
+  /*
     1. The interactive node is divided into n dialog boxes.
     2. Auto-complete the last textnode
   */
@@ -273,7 +273,7 @@ const ChatItem = (props: Props) => {
                   right={0}
                   transform={'translateX(100%)'}
                 >
-                  <MyTooltip label={t('common:common.Copy')}>
+                  <MyTooltip label="复制格式化后的内容">
                     <MyIcon
                       w={'1rem'}
                       cursor="pointer"
@@ -282,7 +282,9 @@ const ChatItem = (props: Props) => {
                       name={'copy'}
                       color={'myGray.500'}
                       _hover={{ color: 'primary.600' }}
-                      onClick={() => copyData(formatChatValue2InputType(value).text ?? '')}
+                      onClick={() =>
+                        copyData(copyMarkdown(formatChatValue2InputType(value).text ?? ''))
+                      }
                     />
                   </MyTooltip>
                 </Box>
