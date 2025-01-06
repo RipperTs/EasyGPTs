@@ -44,6 +44,19 @@ export const postRegister = ({
     password: hashStr(password)
   });
 
+// 同步注册新钢11平台账号
+export const registerByXGTAccount = ({
+  username,
+  password
+}: {
+  username: string;
+  password: string;
+}) =>
+  POST<ResLogin>(`/support/user/account/registerByXGTAccount`, {
+    username,
+    password: password
+  });
+
 export const postFindPassword = ({
   username,
   code,
