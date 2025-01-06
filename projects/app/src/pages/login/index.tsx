@@ -109,8 +109,6 @@ const Login = () => {
             )}
           </Box>
         </Flex>
-
-        {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
     </>
   );

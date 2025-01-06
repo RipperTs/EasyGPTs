@@ -126,6 +126,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {t('login:Login')}
         </Button>
 
+        <Flex align={'center'} justifyContent={'center'}>
+          <Box color={'primary.700'} fontSize={'sm'}>
+            账号: 您的工号，初始密码: 123456
+          </Box>
+        </Flex>
+
         <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
           {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
             <Box
