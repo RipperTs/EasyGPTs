@@ -204,7 +204,11 @@ const MyInfo = () => {
         </Flex>
         <Flex alignItems={'center'} mt={6}>
           <Box {...labelStyles}>密码:&nbsp;</Box>
-          <Box flex={1}>123456</Box>
+          <Box flex={1}>
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+              {t('common:user.Update Password')}
+            </Button>
+          </Box>
         </Flex>
         {feConfigs.isPlus && (
           <Flex mt={6} alignItems={'center'}>
