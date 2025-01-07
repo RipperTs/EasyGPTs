@@ -42,6 +42,8 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/price': true
 };
 
+export const navbarWidth = '64px';
+
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();

@@ -150,3 +150,9 @@ export type AppFileSelectConfigType = {
   canSelectImg: boolean;
   maxFiles: number;
 };
+
+export type TemplateTypeSchemaType = {
+  typeName: string;
+  typeId: string;
+  typeOrder: number;
+};

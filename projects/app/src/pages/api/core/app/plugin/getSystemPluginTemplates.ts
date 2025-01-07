@@ -39,7 +39,9 @@ async function handler(
         intro: plugin.intro,
         isTool: plugin.isTool,
         currentCost: plugin.currentCost,
-        author: plugin.author
+        author: plugin.author,
+        instructions: plugin.userGuide,
+        courseUrl: plugin.courseUrl
       }))
       .filter((item) => {
         if (searchKey) {

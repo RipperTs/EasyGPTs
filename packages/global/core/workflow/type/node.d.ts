@@ -1,28 +1,8 @@
 import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  VariableInputEnum
-} from '../constants';
-import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
+import { FlowNodeTemplateTypeEnum } from '../constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
-import { UserModelSchema } from '../../../support/user/type';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatItemValueItemType,
-  ToolRunResponseItemType,
-  UserChatItemValueItemType
-} from '../../chat/type';
-import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { RuntimeNodeItemType } from '../runtime/type';
-import { PluginTypeEnum } from '../../plugin/constants';
-import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
-import { NextApiResponse } from 'next';
-import { AppDetailType, AppSchema } from '../../app/type';
+import { ChatHistoryItemResType } from '../../chat/type';
 import { ParentIdType } from 'common/parentFolder/type';
-import { AppTypeEnum } from 'core/app/constants';
 
 export type FlowNodeCommonType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
@@ -84,6 +64,9 @@ export type NodeTemplateListItemType = {
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗
+  hasTokenFee?: boolean; // 是否配置积分
+  instructions?: string; // 使用说明
+  courseUrl?: string; // 教程链接
 };
 
 export type NodeTemplateListType = {

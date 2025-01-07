@@ -35,7 +35,7 @@ export type WorkflowTemplateType = {
   avatar: string;
   intro?: string;
   author?: string;
-  inputExplanationUrl?: string;
+  courseUrl?: string;
   version: string;
 
   showStatus?: boolean;
@@ -63,6 +63,8 @@ export type TemplateMarketListItemType = {
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   customWorkflow?: string;
+  associatedPluginId?: string;
+  userGuide?: string;
 
   templateType: FlowNodeTemplateTypeEnum;
   isTool?: boolean;
@@ -70,8 +72,11 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   // commercial plugin config
   originCost: number; // n points/one time
   currentCost: number;
+  hasTokenFee: boolean;
+  pluginOrder: number;
 
   isActive?: boolean;
+  isOfficial?: boolean;
   inputConfig?: {
     // Render config input form. Find the corresponding node and replace the variable directly
     key: string;

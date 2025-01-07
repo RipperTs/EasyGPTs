@@ -22,3 +22,16 @@ export type SystemPluginConfigSchemaType = {
     templateType: FlowNodeTemplateTypeEnum;
   };
 };
+
+export type TGroupType = {
+  typeName: string;
+  typeId: string;
+};
+
+export type PluginGroupSchemaType = {
+  groupId: string;
+  groupAvatar: string;
+  groupName: string;
+  groupTypes: TGroupType[];
+  groupOrder: number;
+};
