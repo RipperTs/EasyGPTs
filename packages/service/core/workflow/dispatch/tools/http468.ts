@@ -18,6 +18,7 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { getSystemPluginCb } from '../../../../../plugins/register';
 import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
+import { JSONPath } from 'jsonpath-plus';
 
 type PropsArrType = {
   key: string;
@@ -221,11 +222,15 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
     // format output value type
     const results: Record<string, any> = {};
-    for (const key in formatResponse) {
-      const output = node.outputs.find((item) => item.key === key);
-      if (!output) continue;
-      results[key] = valueTypeFormat(formatResponse[key], output.valueType);
-    }
+    node.outputs
+      .filter(
+        (item) =>
+          item.key !== NodeOutputKeyEnum.error && item.key !== NodeOutputKeyEnum.httpRawResponse
+      )
+      .forEach((item) => {
+        const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
+        results[item.key] = JSONPath({ path: key, json: formatResponse })[0];
+      });
 
     if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
       workflowStreamResponse?.({
