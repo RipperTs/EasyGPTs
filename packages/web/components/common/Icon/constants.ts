@@ -232,6 +232,8 @@ export const iconPaths = {
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/datasource': () =>
     import('./icons/core/workflow/template/datasource.svg'),
+  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
+  'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),
   'core/workflow/template/questionClassify': () =>
