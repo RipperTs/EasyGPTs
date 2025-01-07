@@ -66,7 +66,9 @@ const SaveAndPublishModal = ({
             await onClickSave({ ...data, isPublish: true });
             toast({
               status: 'success',
-              title: t('app:publish_success')
+              title: t('app:publish_success'),
+              position: 'top-right',
+              isClosable: true
             });
             onClose();
           })}
