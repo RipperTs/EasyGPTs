@@ -33,7 +33,7 @@ type ToolRunResponseType = {
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
-/* 
+/*
   调用思路
   1. messages 接收发送给AI的消息
   2. response 记录递归运行结果(累计计算 dispatchFlowResponse, totalTokens和assistantResponses)
@@ -259,7 +259,7 @@ export const runToolWithToolChoice = async (
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         tool_calls: toolCalls
       };
-      /* 
+      /*
         ...
         user
         assistant: tool data
@@ -269,7 +269,7 @@ export const runToolWithToolChoice = async (
         assistantToolMsgParams
       ] as ChatCompletionMessageParam[];
       const tokens = await countGptMessagesTokens(concatToolMessages, tools);
-      /* 
+      /*
         ...
         user
         assistant: tool data
@@ -423,8 +423,8 @@ async function streamResponse({
         // Start call tool
         if (toolCall.id) {
           callingTool = {
-            name: toolCall.function.name || '',
-            arguments: toolCall.function.arguments || ''
+            name: toolCall.function?.name || '',
+            arguments: toolCall.function?.arguments || ''
           };
         } else if (callingTool) {
           // Continue call
@@ -442,6 +442,7 @@ async function streamResponse({
           toolCalls.push({
             ...toolCall,
             id: toolId,
+            type: 'function',
             function: toolFunction,
             toolName: toolNode.name,
             toolAvatar: toolNode.avatar
