@@ -25,7 +25,8 @@ const packagePluginList = [
   'duckduckgo/searchImg',
   'duckduckgo/searchNews',
   'duckduckgo/searchVideo',
-  'databaseConnection'
+  'databaseConnection',
+  'Doc2X/PDF2text'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
