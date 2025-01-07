@@ -230,6 +230,8 @@ export const iconPaths = {
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
+  'core/workflow/template/datasource': () =>
+    import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),
   'core/workflow/template/questionClassify': () =>
