@@ -89,7 +89,7 @@ export const storeNode2FlowNode = ({
     avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
 
-    /* 
+    /*
       Inputs and outputs, New fields are added, not reduced
     */
     inputs: templateInputs
@@ -336,8 +336,16 @@ export const checkWorkflowNodeAndConnection = ({
       return [data.nodeId];
     }
 
-    // check empty node(not edge)
-    const hasEdge = edges.some(
+    // filter tools node edge
+    const edgeFilted = edges.filter(
+      (edge) =>
+        !(
+          data.flowNodeType === FlowNodeTypeEnum.tools &&
+          edge.sourceHandle === NodeOutputKeyEnum.selectedTools
+        )
+    );
+    // check node has edge
+    const hasEdge = edgeFilted.some(
       (edge) => edge.source === data.nodeId || edge.target === data.nodeId
     );
     if (!hasEdge) {
