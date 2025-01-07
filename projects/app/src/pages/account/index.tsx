@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -10,7 +9,6 @@ import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import UserInfo from './components/Info/index';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
@@ -32,9 +30,7 @@ enum TabEnum {
 }
 
 const Account = ({ currentTab }: { currentTab: TabEnum }) => {
-  const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
-  const { feConfigs, systemVersion } = useSystemStore();
   const { isPc } = useSystem();
 
   const tabList = [
@@ -106,12 +102,6 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
                 value={currentTab}
                 onChange={setCurrentTab}
               />
-              <Flex alignItems={'center'}>
-                <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-                <Box fontSize={'md'} ml={2}>
-                  V{systemVersion}
-                </Box>
-              </Flex>
             </Flex>
           ) : (
             <Box mb={3}>
