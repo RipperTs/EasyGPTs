@@ -25,7 +25,7 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* 
+/*
   replace {{variable}} to value
 */
 export function replaceVariable(text: any, obj: Record<string, string | number>) {
@@ -66,6 +66,8 @@ export const getNanoid = (size = 12) => {
 
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const customNanoid = (str: string, size: number) => customAlphabet(str, size)();
 
 export const getRegQueryStr = (text: string, flags = 'i') => {
   const formatText = replaceRegChars(text);
