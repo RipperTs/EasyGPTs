@@ -5,7 +5,9 @@ export enum CodeClassNameEnum {
   echarts = 'echarts',
   quote = 'quote',
   files = 'files',
-  latex = 'latex'
+  latex = 'latex',
+  iframe = 'iframe',
+  html = 'html'
 }
 
 function htmlTableToLatex(html: string) {
