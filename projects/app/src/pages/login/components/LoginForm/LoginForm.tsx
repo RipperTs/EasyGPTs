@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
+import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin } from '@/web/support/user/api';
@@ -127,7 +127,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </Button>
 
         <Flex align={'center'} justifyContent={'center'}>
-          <Box color={'primary.700'} fontSize={'sm'}>
+          <Box color={'primary.700'} fontSize={'mini'}>
             账号: 您的工号，初始密码: 123456
           </Box>
         </Flex>
