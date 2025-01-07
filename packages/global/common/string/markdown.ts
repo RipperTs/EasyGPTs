@@ -1,4 +1,5 @@
-import { simpleText } from './tools';
+import { getNanoid, simpleText } from './tools';
+import type { ImageType } from '../../../service/worker/readFile/type';
 
 /* Delete redundant text in markdown */
 export const simpleMarkdownText = (rawText: string) => {
@@ -87,4 +88,29 @@ export const markdownProcess = async ({
   });
 
   return simpleMarkdownText(imageProcess);
+};
+
+export const matchMdImgTextAndUpload = (text: string) => {
+  const base64Regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64[^)]+)\)/g;
+  const imageList: ImageType[] = [];
+
+  text = text.replace(base64Regex, (match, altText, base64Url) => {
+    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
+    const mime = base64Url.split(';')[0].split(':')[1];
+    const base64 = base64Url.split(',')[1];
+
+    imageList.push({
+      uuid,
+      base64,
+      mime
+    });
+
+    // 保持原有的 alt 文本，只替换 base64 部分
+    return `![${altText}](${uuid})`;
+  });
+
+  return {
+    text,
+    imageList
+  };
 };

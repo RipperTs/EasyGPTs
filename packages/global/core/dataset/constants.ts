@@ -3,7 +3,8 @@ export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset',
   websiteDataset = 'websiteDataset', // depp link
-  externalFile = 'externalFile'
+  externalFile = 'externalFile',
+  apiDataset = 'apiDataset'
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
@@ -24,6 +25,11 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: 'external_file',
+    collectionLabel: 'common.File'
+  },
+  [DatasetTypeEnum.apiDataset]: {
+    icon: 'core/dataset/externalDatasetOutline',
+    label: 'api_file',
     collectionLabel: 'common.File'
   }
 };
@@ -49,7 +55,8 @@ export enum DatasetCollectionTypeEnum {
   file = 'file',
   link = 'link', // one link
   externalFile = 'externalFile',
-  apiData = 'apiData'
+  apiData = 'apiData',
+  apiFile = 'apiFile'
 }
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {
@@ -69,6 +76,9 @@ export const DatasetCollectionTypeMap = {
   },
   [DatasetCollectionTypeEnum.apiData]: {
     name: 'core.dataset.ApiData collection'
+  },
+  [DatasetCollectionTypeEnum.apiFile]: {
+    name: 'API 文件库'
   }
 };
 
@@ -94,7 +104,9 @@ export enum ImportDataSourceEnum {
   fileCustom = 'fileCustom',
   csvTable = 'csvTable',
   externalFile = 'externalFile',
-  apiData = 'apiData'
+  apiData = 'apiData',
+  apiDataset = 'apiDataset',
+  reTraining = 'reTraining'
 }
 
 export enum TrainingModeEnum {
@@ -185,5 +197,7 @@ export const LinkCollectionIcon = 'common/linkBlue';
 export enum DatasetSourceReadTypeEnum {
   fileLocal = 'fileLocal',
   link = 'link',
-  externalFile = 'externalFile'
+  externalFile = 'externalFile',
+  apiFile = 'apiFile',
+  reTraining = 'reTraining'
 }

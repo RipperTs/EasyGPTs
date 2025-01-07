@@ -8,6 +8,12 @@ export type ReadRawTextProps<T> = {
 
 export type ReadRawTextByBuffer = ReadRawTextProps<Buffer>;
 
+export type ImageType = {
+  uuid: string;
+  base64: string;
+  mime: string;
+};
+
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;

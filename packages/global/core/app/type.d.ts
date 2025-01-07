@@ -156,3 +156,9 @@ export type TemplateTypeSchemaType = {
   typeId: string;
   typeOrder: number;
 };
+
+export type SystemPluginListItemType = {
+  _id: string;
+  name: string;
+  avatar: string;
+};

@@ -9,7 +9,10 @@ export enum DatasetErrEnum {
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
   unLinkCollection = 'unLinkCollection',
-  invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel'
+  invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel',
+  notSupportSync = 'notSupportSync',
+  sameApiCollection = 'sameApiCollection',
+  noApiServer = 'noApiServer'
 }
 const datasetErr = [
   {

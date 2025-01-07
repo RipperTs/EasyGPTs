@@ -1,8 +1,6 @@
 import { StoreEdgeItemType } from 'core/workflow/type/edge';
-import { ModuleTemplateTypeEnum } from '../workflow/constants';
 import type { StoreNodeItemType } from '../workflow/type/node';
 import { PluginSourceEnum, PluginTypeEnum } from './constants';
-import { MethodType } from './controller';
 import { FlowNodeTemplateType } from '../workflow/type/node';
 
 export type PluginItemSchema = {
@@ -39,6 +37,7 @@ export type PluginTemplateType = PluginRuntimeType & {
 };
 
 export type PluginRuntimeType = {
+  id: string;
   teamId?: string;
   name: string;
   avatar: string;
@@ -46,4 +45,6 @@ export type PluginRuntimeType = {
   isTool?: boolean;
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  currentCost?: number;
+  hasTokenFee?: boolean;
 };

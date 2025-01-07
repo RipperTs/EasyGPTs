@@ -117,6 +117,12 @@ const DatasetParamsModal = ({
     }
   }, [chatModelSelectList, datasetSearchUsingCfrForm, queryExtensionModel, setValue]);
 
+  // 保证只有 80 左右个刻度。
+  const maxTokenStep = useMemo(() => {
+    if (maxTokens < 8000) return 80;
+    return Math.ceil(maxTokens / 80 / 100) * 100;
+  }, [maxTokens]);
+
   return (
     <MyModal
       isOpen={true}
@@ -237,7 +243,7 @@ const DatasetParamsModal = ({
                     ]}
                     min={100}
                     max={maxTokens}
-                    step={50}
+                    step={maxTokenStep}
                     value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
                     onChange={(val) => {
                       setValue(NodeInputKeyEnum.datasetMaxTokens, val);

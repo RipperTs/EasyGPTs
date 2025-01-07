@@ -38,3 +38,5 @@ export enum AppTemplateTypeEnum {
   roleplay = 'roleplay',
   officeServices = 'office-services'
 }
+
+export const defaultDatasetMaxTokens = 16000;
