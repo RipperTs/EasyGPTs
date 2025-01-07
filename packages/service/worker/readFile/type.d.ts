@@ -17,4 +17,5 @@ export type ImageType = {
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;
+  imageList?: ImageType[];
 };

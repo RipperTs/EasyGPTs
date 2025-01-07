@@ -1,19 +1,20 @@
-import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { addHours } from 'date-fns';
 import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
+import { batchRun } from '@fastgpt/global/common/fn/utils';
+import { addHours } from 'date-fns';
+import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
   path: string;
+  encoding: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -22,13 +23,12 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
 
   const buffer = fs.readFileSync(path);
-  const encoding = detectFileEncoding(buffer);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
     isQAImport: false,
     teamId: params.teamId,
-    encoding,
+    encoding: params.encoding,
     buffer,
     metadata: params.metadata
   });
@@ -53,21 +53,7 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
-  // Upload image in markdown
-  const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
-    markdownProcess({
-      rawText: md,
-      uploadImgController: (base64Img) =>
-        uploadMongoImg({
-          type: MongoImageTypeEnum.collectionImage,
-          base64Img,
-          teamId,
-          metadata,
-          expiredTime: addHours(new Date(), 1)
-        })
-    });
-
-  /* If */
+  // Custom read file service
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
   const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
   const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
@@ -80,6 +66,7 @@ export const readRawContentByFileBuffer = async ({
       return;
 
     const start = Date.now();
+    addLog.info('Parsing files from an external service');
 
     const data = new FormData();
     data.append('file', buffer, {
@@ -93,6 +80,7 @@ export const readRawContentByFileBuffer = async ({
       data: {
         page: number;
         markdown: string;
+        duration: number;
       };
     }>(customReadfileUrl, data, {
       timeout: 600000,
@@ -101,29 +89,44 @@ export const readRawContentByFileBuffer = async ({
       }
     });
 
-    addLog.info(`Use custom read file service, time: ${Date.now() - start}ms`);
+    addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
 
     const rawText = response.data.markdown;
+    const { text, imageList } = matchMdImgTextAndUpload(rawText);
 
     return {
-      rawText,
-      formatText: rawText
+      rawText: text,
+      formatText: rawText,
+      imageList
     };
   };
 
-  let { rawText, formatText } =
+  let { rawText, formatText, imageList } =
     (await readFileFromCustomService()) ||
     (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
       extension,
       encoding,
-      buffer
+      buffer,
+      teamId
     }));
 
   // markdown data format
-  if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
-    rawText = await matchMdImgTextAndUpload({
-      teamId: teamId,
-      md: rawText
+  if (imageList) {
+    await batchRun(imageList, async (item) => {
+      const src = await uploadMongoImg({
+        type: MongoImageTypeEnum.collectionImage,
+        base64Img: `data:${item.mime};base64,${item.base64}`,
+        teamId,
+        expiredTime: addHours(new Date(), 1),
+        metadata: {
+          ...metadata,
+          mime: item.mime
+        }
+      });
+      rawText = rawText.replace(item.uuid, src);
+      if (formatText) {
+        formatText = formatText.replace(item.uuid, src);
+      }
     });
   }
 
@@ -132,7 +135,7 @@ export const readRawContentByFileBuffer = async ({
     if (isQAImport) {
       rawText = rawText || '';
     } else {
-      rawText = formatText || '';
+      rawText = formatText || rawText;
     }
   }
 
