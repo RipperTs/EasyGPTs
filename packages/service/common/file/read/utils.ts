@@ -10,11 +10,11 @@ import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
 import { addHours } from 'date-fns';
 import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
   path: string;
-  encoding: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -23,12 +23,13 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
 
   const buffer = fs.readFileSync(path);
+  const encoding = detectFileEncoding(buffer);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
     isQAImport: false,
     teamId: params.teamId,
-    encoding: params.encoding,
+    encoding: encoding,
     buffer,
     metadata: params.metadata
   });

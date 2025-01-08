@@ -11,7 +11,7 @@ import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
 
-/* 
+/*
   plugin id rule:
   personal: id
   community: community-id
@@ -58,7 +58,9 @@ const getPluginTemplateById = async (
       templateType: FlowNodeTemplateTypeEnum.teamApp,
       version: item?.pluginData?.nodeVersion || defaultNodeVersion,
       originCost: 0,
-      currentCost: 0
+      currentCost: 0,
+      hasTokenFee: false,
+      pluginOrder: item?.pluginOrder || 0
     };
   } else {
     const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
@@ -83,7 +85,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     avatar: plugin.avatar,
     name: plugin.name,
     intro: plugin.intro,
-    inputExplanationUrl: plugin.inputExplanationUrl,
+    inputExplanationUrl: plugin.inputExplanationUrl || plugin.courseUrl,
     showStatus: plugin.showStatus,
     isTool: isPlugin,
     version: plugin.version,

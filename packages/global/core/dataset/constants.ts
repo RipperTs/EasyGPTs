@@ -3,8 +3,7 @@ export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset',
   websiteDataset = 'websiteDataset', // depp link
-  externalFile = 'externalFile',
-  apiDataset = 'apiDataset'
+  externalFile = 'externalFile'
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
@@ -25,11 +24,6 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: 'external_file',
-    collectionLabel: 'common.File'
-  },
-  [DatasetTypeEnum.apiDataset]: {
-    icon: 'core/dataset/externalDatasetOutline',
-    label: 'api_file',
     collectionLabel: 'common.File'
   }
 };
@@ -104,9 +98,7 @@ export enum ImportDataSourceEnum {
   fileCustom = 'fileCustom',
   csvTable = 'csvTable',
   externalFile = 'externalFile',
-  apiData = 'apiData',
-  apiDataset = 'apiDataset',
-  reTraining = 'reTraining'
+  apiData = 'apiData'
 }
 
 export enum TrainingModeEnum {

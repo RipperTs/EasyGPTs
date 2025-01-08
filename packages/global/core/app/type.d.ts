@@ -44,6 +44,7 @@ export type AppSchema = {
 
   inited?: boolean;
   teamTags: string[];
+  pluginOrder?: number;
 } & PermissionSchemaType;
 
 export type AppListItemType = {
