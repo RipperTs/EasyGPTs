@@ -9,7 +9,9 @@
     "expr-eval": "^2.0.2",
     "mysql2": "^3.11.3",
     "pg": "^8.10.0",
-    "wikijs": "^6.4.1"
+    "wikijs": "^6.4.1",
+    "cheerio": "1.0.0-rc.12",
+    "echarts": "5.4.1"
   },
   "devDependencies": {
     "@fastgpt/global": "workspace:*",

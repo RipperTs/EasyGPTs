@@ -209,6 +209,10 @@ export const iconPaths = {
   'core/workflow/running': () => import('./icons/core/workflow/running.svg'),
   'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
+  'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
+  'core/workflow/template/searxng': () => import('./icons/core/workflow/template/searxng.svg'),
+  'core/workflow/template/BI': () => import('./icons/core/workflow/template/BI.svg'),
+  'core/workflow/template/baseChart': () => import('./icons/core/workflow/template/baseChart.svg'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),

@@ -1,48 +1,49 @@
 {
   "author": "",
-  "version": "4811",
-  "name": "Bing搜索",
-  "avatar": "core/workflow/template/bing",
-  "intro": "在Bing中搜索。",
+  "version": "4816",
+  "name": "Search XNG 搜索",
+  "avatar": "core/workflow/template/searxng",
+  "intro": "使用 Search XNG 服务进行搜索。",
   "showStatus": true,
   "weight": 10,
+
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "search",
 
   "workflow": {
     "nodes": [
       {
         "nodeId": "pluginInput",
-        "name": "workflow:template.plugin_start",
-        "intro": "workflow:intro_plugin_input",
+        "name": "插件开始",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 636.3048409085379,
-          "y": -238.61714728578016
+          "x": 482.8986144681427,
+          "y": -77.56127656499825
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["input"],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "key",
-            "label": "key",
-            "description": "bing搜索key",
-            "defaultValue": "",
-            "required": true
-          },
-          {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
             "key": "query",
             "label": "query",
-            "description": "查询字段值",
+            "description": "检索词",
+            "required": true,
+            "toolDescription": "检索词"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "description": "部署的searXNG服务的链接",
             "defaultValue": "",
             "list": [
               {
@@ -50,77 +51,75 @@
                 "value": ""
               }
             ],
-            "required": true,
-            "toolDescription": "查询字段值"
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
           }
         ],
         "outputs": [
-          {
-            "id": "key",
-            "valueType": "string",
-            "key": "key",
-            "label": "key",
-            "type": "hidden"
-          },
           {
             "id": "query",
             "valueType": "string",
             "key": "query",
             "label": "query",
             "type": "hidden"
+          },
+          {
+            "id": "url",
+            "valueType": "string",
+            "key": "url",
+            "label": "url",
+            "type": "hidden"
           }
         ]
       },
       {
         "nodeId": "pluginOutput",
-        "name": "common:core.module.template.self_output",
-        "intro": "workflow:intro_custom_plugin_output",
+        "name": "插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 2764.1105686698083,
-          "y": -30.617147285780163
+          "x": 1763.7518709731714,
+          "y": -55.56127656499825
         },
         "version": "481",
         "inputs": [
           {
             "renderTypeList": ["reference"],
-            "valueType": "object",
+            "valueType": "string",
             "canEdit": true,
             "key": "result",
             "label": "result",
+            "description": " 检索结果",
+            "value": ["hjnVuJAOwyXV", "lEyy5QqyIBrK"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "error",
+            "label": "error",
             "isToolOutput": true,
-            "description": "",
-            "value": ["pZTkvleFSZXo", "system_rawResponse"]
+            "description": "请求错误",
+            "required": true,
+            "value": ["hjnVuJAOwyXV", "error"]
           }
         ],
         "outputs": []
       },
       {
-        "nodeId": "pluginConfig",
-        "name": "common:core.module.template.system_config",
-        "intro": "",
-        "avatar": "core/workflow/template/systemConfig",
-        "flowNodeType": "pluginConfig",
-        "position": {
-          "x": 184.66337662472682,
-          "y": -216.05298493910115
-        },
-        "version": "4811",
-        "inputs": [],
-        "outputs": []
-      },
-      {
-        "nodeId": "nyA6oA8mF1iW",
+        "nodeId": "hjnVuJAOwyXV",
         "name": "HTTP 请求",
-        "intro": "调用谷歌搜索，查询相关内容",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1335.0647252518884,
-          "y": -455.9043948565971
+          "x": 1054.6774638324207,
+          "y": -403.06127656499825
         },
         "version": "481",
         "inputs": [
@@ -160,7 +159,7 @@
             "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
-            "value": "GET",
+            "value": "POST",
             "required": true,
             "debugLabel": "",
             "toolDescription": ""
@@ -185,7 +184,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "https://api.bing.microsoft.com/v7.0/search",
+            "value": "searchXNG",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -193,13 +192,7 @@
             "key": "system_httpHeader",
             "renderTypeList": ["custom"],
             "valueType": "any",
-            "value": [
-              {
-                "key": "Ocp-Apim-Subscription-Key",
-                "type": "string",
-                "value": "{{$pluginInput.key$}}"
-              }
-            ],
+            "value": [],
             "label": "",
             "description": "common:core.module.input.description.Http Request Header",
             "placeholder": "common:core.module.input.description.Http Request Header",
@@ -211,13 +204,7 @@
             "key": "system_httpParams",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": [
-              {
-                "key": "q",
-                "type": "string",
-                "value": "{{query}}"
-              }
-            ],
+            "value": [],
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -227,7 +214,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "",
+            "value": "{\n  \"query\": \"{{query}}\",\n  \"url\": \"{{url}}\"\n}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -254,17 +241,11 @@
             "toolDescription": ""
           },
           {
-            "valueType": "string",
             "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
             "key": "query",
             "label": "query",
-            "toolDescription": "谷歌搜索检索词",
-            "required": true,
-            "canEdit": true,
-            "editField": {
-              "key": true,
-              "description": true
-            },
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -286,7 +267,38 @@
               "showDescription": false,
               "showDefaultValue": true
             },
+            "required": true,
             "value": ["pluginInput", "query"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "url"]
           }
         ],
         "outputs": [
@@ -313,175 +325,62 @@
             "type": "dynamic",
             "valueType": "dynamic",
             "label": "",
-            "editField": {
-              "key": true,
-              "valueType": true
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
             }
           },
           {
-            "id": "M5YmxaYe8em1",
-            "type": "dynamic",
-            "key": "prompt",
+            "id": "lEyy5QqyIBrK",
             "valueType": "string",
-            "label": "prompt"
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
           }
         ]
       },
       {
-        "nodeId": "pZTkvleFSZXo",
-        "name": "代码运行",
-        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
-        "avatar": "core/workflow/template/codeRun",
-        "flowNodeType": "code",
-        "showStatus": true,
+        "nodeId": "f1mRh1D85H2D",
+        "name": "系统配置",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
         "position": {
-          "x": 2153.5325687235554,
-          "y": -188.04429852303304
+          "x": -28.511358745511643,
+          "y": -103.56127656499825
         },
-        "version": "482",
-        "inputs": [
-          {
-            "key": "system_addInputParam",
-            "renderTypeList": ["addInputParam"],
-            "valueType": "dynamic",
-            "label": "",
-            "required": false,
-            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "debugLabel": "",
-            "toolDescription": ""
-          },
-          {
-            "key": "codeType",
-            "renderTypeList": ["hidden"],
-            "label": "",
-            "value": "js",
-            "debugLabel": "",
-            "toolDescription": ""
-          },
-          {
-            "key": "code",
-            "renderTypeList": ["custom"],
-            "label": "",
-            "value": "function main({data}){\n    const result = data.webPages.value.map((item) => ({\n      title: item.name,\n      link: item.url,\n      snippet: item.snippet\n    }))\n    return  JSON.stringify(result) \n}",
-            "debugLabel": "",
-            "toolDescription": ""
-          },
-          {
-            "key": "data",
-            "valueType": "object",
-            "label": "data",
-            "renderTypeList": ["reference"],
-            "description": "",
-            "canEdit": true,
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "value": ["nyA6oA8mF1iW", "httpRawResponse"],
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            }
-          }
-        ],
-        "outputs": [
-          {
-            "id": "system_rawResponse",
-            "key": "system_rawResponse",
-            "label": "workflow:full_response_data",
-            "valueType": "object",
-            "type": "static",
-            "description": ""
-          },
-          {
-            "id": "error",
-            "key": "error",
-            "label": "workflow:execution_error",
-            "description": "代码运行错误信息，成功时返回空",
-            "valueType": "object",
-            "type": "static"
-          },
-          {
-            "id": "system_addOutputParam",
-            "key": "system_addOutputParam",
-            "type": "dynamic",
-            "valueType": "dynamic",
-            "label": "",
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "description": "将代码中 return 的对象作为输出，传递给后续的节点"
-          },
-          {
-            "id": "qLUQfhG0ILRX",
-            "type": "dynamic",
-            "key": "prompt",
-            "valueType": "string",
-            "label": "prompt"
-          }
-        ]
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
       }
     ],
     "edges": [
       {
         "source": "pluginInput",
-        "target": "nyA6oA8mF1iW",
+        "target": "hjnVuJAOwyXV",
         "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "nyA6oA8mF1iW-target-left"
+        "targetHandle": "hjnVuJAOwyXV-target-left"
       },
       {
-        "source": "nyA6oA8mF1iW",
-        "target": "pZTkvleFSZXo",
-        "sourceHandle": "nyA6oA8mF1iW-source-right",
-        "targetHandle": "pZTkvleFSZXo-target-left"
-      },
-      {
-        "source": "pZTkvleFSZXo",
+        "source": "hjnVuJAOwyXV",
         "target": "pluginOutput",
-        "sourceHandle": "pZTkvleFSZXo-source-right",
+        "sourceHandle": "hjnVuJAOwyXV-source-right",
         "targetHandle": "pluginOutput-target-left"
       }
     ],
@@ -503,7 +402,11 @@
         "customUrl": ""
       },
       "instruction": "",
-      "_id": "6709e90cd9873479ee78fe71"
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "67611a5eed7efa452a6e50c5"
     }
   }
 }

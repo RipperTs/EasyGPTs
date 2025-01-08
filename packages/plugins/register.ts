@@ -27,7 +27,10 @@ const packagePluginList = [
   'duckduckgo/searchVideo',
   'databaseConnection',
   'Doc2X/PDF2text',
-  'wiki'
+  'wiki',
+  'searchXNG',
+  'drawing',
+  'drawing/baseChart'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
