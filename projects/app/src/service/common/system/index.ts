@@ -62,7 +62,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: '/docs',
   openAPIDocUrl: '/openapi',
   systemPluginCourseUrl: '/wiki',
-  systemTitle: 'EasyGPTs',
+  systemTitle: 'LLM应用开发平台',
   concatMd: '',
   limit: {
     exportDatasetLimitMinutes: 0,
