@@ -1,7 +1,6 @@
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
@@ -42,8 +41,6 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true });
   }
 
-  // 上限校验
-  await checkTeamAppLimit(teamId);
   const tmb = await MongoTeamMember.findById({ _id: tmbId });
   const user = await MongoUser.findById({ _id: tmb?.userId });
 

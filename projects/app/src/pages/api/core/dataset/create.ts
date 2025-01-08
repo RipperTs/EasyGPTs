@@ -3,7 +3,6 @@ import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
-import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -41,9 +40,6 @@ async function handler(
   if (!vectorModelStore || !agentModelStore) {
     return Promise.reject(DatasetErrEnum.invalidVectorModelOrQAModel);
   }
-
-  // check limit
-  await checkTeamDatasetLimit(teamId);
 
   const { _id } = await MongoDataset.create({
     ...parseParentIdInMongo(parentId),
