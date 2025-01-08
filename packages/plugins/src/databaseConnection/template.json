@@ -238,7 +238,7 @@
             "key": "result",
             "label": "result",
             "isToolOutput": true,
-            "description": "数据库连接结果",
+            "description": "数据库执行结果",
             "value": [
               "zBeXy7YZEiXe",
               "httpRawResponse"
