@@ -15,7 +15,8 @@ const staticPluginList = [
   `Doc2X/FileImg2text`,
   'feishu',
   'bing',
-  'google'
+  'google',
+  'GenPyChart'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
