@@ -104,6 +104,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {t('login:Login')}
         </Button>
 
+        <Flex align={'center'} justifyContent={'center'}>
+          <Box color={'primary.700'} fontSize={'mini'}>
+            您可以使用新钢铁系统管理平台账号密码进行登录
+          </Box>
+        </Flex>
+
         <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
           {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
             <Box
