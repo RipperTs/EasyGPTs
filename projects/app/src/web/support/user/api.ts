@@ -57,6 +57,22 @@ export const registerByXGTAccount = ({
     password: password
   });
 
+// 修改密码根据用户名和旧密码
+export const updatePwdByOld = ({
+  username,
+  oldPsw,
+  newPsw
+}: {
+  username: string;
+  oldPsw: string;
+  newPsw: string;
+}) =>
+  POST<ResLogin>(`/support/user/account/updatePwdByOld`, {
+    username,
+    oldPsw: oldPsw,
+    newPsw: newPsw
+  });
+
 export const postFindPassword = ({
   username,
   code,

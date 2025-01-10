@@ -1,38 +1,35 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
+// 根据用户名和旧密码更新密码
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
+    const { username, oldPsw, newPsw } = req.body as {
+      username: string | number;
+      oldPsw: string | number;
+      newPsw: string | number;
+    };
 
     if (!oldPsw || !newPsw) {
       throw new Error('Params is missing');
     }
 
-    const { tmbId } = await authCert({ req, authToken: true });
-    const tmb = await MongoTeamMember.findById(tmbId);
-    if (!tmb) {
-      throw new Error('找不到用户信息');
-    }
-    const userId = tmb.userId;
-    // auth old password
     const user = await MongoUser.findOne({
-      _id: userId,
-      password: oldPsw
+      username,
+      password: hashStr(oldPsw + '')
     });
 
     if (!user) {
-      throw new Error('旧密码不正确');
+      throw new Error('用户账号或密码错误');
     }
 
     // 更新对应的记录
-    await MongoUser.findByIdAndUpdate(userId, {
-      password: newPsw
+    await MongoUser.findByIdAndUpdate(user._id, {
+      password: hashStr(newPsw + '')
     });
 
     jsonRes(res, {
