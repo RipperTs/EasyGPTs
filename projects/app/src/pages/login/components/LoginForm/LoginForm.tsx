@@ -58,24 +58,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
   const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);
 
-  const placeholder = (() => {
-    if (isCommunityVersion) {
-      return t('login:use_root_login');
-    }
-    return [t('common:support.user.login.Username')]
-      .concat(
-        feConfigs?.login_method?.map((item) => {
-          switch (item) {
-            case 'email':
-              return t('common:support.user.login.Email');
-            case 'phone':
-              return t('common:support.user.login.Phone number');
-          }
-        }) ?? []
-      )
-      .join('/');
-  })();
-
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
@@ -89,7 +71,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
-            placeholder={placeholder}
+            placeholder="请输入您的账号 / 工号"
             {...register('username', {
               required: true
             })}
@@ -99,11 +81,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             type={'password'}
-            placeholder={
-              isCommunityVersion
-                ? t('login:root_password_placeholder')
-                : t('common:support.user.login.Password')
-            }
+            placeholder="请输入您的密码"
             {...register('password', {
               required: true,
               maxLength: {
@@ -125,12 +103,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         >
           {t('login:Login')}
         </Button>
-
-        <Flex align={'center'} justifyContent={'center'}>
-          <Box color={'primary.700'} fontSize={'mini'}>
-            账号: 您的工号，初始密码: 123456
-          </Box>
-        </Flex>
 
         <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
           {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
