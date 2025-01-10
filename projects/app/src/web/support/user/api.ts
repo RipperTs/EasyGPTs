@@ -90,8 +90,8 @@ export const postFindPassword = ({
 
 export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
   POST('/support/user/account/updatePasswordByOld', {
-    oldPsw: hashStr(oldPsw),
-    newPsw: hashStr(newPsw)
+    oldPassword: oldPsw,
+    newPassword: newPsw
   });
 
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
