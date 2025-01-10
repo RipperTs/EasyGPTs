@@ -90,7 +90,7 @@ export function createJWT(user: {
       teamId: String(user.team?.teamId),
       tmbId: String(user.team?.tmbId),
       isRoot: user.isRoot,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 180
     },
     key
   );
@@ -249,7 +249,7 @@ export async function parseHeaderCert({
 }
 
 /* set cookie */
-export const TokenName = 'fastgpt_token';
+export const TokenName = 'easygpts_token';
 export const setCookie = (res: NextApiResponse, token: string) => {
   res.setHeader(
     'Set-Cookie',
