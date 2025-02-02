@@ -44,6 +44,10 @@
               {
                 "label": "PostgreSQL",
                 "value": "PostgreSQL"
+              },
+              {
+                "label": "Microsoft SQL Server",
+                "value": "Microsoft SQL Server"
               }
             ],
             "required": true
