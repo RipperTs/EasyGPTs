@@ -174,6 +174,12 @@ export const streamFetch = ({
                 text: item
               });
             }
+
+            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            onMessage({
+              event,
+              reasoningText
+            });
           } else if (event === SseResponseEventEnum.fastAnswer) {
             const text = parseJson.choices?.[0]?.delta?.content || '';
             responseQueue.push({

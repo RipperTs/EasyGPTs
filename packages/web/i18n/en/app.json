@@ -189,6 +189,7 @@
     "user_file_input": "File Link",
     "user_file_input_desc": "Links to documents and images uploaded by users.",
     "user_select": "User Selection",
-    "user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches."
+    "user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches.",
+    "reasoning_response": "Output thinking"
   }
 }

@@ -175,6 +175,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     { inputs = [] }: RuntimeNodeItemType,
     {
       answerText = '',
+      reasoningText,
       responseData,
       nodeDispatchUsages,
       toolResponses,
@@ -184,6 +185,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }: Omit<
       DispatchNodeResultType<{
         [NodeOutputKeyEnum.answerText]?: string;
+        [NodeOutputKeyEnum.reasoningText]?: string;
         [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
       }>,
       'nodeResponse'
@@ -220,6 +222,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           }
         });
       }
+    } else if (reasoningText) {
+      chatAssistantResponse.push({
+        type: ChatItemValueTypeEnum.reasoning,
+        reasoning: {
+          content: reasoningText
+        }
+      });
     }
 
     if (rewriteHistories) {

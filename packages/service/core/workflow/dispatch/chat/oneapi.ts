@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
+import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -36,7 +36,7 @@ import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories } from '../utils';
+import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
@@ -52,6 +52,7 @@ export type ChatProps = ModuleDispatchProps<
 >;
 export type ChatResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.reasoningText]?: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
@@ -78,6 +79,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate,
       quotePrompt,
       aiChatVision,
+      aiChatReasoning,
       stringQuoteText
     }
   } = props;
@@ -86,14 +88,17 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   if (!userChatInput && inputFiles.length === 0) {
     return Promise.reject('Question is empty');
   }
-  stream = stream && isResponseAnswerText;
-
-  const chatHistories = getHistories(history, histories);
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
+
+  stream = stream && isResponseAnswerText;
+  aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
+
+  const chatHistories = getHistories(history, histories);
+  quoteQA = checkQuoteQAValue(quoteQA);
 
   const { datasetQuoteText } = await filterDatasetQuote({
     quoteQA,
@@ -101,9 +106,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteTemplate
   });
 
+  const max_tokens = computedMaxToken({
+    model: modelConstantsData,
+    maxToken
+  });
+
   const [{ filterMessages }] = await Promise.all([
     getChatMessages({
       model: modelConstantsData,
+      maxTokens: max_tokens,
       histories: chatHistories,
       useDatasetQuote: quoteQA !== undefined,
       datasetQuoteText,
@@ -139,15 +150,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ...filterMessages
   ] as ChatCompletionMessageParam[];
 
-  const [requestMessages, max_tokens] = await Promise.all([
+  const [requestMessages] = await Promise.all([
     loadRequestMessages({
       messages: concatMessages,
       useVision: modelConstantsData.vision && aiChatVision,
       origin: requestOrigin
-    }),
-    computedMaxToken({
-      model: modelConstantsData,
-      maxToken
     })
   ]);
 
@@ -174,46 +181,58 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       }
     });
 
-    const { answerText } = await (async () => {
+    const { answerText, reasoningText } = await (async () => {
       if (res && stream) {
         // sse response
-        const { answer } = await streamResponse({
+        const { answer, reasoning } = await streamResponse({
           res,
           stream: response,
+          aiChatReasoning,
           workflowStreamResponse
         });
 
-        if (!answer) {
-          throw new Error('LLM model response empty');
-        }
-
         return {
-          answerText: answer
+          answerText: answer,
+          reasoningText: reasoning
         };
       } else {
         const unStreamResponse = response as ChatCompletion;
         const answer = unStreamResponse.choices?.[0]?.message?.content || '';
+        const reasoning = aiChatReasoning
+          ? // @ts-ignore
+            unStreamResponse.choices?.[0]?.message?.reasoning_content || ''
+          : '';
 
         if (stream) {
           // Some models do not support streaming
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              text: answer
+              text: answer,
+              reasoning_content: reasoning
             })
           });
         }
 
         return {
-          answerText: answer
+          answerText: answer,
+          reasoningText: reasoning
         };
       }
     })();
 
-    const completeMessages = requestMessages.concat({
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: answerText
-    });
+    if (!answerText) {
+      return Promise.reject('LLM empty response');
+    }
+
+    const AIMessages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: answerText
+      }
+    ];
+
+    const completeMessages = [...requestMessages, ...AIMessages];
     const chatCompleteMessages = GPTMessages2Chats(completeMessages);
 
     const tokens = await countMessagesTokens(chatCompleteMessages);
@@ -225,6 +244,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     return {
       answerText,
+      reasoningText,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
@@ -291,6 +311,7 @@ async function filterDatasetQuote({
   };
 }
 async function getChatMessages({
+  maxTokens = 0,
   datasetQuotePrompt,
   datasetQuoteText,
   useDatasetQuote,
@@ -301,6 +322,7 @@ async function getChatMessages({
   model,
   stringQuoteText
 }: {
+  maxTokens?: number;
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
   useDatasetQuote: boolean;
@@ -338,9 +360,9 @@ async function getChatMessages({
   ];
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
 
-  const filterMessages = await filterGPTMessageByMaxTokens({
+  const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
-    maxTokens: model.maxContext - 300 // filter token. not response maxToken
+    maxContext: model.maxContext - maxTokens // filter token. not response maxToken
   });
 
   return {
@@ -351,33 +373,43 @@ async function getChatMessages({
 async function streamResponse({
   res,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  aiChatReasoning
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  aiChatReasoning?: boolean;
 }) {
   const write = responseWriteController({
     res,
     readStream: stream
   });
   let answer = '';
+  let reasoning = '';
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
       break;
     }
+
     const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
+
+    const reasoningContent = aiChatReasoning
+      ? part.choices?.[0]?.delta?.reasoning_content || ''
+      : '';
+    reasoning += reasoningContent;
 
     workflowStreamResponse?.({
       write,
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
-        text: content
+        text: content,
+        reasoning_content: reasoningContent
       })
     });
   }
 
-  return { answer };
+  return { answer, reasoning };
 }

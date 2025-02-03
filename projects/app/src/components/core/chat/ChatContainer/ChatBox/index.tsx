@@ -205,6 +205,7 @@ const ChatBox = (
     ({
       event,
       text = '',
+      reasoningText,
       status,
       name,
       tool,
@@ -249,6 +250,25 @@ const ChatBox = (
               return {
                 ...item,
                 value: item.value.slice(0, -1).concat(lastValue)
+              };
+            }
+          } else if (event === SseResponseEventEnum.answer && reasoningText) {
+            if (lastValue.type === ChatItemValueTypeEnum.reasoning && lastValue.reasoning) {
+              lastValue.reasoning.content += reasoningText;
+              return {
+                ...item,
+                value: item.value.slice(0, -1).concat(lastValue)
+              };
+            } else {
+              const val: AIChatItemValueItemType = {
+                type: ChatItemValueTypeEnum.reasoning,
+                reasoning: {
+                  content: reasoningText
+                }
+              };
+              return {
+                ...item,
+                value: item.value.concat(val)
               };
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {

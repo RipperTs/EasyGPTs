@@ -35,5 +35,6 @@
   "select_img": "选择图片",
   "stream_output": "流输出",
   "view_citations": "查看引用",
-  "web_site_sync": "Web站点同步"
+  "web_site_sync": "Web站点同步",
+  "ai_reasoning": "思考过程"
 }

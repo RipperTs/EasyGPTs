@@ -20,37 +20,20 @@ const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
   });
 };
 
-export const filterGPTMessageByMaxTokens = async ({
+export const filterGPTMessageByMaxContext = async ({
   messages = [],
-  maxTokens
+  maxContext
 }: {
   messages: ChatCompletionMessageParam[];
-  maxTokens: number;
+  maxContext: number;
 }) => {
   if (!Array.isArray(messages)) {
     return [];
   }
-  const rawTextLen = messages.reduce((sum, item) => {
-    if (typeof item.content === 'string') {
-      return sum + item.content.length;
-    }
-    if (Array.isArray(item.content)) {
-      return (
-        sum +
-        item.content.reduce((sum, item) => {
-          if (item.type === 'text') {
-            return sum + item.text.length;
-          }
-          return sum;
-        }, 0)
-      );
-    }
-    return sum;
-  }, 0);
 
   // If the text length is less than half of the maximum token, no calculation is required
-  if (rawTextLen < maxTokens * 0.5) {
-    return filterEmptyMessages(messages);
+  if (messages.length < 4) {
+    return messages;
   }
 
   // filter startWith system prompt
@@ -61,7 +44,7 @@ export const filterGPTMessageByMaxTokens = async ({
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
   // reduce token of systemPrompt
-  maxTokens -= await countGptMessagesTokens(systemPrompts);
+  maxContext -= await countGptMessagesTokens(systemPrompts);
 
   // Save the last chat prompt(question)
   const question = chatPrompts.pop();
@@ -79,9 +62,9 @@ export const filterGPTMessageByMaxTokens = async ({
     }
 
     const tokens = await countGptMessagesTokens([assistant, user]);
-    maxTokens -= tokens;
+    maxContext -= tokens;
     /* 整体 tokens 超出范围，截断  */
-    if (maxTokens < 0) {
+    if (maxContext < 0) {
       break;
     }
 
@@ -96,7 +79,7 @@ export const filterGPTMessageByMaxTokens = async ({
   return filterEmptyMessages([...systemPrompts, ...chats]);
 };
 
-/* 
+/*
   Format requested messages
   1. If not useVision, only retain text.
   2. Remove file_url
@@ -220,7 +203,7 @@ export const loadRequestMessages = async ({
       })
       .filter(Boolean) as ChatCompletionMessageParam[];
   };
-  /* 
+  /*
     Merge data for some consecutive roles
     1. Contiguous assistant and both have content, merge content
   */

@@ -316,6 +316,7 @@ export const iconPaths = {
   'price/right': () => import('./icons/price/right.svg'),
   save: () => import('./icons/save.svg'),
   stop: () => import('./icons/stop.svg'),
+  'core/chat/think': () => import('./icons/core/chat/think.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/passwordLogin': () => import('./icons/support/account/passwordLogin.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),

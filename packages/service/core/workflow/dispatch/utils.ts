@@ -12,6 +12,7 @@ import {
 import { responseWrite } from '../../../common/response';
 import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -134,6 +135,17 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   return value;
+};
+
+export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
+  if (!quoteQA) return undefined;
+  if (quoteQA.length === 0) {
+    return [];
+  }
+  if (quoteQA.some((item) => !item.q)) {
+    return undefined;
+  }
+  return quoteQA;
 };
 
 /* remove system variable */

@@ -151,7 +151,7 @@ export const emptyTemplates: Record<
             key: 'temperature',
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: '',
-            value: 0,
+            value: undefined,
             valueType: WorkflowIOValueTypeEnum.number,
             min: 0,
             max: 10,
@@ -161,7 +161,7 @@ export const emptyTemplates: Record<
             key: 'maxToken',
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: '',
-            value: 2000,
+            value: undefined,
             valueType: WorkflowIOValueTypeEnum.number,
             min: 100,
             max: 4000,
@@ -222,6 +222,13 @@ export const emptyTemplates: Record<
             debugLabel: i18nT('common:core.module.Dataset quote.label'),
             description: '',
             valueType: WorkflowIOValueTypeEnum.datasetQuote
+          },
+          {
+            key: NodeInputKeyEnum.aiChatReasoning,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            value: true
           }
         ],
         outputs: [

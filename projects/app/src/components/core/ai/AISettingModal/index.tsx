@@ -41,12 +41,19 @@ const AIChatSettingsModal = ({
     defaultValues: defaultData
   });
   const model = watch('model');
+  const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
   const useVision = watch('aiChatVision');
   const selectedModel = getWebLLMModel(model);
   const llmSupportVision = !!selectedModel?.vision;
+
+  const maxToken = watch('maxToken');
+  const temperature = watch('temperature');
+
+  const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
+  const llmSupportReasoning = !!selectedModel?.reasoning;
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -114,27 +121,33 @@ const AIChatSettingsModal = ({
               : t('common:common.not_support')}
           </Box>
         </Flex>
-        <Flex mt={6}>
-          <Box {...LabelStyles} mr={2}>
-            {t('common:core.app.Temperature')}
-          </Box>
-          <Box flex={1} ml={1}>
-            <MySlider
-              markList={[
-                { label: t('common:core.app.deterministic'), value: 0 },
-                { label: t('common:core.app.Random'), value: 10 }
-              ]}
-              width={'95%'}
-              min={0}
-              max={10}
-              value={getValues(NodeInputKeyEnum.aiChatTemperature)}
-              onChange={(e) => {
-                setValue(NodeInputKeyEnum.aiChatTemperature, e);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
+        {llmSupportTemperature && (
+          <Flex mt={6}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>
+                {t('common:core.app.Temperature')}
+                <QuestionTip label="范围 0～10。值越大，代表模型回答越发散；值越小，代表回答越严谨。" />
+              </Flex>
+            </Box>
+            <Box flex={1} ml={1}>
+              <MySlider
+                markList={[
+                  { label: t('common:core.app.deterministic'), value: 0 },
+                  { label: t('common:core.app.Random'), value: 10 }
+                ]}
+                width={'95%'}
+                min={0}
+                max={10}
+                value={getValues(NodeInputKeyEnum.aiChatTemperature)}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatTemperature, e);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+
         <Flex mt={6}>
           <Box {...LabelStyles} mr={2}>
             {t('common:core.app.Max tokens')}
@@ -175,6 +188,23 @@ const AIChatSettingsModal = ({
                 onChange={(e) => {
                   setValue('maxHistories', e);
                   setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportReasoning && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...LabelStyles}>
+              输出思考
+              <QuestionTip ml={1} label="目前仅支持R1模型的思考过程输出格式"></QuestionTip>
+            </Box>
+            <Box flex={1}>
+              <Switch
+                isChecked={reasoning || false}
+                onChange={(e) => {
+                  const value = e.target.checked;
+                  setValue(NodeInputKeyEnum.aiChatReasoning, value);
                 }}
               />
             </Box>

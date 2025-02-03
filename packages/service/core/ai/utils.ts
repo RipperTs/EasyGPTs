@@ -1,6 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
-export const computedMaxToken = async ({
+export const computedMaxToken = ({
   maxToken,
   model
 }: {

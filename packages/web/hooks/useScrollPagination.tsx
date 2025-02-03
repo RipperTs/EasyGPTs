@@ -122,7 +122,7 @@ export function useScrollPagination<
       isLoading?: boolean;
     } & BoxProps) => {
       return (
-        <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
+        <MyBox isLoading={isLoading} ref={containerRef} h={'100%'} overflow={'auto'} {...props}>
           <Box ref={wrapperRef}>
             {children}
             {noMore.current && list.length > 0 && (
