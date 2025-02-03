@@ -126,7 +126,6 @@ const AIChatSettingsModal = ({
                 width={'95%'}
                 min={0}
                 max={10}
-                isDisabled={temperature === undefined}
                 value={temperature}
                 onChange={(e) => {
                   setValue(NodeInputKeyEnum.aiChatTemperature, e);
