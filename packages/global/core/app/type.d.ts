@@ -103,11 +103,12 @@ export type AppChatConfigType = {
 };
 export type SettingAIDataType = {
   model: string;
-  temperature: number;
-  maxToken: number;
+  temperature?: number;
+  maxToken?: number;
   isResponseAnswerText?: boolean;
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
 };
 
 // variable

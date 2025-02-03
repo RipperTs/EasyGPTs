@@ -15,18 +15,20 @@ const MySlider = ({
   max = 100,
   min = 0,
   step = 1,
-  width = '100%'
+  width = '100%',
+  isDisabled
 }: {
   markList?: {
     label: string | number;
-    value: number;
+    value?: number;
   }[];
-  value: number;
+  value?: number;
   onChange?: (index: number) => void;
   max?: number;
   min?: number;
   step?: number;
   width?: string | string[] | number | number[];
+  isDisabled?: boolean;
 }) => {
   const startEndPointStyle = {
     content: '""',
@@ -50,6 +52,7 @@ const MySlider = ({
         value={value}
         width={width}
         onChange={onChange}
+        isDisabled={isDisabled}
         _hover={{
           '& .marker': {
             display: 'block'
@@ -64,7 +67,7 @@ const MySlider = ({
         {markList?.map((item, i) => (
           <SliderMark
             key={item.value}
-            value={item.value}
+            value={item.value || 0}
             fontSize={'sm'}
             mt={2}
             whiteSpace={'nowrap'}
@@ -78,7 +81,7 @@ const MySlider = ({
         ))}
         <SliderMark
           className="marker"
-          value={value}
+          value={value || 0}
           textAlign="center"
           bg="primary.500"
           color="white"

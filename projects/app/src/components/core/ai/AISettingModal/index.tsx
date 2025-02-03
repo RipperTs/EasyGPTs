@@ -2,21 +2,11 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import {
-  Box,
-  BoxProps,
-  Button,
-  Flex,
-  Link,
-  ModalBody,
-  ModalFooter,
-  Switch
-} from '@chakra-ui/react';
+import { Box, BoxProps, Button, Flex, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
-import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -35,7 +25,6 @@ const AIChatSettingsModal = ({
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
-  const { feConfigs, llmModelList } = useSystemStore();
 
   const { handleSubmit, getValues, setValue, watch } = useForm({
     defaultValues: defaultData
@@ -138,7 +127,8 @@ const AIChatSettingsModal = ({
                 width={'95%'}
                 min={0}
                 max={10}
-                value={getValues(NodeInputKeyEnum.aiChatTemperature)}
+                isDisabled={temperature === undefined}
+                value={temperature}
                 onChange={(e) => {
                   setValue(NodeInputKeyEnum.aiChatTemperature, e);
                   setRefresh(!refresh);
@@ -159,10 +149,11 @@ const AIChatSettingsModal = ({
                 { label: `${tokenLimit}`, value: tokenLimit }
               ]}
               width={'95%'}
-              min={100}
+              min={0}
               max={tokenLimit}
-              step={50}
-              value={getValues(NodeInputKeyEnum.aiChatMaxToken)}
+              step={200}
+              isDisabled={maxToken === undefined}
+              value={maxToken}
               onChange={(val) => {
                 setValue(NodeInputKeyEnum.aiChatMaxToken, val);
                 setRefresh(!refresh);
