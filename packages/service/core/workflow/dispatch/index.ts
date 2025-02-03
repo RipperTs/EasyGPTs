@@ -208,27 +208,31 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
       toolRunResponse = toolResponses;
     }
+    // Histories store
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
-    } else if (answerText) {
-      // save assistant text response
-      const isResponseAnswerText =
-        inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-      if (isResponseAnswerText) {
+    } else {
+      if (reasoningText) {
         chatAssistantResponse.push({
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: answerText
+          type: ChatItemValueTypeEnum.reasoning,
+          reasoning: {
+            content: reasoningText
           }
         });
       }
-    } else if (reasoningText) {
-      chatAssistantResponse.push({
-        type: ChatItemValueTypeEnum.reasoning,
-        reasoning: {
-          content: reasoningText
+      if (answerText) {
+        // save assistant text response
+        const isResponseAnswerText =
+          inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+        if (isResponseAnswerText) {
+          chatAssistantResponse.push({
+            type: ChatItemValueTypeEnum.text,
+            text: {
+              content: answerText
+            }
+          });
         }
-      });
+      }
     }
 
     if (rewriteHistories) {
