@@ -97,7 +97,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   stream = stream && isResponseAnswerText;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
 
-  console.log(aiChatReasoning, '测试推理结果是否开启');
+  // 测试推理结果是否开启
+  // console.log(aiChatReasoning, '测试推理结果是否开启');
 
   const chatHistories = getHistories(history, histories);
   quoteQA = checkQuoteQAValue(quoteQA);

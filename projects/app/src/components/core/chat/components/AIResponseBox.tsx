@@ -221,7 +221,11 @@ const RenderInteractive = React.memo(function RenderInteractive({
 const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
     return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
-  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning)
+  if (
+    value.type === ChatItemValueTypeEnum.reasoning &&
+    value.reasoning &&
+    value.reasoning.content.trim()
+  )
     return <RenderResoningContent showAnimation={isChatting} content={value.reasoning.content} />;
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
     return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;

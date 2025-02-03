@@ -72,6 +72,7 @@ export type AppSimpleEditFormType = {
     maxToken?: number;
     isResponseAnswerText: boolean;
     maxHistories: number;
+    aiChatReasoning?: boolean | true;
   };
   dataset: {
     datasets: SelectedDatasetType;
