@@ -109,8 +109,7 @@ export const runToolWithPromptCall = async (
     }),
     computedMaxToken({
       model: toolModel,
-      maxToken,
-      filterMessages
+      maxToken
     })
   ]);
   const requestBody = {

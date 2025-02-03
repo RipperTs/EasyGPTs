@@ -147,8 +147,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }),
     computedMaxToken({
       model: modelConstantsData,
-      maxToken,
-      filterMessages
+      maxToken
     })
   ]);
 

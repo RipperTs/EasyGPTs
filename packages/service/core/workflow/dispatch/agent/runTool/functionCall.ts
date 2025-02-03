@@ -106,8 +106,7 @@ export const runToolWithFunctionCall = async (
     }),
     computedMaxToken({
       model: toolModel,
-      maxToken,
-      filterMessages
+      maxToken
     })
   ]);
   const requestBody: any = {

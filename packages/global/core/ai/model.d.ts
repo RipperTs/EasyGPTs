@@ -5,12 +5,13 @@ export type LLMModelItemType = {
   maxContext: number;
   maxResponse: number;
   quoteMaxToken: number;
-  maxTemperature: number;
+  maxTemperature?: number;
 
   charsPointsPrice: number; // 1k chars=n points
 
   censor?: boolean;
   vision?: boolean;
+  reasoning?: boolean;
 
   // diff function model
   datasetProcess?: boolean; // dataset

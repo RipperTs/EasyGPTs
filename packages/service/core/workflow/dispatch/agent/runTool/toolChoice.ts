@@ -123,8 +123,7 @@ export const runToolWithToolChoice = async (
     }),
     computedMaxToken({
       model: toolModel,
-      maxToken,
-      filterMessages
+      maxToken
     })
   ]);
   const requestBody: any = {

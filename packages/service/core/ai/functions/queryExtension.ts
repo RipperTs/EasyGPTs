@@ -4,95 +4,104 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { addLog } from '../../../common/system/log';
+import json5 from 'json5';
 
-/* 
+/*
     query extension - 问题扩展
     可以根据上下文，消除指代性问题以及扩展问题，利于检索。
 */
 
-const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与“原问题语言相同”。
-参考 <Example></Example> 标中的示例来完成任务。
+const title = global.feConfigs?.systemTitle || 'EasyGPTs';
+const defaultPrompt = `## 你的任务
+你作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。
+生成的问题要求指向对象清晰明确，并与“原问题语言相同”。
 
-<Example>
+## 参考示例
+
 历史记录: 
 """
+null
 """
 原问题: 介绍下剧情。
 检索词: ["介绍下故事的背景。","故事的主题是什么？","介绍下故事的主要人物。"]
 ----------------
 历史记录: 
 """
-Q: 对话背景。
-A: 当前对话是关于 Nginx 的介绍和使用等。
+user: 对话背景。
+assistant: 当前对话是关于 Nginx 的介绍和使用等。
 """
 原问题: 怎么下载
 检索词: ["Nginx 如何下载？","下载 Nginx 需要什么条件？","有哪些渠道可以下载 Nginx？"]
 ----------------
 历史记录: 
 """
-Q: 对话背景。
-A: 当前对话是关于 Nginx 的介绍和使用等。
-Q: 报错 "no connection"
-A: 报错"no connection"可能是因为……
+user: 对话背景。
+assistant: 当前对话是关于 Nginx 的介绍和使用等。
+user: 报错 "no connection"
+assistant: 报错"no connection"可能是因为……
 """
 原问题: 怎么解决
 检索词: ["Nginx报错"no connection"如何解决？","造成'no connection'报错的原因。","Nginx提示'no connection'，要怎么办？"]
 ----------------
 历史记录: 
 """
-Q: 护产假多少天?
-A: 护产假的天数根据员工所在的城市而定。请提供您所在的城市，以便我回答您的问题。
+user: How long is the maternity leave?
+assistant: The number of days of maternity leave depends on the city in which the employee is located. Please provide your city so that I can answer your questions.
 """
-原问题: 沈阳
-检索词: ["沈阳的护产假多少天？","沈阳的护产假政策。","沈阳的护产假标准。"]
+原问题: ShenYang
+检索词: ["How many days is maternity leave in Shenyang?","Shenyang's maternity leave policy.","The standard of maternity leave in Shenyang."]
 ----------------
 历史记录: 
 """
-Q: 作者是谁？
-A: FastGPT 的作者是 labring。
+user: 作者是谁？
+assistant: ${title} 的作者是 labring。
 """
 原问题: Tell me about him
-检索词: ["Introduce labring, the author of FastGPT." ," Background information on author labring." "," Why does labring do FastGPT?"]
+检索词: ["Introduce labring, the author of ${title}." ," Background information on author labring." "," Why does labring do ${title}?"]
 ----------------
 历史记录:
 """
-Q: 对话背景。
-A: 关于 FatGPT 的介绍和使用等问题。
+user: 对话背景。
+assistant: 关于 ${title} 的介绍和使用等问题。
 """
 原问题: 你好。
 检索词: ["你好"]
 ----------------
 历史记录:
 """
-Q: FastGPT 如何收费？
-A: FastGPT 收费可以参考……
+user: ${title} 如何收费？
+assistant: ${title} 收费可以参考……
 """
 原问题: 你知道 laf 么？
 检索词: ["laf 的官网地址是多少？","laf 的使用教程。","laf 有什么特点和优势。"]
 ----------------
 历史记录:
 """
-Q: FastGPT 的优势
-A: 1. 开源
+user: ${title} 的优势
+assistant: 1. 开源
    2. 简便
    3. 扩展性强
 """
 原问题: 介绍下第2点。
-检索词: ["介绍下 FastGPT 简便的优势", "从哪些方面，可以体现出 FastGPT 的简便"]。
+检索词: ["介绍下 ${title} 简便的优势", "从哪些方面，可以体现出 ${title} 的简便"]。
 ----------------
 历史记录:
 """
-Q: 什么是 FastGPT？
-A: FastGPT 是一个 RAG 平台。
-Q: 什么是 Laf？
-A: Laf 是一个云函数开发平台。
+user: 什么是 ${title}？
+assistant: ${title} 是一个 RAG 平台。
+user: 什么是 Laf？
+assistant: Laf 是一个云函数开发平台。
 """
 原问题: 它们有什么关系？
-检索词: ["FastGPT和Laf有什么关系？","介绍下FastGPT","介绍下Laf"]
-</Example>
+检索词: ["${title}和Laf有什么关系？","介绍下${title}","介绍下Laf"]
 
-----------------
-下面是正式的任务：
+## 输出要求
+
+1. 输出格式为 JSON 数组，数组中每个元素为字符串。无需对输出进行任何解释。
+2. 输出语言与原问题相同。原问题为中文则输出中文；原问题为英文则输出英文。
+
+## 开始任务
 
 历史记录:
 """
@@ -118,13 +127,13 @@ export const queryExtension = async ({
   tokens: number;
 }> => {
   const systemFewShot = chatBg
-    ? `Q: 对话背景。
-A: ${chatBg}
+    ? `user: 对话背景。
+assistant: ${chatBg}
 `
     : '';
   const historyFewShot = histories
     .map((item) => {
-      const role = item.obj === 'Human' ? 'Q' : 'A';
+      const role = item.obj === 'Human' ? 'user' : 'assistant';
       return `${role}: ${chatValue2RuntimePrompt(item.value).text}`;
     })
     .join('\n');
@@ -139,13 +148,13 @@ A: ${chatBg}
       role: 'user',
       content: replaceVariable(defaultPrompt, {
         query: `${query}`,
-        histories: concatFewShot
+        histories: concatFewShot || 'null'
       })
     }
   ] as ChatCompletionMessageParam[];
   const result = await ai.chat.completions.create({
     model: model,
-    temperature: 0.01,
+    temperature: 0.1,
     // @ts-ignore
     messages,
     stream: false
@@ -161,19 +170,38 @@ A: ${chatBg}
     };
   }
 
-  answer = answer.replace(/\\"/g, '"');
+  const start = answer.indexOf('[');
+  const end = answer.lastIndexOf(']');
+  if (start === -1 || end === -1) {
+    addLog.warn('Query extension failed, not a valid JSON', {
+      answer
+    });
+    return {
+      rawQuery: query,
+      extensionQueries: [],
+      model,
+      tokens: 0
+    };
+  }
+
+  const jsonStr = answer
+    .substring(start, end + 1)
+    .replace(/(\\n|\\)/g, '')
+    .replace(/  /g, '');
 
   try {
-    const queries = JSON.parse(answer) as string[];
+    const queries = json5.parse(jsonStr) as string[];
 
     return {
       rawQuery: query,
-      extensionQueries: Array.isArray(queries) ? queries : [],
+      extensionQueries: (Array.isArray(queries) ? queries : []).slice(0, 5),
       model,
       tokens: await countGptMessagesTokens(messages)
     };
   } catch (error) {
-    console.log(error);
+    addLog.warn('Query extension failed, not a valid JSON', {
+      answer
+    });
     return {
       rawQuery: query,
       extensionQueries: [],

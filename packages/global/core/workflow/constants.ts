@@ -83,6 +83,7 @@ export enum NodeInputKeyEnum {
   aiChatDatasetQuote = 'quoteQA',
   aiChatVision = 'aiChatVision',
   stringQuoteText = 'stringQuoteText',
+  aiChatReasoning = 'aiChatReasoning',
 
   // dataset
   datasetSelectList = 'datasets',
@@ -142,7 +143,8 @@ export enum NodeOutputKeyEnum {
   // common
   userChatInput = 'userChatInput',
   history = 'history',
-  answerText = 'answerText', // module answer. the value will be show and save to history
+  answerText = 'answerText', // 模块回答。值将显示并保存到历史记录中
+  reasoningText = 'reasoningText', // 推理节点。值将会显示，但不会保存到历史记录中
   success = 'success',
   failed = 'failed',
   error = 'error',

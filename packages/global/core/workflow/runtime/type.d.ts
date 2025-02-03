@@ -195,5 +195,6 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.stringQuoteText]?: string;
 };

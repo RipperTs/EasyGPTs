@@ -27,7 +27,7 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-/* 
+/*
   Get interaction information (if any) from the last AI message.
   What can be done:
   1. Get the interactive data
@@ -133,7 +133,7 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
   );
 };
 
-/* 
+/*
   1. 输入线分类：普通线和递归线（可以追溯到自身）
   2. 起始线全部非 waiting 执行，或递归线全部非 waiting 执行
 */
@@ -144,7 +144,7 @@ export const checkNodeRunStatus = ({
   node: RuntimeNodeItemType;
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
-  /* 
+  /*
     区分普通连线和递归连线
     递归连线：可以通过往上查询 nodes，最终追溯到自身
   */
@@ -251,12 +251,14 @@ export const getReferenceVariableValue = ({
 
 export const textAdaptGptResponse = ({
   text,
+  reasoning_content,
   model = '',
   finish_reason = null,
   extraData = {}
 }: {
   model?: string;
   text: string | null;
+  reasoning_content?: string | null;
   finish_reason?: null | 'stop';
   extraData?: Object;
 }) => {
@@ -268,10 +270,11 @@ export const textAdaptGptResponse = ({
     model,
     choices: [
       {
-        delta:
-          text === null
-            ? {}
-            : { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: text },
+        delta: {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: text,
+          ...(reasoning_content && { reasoning_content }) // API返回推理结果内容
+        },
         index: 0,
         finish_reason
       }
