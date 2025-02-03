@@ -191,7 +191,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           res,
           stream: response,
           aiChatReasoning,
-          workflowStreamResponse
+          workflowStreamResponse,
+          model: modelConstantsData.model
         });
 
         return {
@@ -212,7 +213,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
               text: answer,
-              reasoning_content: reasoning
+              reasoning_content: reasoning,
+              model: modelConstantsData.model
             })
           });
         }
@@ -223,10 +225,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         };
       }
     })();
-
-    if (!answerText) {
-      return Promise.reject('LLM empty response');
-    }
 
     const AIMessages: ChatCompletionMessageParam[] = [
       {
@@ -377,12 +375,14 @@ async function streamResponse({
   res,
   stream,
   workflowStreamResponse,
-  aiChatReasoning
+  aiChatReasoning,
+  model = ''
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
+  model?: string;
 }) {
   const write = responseWriteController({
     res,
@@ -409,7 +409,8 @@ async function streamResponse({
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
         text: content,
-        reasoning_content: reasoningContent
+        reasoning_content: reasoningContent,
+        model
       })
     });
   }

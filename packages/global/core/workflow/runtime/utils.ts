@@ -262,17 +262,18 @@ export const textAdaptGptResponse = ({
   finish_reason?: null | 'stop';
   extraData?: Object;
 }) => {
+  const content = reasoning_content && (!text || text === '') ? null : text;
   return {
     ...extraData,
-    id: '',
-    object: '',
-    created: 0,
+    id: 'chatcmpl-0',
+    object: 'chat.completion.chunk',
+    created: parseInt((Date.now() / 1000).toFixed(0)),
     model,
     choices: [
       {
         delta: {
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: text,
+          content,
           ...(reasoning_content && { reasoning_content }) // API返回推理结果内容
         },
         index: 0,
