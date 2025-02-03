@@ -226,7 +226,12 @@ const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
     value.reasoning &&
     value.reasoning.content.trim()
   )
-    return <RenderResoningContent showAnimation={isChatting} content={value.reasoning.content} />;
+    return (
+      <RenderResoningContent
+        showAnimation={isChatting && isLastChild}
+        content={value.reasoning.content}
+      />
+    );
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
     return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;
   if (

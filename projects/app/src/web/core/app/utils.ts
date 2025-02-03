@@ -188,7 +188,7 @@ export function form2AppWorkflow(
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
-          value: true
+          value: formData.aiSettings.aiChatReasoning
         }
       ],
       outputs: AiChatModule.outputs
