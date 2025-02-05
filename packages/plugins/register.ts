@@ -31,7 +31,8 @@ const packagePluginList = [
   'wiki',
   'searchXNG',
   'drawing',
-  'drawing/baseChart'
+  'drawing/baseChart',
+  'sleep'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
