@@ -483,7 +483,7 @@ const FieldEditModal = ({
                     value={watch('max')}
                     onChange={(e) => {
                       // @ts-ignore
-                      setValue('max', e || '');
+                      setValue('max', e ?? '');
                     }}
                   />
                 </Flex>
@@ -497,7 +497,7 @@ const FieldEditModal = ({
                     value={watch('min')}
                     onChange={(e) => {
                       // @ts-ignore
-                      setValue('min', e || '');
+                      setValue('min', e ?? '');
                     }}
                   />
                 </Flex>
