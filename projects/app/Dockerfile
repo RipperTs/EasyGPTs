@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:20.14.0-alpine AS maindeps
+FROM registry.cn-hangzhou.aliyuncs.com/ripper/node:20.14.0-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -19,7 +19,7 @@ RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
 RUN pnpm i
 
 # --------- builder -----------
-FROM node:20.14.0-alpine AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/ripper/node:20.14.0-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -39,7 +39,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter=app build
 
 # --------- runner -----------
-FROM node:20.14.0-alpine AS runner
+FROM registry.cn-hangzhou.aliyuncs.com/ripper/node:20.14.0-alpine AS runner
 WORKDIR /app
 
 ARG proxy
