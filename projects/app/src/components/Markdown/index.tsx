@@ -29,6 +29,13 @@ const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { s
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 
+type Props = {
+  source?: string;
+  showAnimation?: boolean;
+  isDisabled?: boolean;
+  forbidZhFormat?: boolean;
+};
+
 function remarkCustomLink() {
   return (tree: any) => {
     visit(tree, 'link', (node) => {
@@ -45,12 +52,6 @@ function remarkCustomLink() {
   };
 }
 
-type Props = {
-  source?: string;
-  showAnimation?: boolean;
-  isDisabled?: boolean;
-  forbidZhFormat?: boolean;
-};
 const Markdown = (props: Props) => {
   const source = props.source || '';
 
