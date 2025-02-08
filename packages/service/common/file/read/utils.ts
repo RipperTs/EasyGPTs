@@ -56,7 +56,8 @@ export const readRawContentByFileBuffer = async ({
 }) => {
   // Custom read file service
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
-  const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
+  const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || 'pdf';
+  const customReadFileServiceType = process.env.CUSTOM_READ_FILE_SERVICE_TYPE || 'simple';
   const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
   const readFileFromCustomService = async (): Promise<ReadFileResponse | undefined> => {
     if (
@@ -76,7 +77,7 @@ export const readRawContentByFileBuffer = async ({
     data.append('extension', extension);
     data.append('ocr', ocrParse);
     // todo 为每个数据集单独设置解析类型
-    // data.append('type', 'simple');
+    data.append('type', customReadFileServiceType);
     const { data: response } = await axios.post<{
       success: boolean;
       message: string;
