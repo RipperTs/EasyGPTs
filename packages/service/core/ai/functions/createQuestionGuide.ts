@@ -29,13 +29,17 @@ export async function createQuestionGuide({
   });
   const data = await ai.chat.completions.create({
     model: model,
-    temperature: 0.1,
-    max_tokens: 200,
+    temperature: 0.6,
+    max_tokens: 500,
     messages: await loadRequestMessages({
       messages: concatMessages,
       useVision: false
     }),
-    stream: false
+    stream: false,
+    // 启用结构化输出内容, 尽可能避免json解析错误
+    response_format: {
+      type: 'json_object'
+    }
   });
 
   const answer = data.choices?.[0]?.message?.content || '';
