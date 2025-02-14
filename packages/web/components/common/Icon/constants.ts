@@ -239,6 +239,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
+  'core/workflow/template/bochaai': () => import('./icons/core/workflow/template/bochaai.svg'),
   'core/workflow/template/pychart': () => import('./icons/core/workflow/template/pychart.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),

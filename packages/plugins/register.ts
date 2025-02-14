@@ -16,7 +16,8 @@ const staticPluginList = [
   'feishu',
   'bing',
   'google',
-  'GenPyChart'
+  'GenPyChart',
+  'bochaai'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
