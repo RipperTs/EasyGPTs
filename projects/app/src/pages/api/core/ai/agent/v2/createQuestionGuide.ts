@@ -11,6 +11,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 export type QuestionGuideUsageProps = {
   model?: string;
   customPrompt?: string;
+  limit?: number;
 };
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
@@ -31,7 +32,7 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   const { histories } = await getChatItems({
     appId,
     chatId,
-    limit: 6,
+    limit: questionGuide?.limit || 6,
     field: 'obj value time'
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
