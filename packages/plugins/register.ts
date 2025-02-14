@@ -34,7 +34,8 @@ const packagePluginList = [
   'searchXNG',
   'drawing',
   'drawing/baseChart',
-  'sleep'
+  'sleep',
+  'redisConnection'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
