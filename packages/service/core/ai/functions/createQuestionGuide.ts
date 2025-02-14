@@ -2,21 +2,25 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { getAIApi } from '../config';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
-
-export const Prompt_QuestionGuide = `你是一个AI智能助手，可以回答和解决我的问题。请结合前面的对话记录，帮我生成 3 个问题，引导我继续提问，生成问题的语言要与原问题相同。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;
+import {
+  PROMPT_QUESTION_GUIDE,
+  PROMPT_QUESTION_GUIDE_FOOTER
+} from '@fastgpt/global/core/ai/prompt/agent';
 
 export async function createQuestionGuide({
   messages,
-  model
+  model,
+  customPrompt
 }: {
   messages: ChatCompletionMessageParam[];
   model: string;
+  customPrompt?: string;
 }) {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
       role: 'user',
-      content: Prompt_QuestionGuide
+      content: `${customPrompt || PROMPT_QUESTION_GUIDE}\n${PROMPT_QUESTION_GUIDE_FOOTER}`
     }
   ];
 
