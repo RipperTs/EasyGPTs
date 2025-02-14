@@ -20,8 +20,8 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 142.03133339878195,
-          "y": 59.159579466998025
+          "x": -667.300271849921,
+          "y": 125.94136221836447
         },
         "version": "481",
         "inputs": [
@@ -103,7 +103,7 @@
           },
           {
             "renderTypeList": [
-              "input"
+              "reference"
             ],
             "selectedTypeIndex": 0,
             "valueType": "string",
@@ -816,12 +816,6 @@
     ],
     "edges": [
       {
-        "source": "pluginInput",
-        "target": "gOxGC7ETWV1K",
-        "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "gOxGC7ETWV1K-target-left"
-      },
-      {
         "source": "gOxGC7ETWV1K",
         "target": "fPJLIERiySQf",
         "sourceHandle": "gOxGC7ETWV1K-source-bottom",
@@ -832,6 +826,12 @@
         "target": "pluginOutput",
         "sourceHandle": "fPJLIERiySQf-source-IF",
         "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "gOxGC7ETWV1K",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "gOxGC7ETWV1K-target-left"
       }
     ]
   }
