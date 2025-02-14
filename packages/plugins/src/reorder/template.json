@@ -1,13 +1,13 @@
 {
   "author": "",
   "version": "4811",
-  "name": "博查搜索",
-  "avatar": "core/workflow/template/bochaai",
-  "intro": "使用博查API进行联网搜索",
+  "name": "内容重排序",
+  "avatar": "core/workflow/template/SolarSortBold",
+  "intro": "将一组内容按照与查询语句相似度重新排序，可剔除相似度不高的内容。",
   "showStatus": true,
   "weight": 10,
   "isTool": true,
-  "templateType": "search",
+  "templateType": "tools",
 
   "workflow": {
     "nodes": [
@@ -19,11 +19,32 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": -65.57736513110518,
-          "y": -184.3863182724345
+          "x": -227.09040182431215,
+          "y": -69.05298493910118
         },
         "version": "481",
         "inputs": [
+          {
+            "renderTypeList": [
+              "numberInput"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "score",
+            "label": "score",
+            "description": "相似度阀值，数字越大越相关",
+            "defaultValue": "0.65",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "max": 1,
+            "min": 0
+          },
           {
             "renderTypeList": [
               "input"
@@ -31,17 +52,12 @@
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
-            "key": "api_key",
-            "label": "api_key",
-            "description": "用户秘钥",
-            "defaultValue": "",
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ],
-            "required": true
+            "key": "model",
+            "label": "model",
+            "description": "重排模型名称",
+            "defaultValue": "bge-reranker-base",
+            "required": true,
+            "maxLength": 50
           },
           {
             "renderTypeList": [
@@ -52,95 +68,77 @@
             "canEdit": true,
             "key": "query",
             "label": "query",
-            "description": "搜索关键字",
+            "description": "查询的问题，重排以此为依据对比相似度",
             "defaultValue": "",
             "required": true,
-            "toolDescription": "搜索关键字"
+            "toolDescription": "查询的问题，重排以此为依据对比相似度"
           },
           {
             "renderTypeList": [
-              "select"
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "arrayString",
+            "canEdit": true,
+            "key": "documents",
+            "label": "documents",
+            "description": "要对排序的文档内容",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "toolDescription": "要对排序的文档内容"
+          },
+          {
+            "renderTypeList": [
+              "input"
             ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
-            "key": "freshness",
-            "label": "freshness",
-            "description": "搜索指定时间范围",
-            "defaultValue": "",
+            "key": "base_url",
+            "label": "base_url",
+            "description": "重排模型请求地址",
+            "defaultValue": "http://10.6.80.109:6006/v1/rerank",
             "list": [
               {
-                "label": "noLimit",
-                "value": "noLimit"
-              },
-              {
-                "label": "oneDay",
-                "value": "oneDay"
-              },
-              {
-                "label": "oneWeek",
-                "value": "oneWeek"
-              },
-              {
-                "label": "oneMonth",
-                "value": "oneMonth"
-              },
-              {
-                "label": "oneYear",
-                "value": "oneYear"
+                "label": "",
+                "value": ""
               }
             ],
             "required": true
           },
           {
             "renderTypeList": [
-              "switch"
+              "input"
             ],
             "selectedTypeIndex": 0,
-            "valueType": "boolean",
+            "valueType": "string",
             "canEdit": true,
-            "key": "summary",
-            "label": "summary",
-            "description": "是否显示文本摘要",
-            "defaultValue": true,
+            "key": "api_key",
+            "label": "api_key",
+            "description": "重排模型鉴权秘钥",
+            "defaultValue": "123456",
             "required": true
-          },
-          {
-            "renderTypeList": [
-              "numberInput"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "number",
-            "canEdit": true,
-            "key": "count",
-            "label": "count",
-            "description": "返回结果条数",
-            "defaultValue": "10",
-            "required": true,
-            "max": 50,
-            "min": 1
-          },
-          {
-            "renderTypeList": [
-              "numberInput"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "number",
-            "canEdit": true,
-            "key": "page",
-            "label": "page",
-            "description": "页码",
-            "defaultValue": "1",
-            "required": true,
-            "min": 1
           }
         ],
         "outputs": [
           {
-            "id": "api_key",
+            "id": "score",
+            "valueType": "number",
+            "key": "score",
+            "label": "score",
+            "type": "hidden"
+          },
+          {
+            "id": "model",
             "valueType": "string",
-            "key": "api_key",
-            "label": "api_key",
+            "key": "model",
+            "label": "model",
             "type": "hidden"
           },
           {
@@ -151,31 +149,24 @@
             "type": "hidden"
           },
           {
-            "id": "freshness",
+            "id": "documents",
+            "valueType": "arrayString",
+            "key": "documents",
+            "label": "documents",
+            "type": "hidden"
+          },
+          {
+            "id": "重排模型接口地址",
             "valueType": "string",
-            "key": "freshness",
-            "label": "freshness",
+            "key": "base_url",
+            "label": "base_url",
             "type": "hidden"
           },
           {
-            "id": "summary",
-            "valueType": "boolean",
-            "key": "summary",
-            "label": "summary",
-            "type": "hidden"
-          },
-          {
-            "id": "count",
-            "valueType": "number",
-            "key": "count",
-            "label": "count",
-            "type": "hidden"
-          },
-          {
-            "id": "page",
-            "valueType": "number",
-            "key": "page",
-            "label": "page",
+            "id": "api_key",
+            "valueType": "string",
+            "key": "api_key",
+            "label": "api_key",
             "type": "hidden"
           }
         ]
@@ -188,8 +179,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1773.920634696068,
-          "y": 1303.0825480585152
+          "x": 3253.9692383405486,
+          "y": 1417.7803921220093
         },
         "version": "481",
         "inputs": [
@@ -197,29 +188,57 @@
             "renderTypeList": [
               "reference"
             ],
-            "valueType": "object",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "result",
-            "label": "result",
-            "description": "搜索结果",
+            "key": "documents",
+            "label": "documents",
+            "description": "排序后的文档结果",
             "value": [
-              "n0RACUQBwTOd",
-              "dNMKcKqvrHla"
+              "lQrMiGoBK53S",
+              "qLUQfhG0ILRX"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "relevance_result",
+            "label": "relevance_result",
+            "description": "原始重排序接口返回的数据",
+            "value": [
+              "lQrMiGoBK53S",
+              "gR0mkQpJ4Og8"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "score",
+            "label": "score",
+            "description": "相似度阀值",
+            "value": [
+              "lQrMiGoBK53S",
+              "tIDptSbRPwIR"
             ]
           }
         ],
         "outputs": []
       },
       {
-        "nodeId": "n0RACUQBwTOd",
-        "name": "HTTP 请求",
+        "nodeId": "ieTMMM1NNxC1",
+        "name": "请求重排模型接口",
         "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 747.355864438603,
-          "y": -331.8399373943889
+          "x": 614.1948319839595,
+          "y": -283.77336160820346
         },
         "version": "481",
         "inputs": [
@@ -299,7 +318,7 @@
             "valueDesc": "",
             "debugLabel": "",
             "toolDescription": "",
-            "value": "https://api.bochaai.com/v1/web-search"
+            "value": "{{请求地址}}"
           },
           {
             "key": "system_httpHeader",
@@ -311,7 +330,7 @@
               {
                 "key": "Authorization",
                 "type": "string",
-                "value": "Bearer {{$n0RACUQBwTOd.秘钥$}}"
+                "value": "Bearer {{$ieTMMM1NNxC1.鉴权秘钥$}}"
               },
               {
                 "key": "Content-Type",
@@ -347,7 +366,7 @@
               "hidden"
             ],
             "valueType": "any",
-            "value": "{\n  \"query\": \"{{关键字}}\",\n  \"freshness\": \"{{搜索时间范围}}\",\n  \"summary\": {{摘要显示}},\n  \"count\": {{结果数量}},\n  \"page\": {{页码}}\n}",
+            "value": "{\n    \"model\": \"{{模型名称}}\",\n    \"query\": \"{{问题}}\",\n    \"documents\" : {{文档内容}}\n}",
             "label": "",
             "required": false,
             "valueDesc": "",
@@ -389,8 +408,42 @@
             ],
             "valueType": "string",
             "canEdit": true,
-            "key": "秘钥",
-            "label": "秘钥",
+            "key": "请求地址",
+            "label": "请求地址",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "重排模型接口地址"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "鉴权秘钥",
+            "label": "鉴权秘钥",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -423,8 +476,42 @@
             ],
             "valueType": "string",
             "canEdit": true,
-            "key": "关键字",
-            "label": "关键字",
+            "key": "模型名称",
+            "label": "模型名称",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "model"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "问题",
+            "label": "问题",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -455,10 +542,10 @@
             "renderTypeList": [
               "reference"
             ],
-            "valueType": "string",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "搜索时间范围",
-            "label": "搜索时间范围",
+            "key": "文档内容",
+            "label": "文档内容",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -482,109 +569,7 @@
             "required": true,
             "value": [
               "pluginInput",
-              "freshness"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "number",
-            "canEdit": true,
-            "key": "结果数量",
-            "label": "结果数量",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "count"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "number",
-            "canEdit": true,
-            "key": "页码",
-            "label": "页码",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "page"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "摘要显示",
-            "label": "摘要显示",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "summary"
+              "documents"
             ]
           }
         ],
@@ -634,40 +619,19 @@
             },
             "valueDesc": "",
             "description": ""
-          },
-          {
-            "id": "l21o4HYqKqOn",
-            "valueType": "number",
-            "type": "dynamic",
-            "key": "code",
-            "label": "code"
-          },
-          {
-            "id": "u8zw8FYgppVf",
-            "valueType": "object",
-            "type": "dynamic",
-            "key": "msg",
-            "label": "msg"
-          },
-          {
-            "id": "dNMKcKqvrHla",
-            "valueType": "object",
-            "type": "dynamic",
-            "key": "data",
-            "label": "data"
           }
         ]
       },
       {
-        "nodeId": "r7ApMvqDDG9W",
+        "nodeId": "fct0uYf3caoL",
         "name": "判断器",
         "intro": "根据一定的条件，执行不同的分支。",
         "avatar": "core/workflow/template/ifelse",
         "flowNodeType": "ifElseNode",
         "showStatus": true,
         "position": {
-          "x": 711.3947399026565,
-          "y": 1353.463480822937
+          "x": 594.1878841449542,
+          "y": 1213.3229294084335
         },
         "version": "481",
         "inputs": [
@@ -684,18 +648,315 @@
                 "list": [
                   {
                     "variable": [
-                      "n0RACUQBwTOd",
+                      "ieTMMM1NNxC1",
                       "error"
                     ],
                     "condition": "isEmpty"
-                  },
+                  }
+                ]
+              }
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "lQrMiGoBK53S",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1680.6514132550785,
+          "y": 919.2065285851975
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "value": "function main({documents, score, relevance_result}){\n\n    if (!relevance_result?.results || relevance_result?.results?.length === 0) {\n      return {\n        result: [],\n        raw_response: relevance_result,\n        score\n      }\n    }\n\n    const result = [];\n    for (let i = 0; i < relevance_result.results.length; i++) {\n      const item = relevance_result.results[i];\n      if(item.relevance_score > score){\n        result.push(documents[item.index]);\n      }\n    }\n\n    return {\n      result,\n      raw_response: relevance_result,\n      score\n    }\n  }",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "score",
+            "label": "score",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": [
+              "pluginInput",
+              "score"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "relevance_result",
+            "label": "relevance_result",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": [
+              "ieTMMM1NNxC1",
+              "httpRawResponse"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayString",
+            "canEdit": true,
+            "key": "documents",
+            "label": "documents",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "documents"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "arrayString",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "gR0mkQpJ4Og8",
+            "type": "dynamic",
+            "key": "raw_response",
+            "valueType": "any",
+            "label": "raw_response",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "tIDptSbRPwIR",
+            "valueType": "number",
+            "type": "dynamic",
+            "key": "score",
+            "label": "score"
+          }
+        ]
+      },
+      {
+        "nodeId": "kJp5N79HaBxn",
+        "name": "判断器#2",
+        "intro": "根据一定的条件，执行不同的分支。",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 2359.5198322324204,
+          "y": 1319.7803921220093
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
                   {
                     "variable": [
-                      "n0RACUQBwTOd",
-                      "l21o4HYqKqOn"
+                      "lQrMiGoBK53S",
+                      "error"
                     ],
-                    "condition": "equalTo",
-                    "value": "200"
+                    "condition": "isEmpty"
                   }
                 ]
               }
@@ -721,20 +982,32 @@
     "edges": [
       {
         "source": "pluginInput",
-        "target": "n0RACUQBwTOd",
+        "target": "ieTMMM1NNxC1",
         "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "n0RACUQBwTOd-target-left"
+        "targetHandle": "ieTMMM1NNxC1-target-left"
       },
       {
-        "source": "n0RACUQBwTOd",
-        "target": "r7ApMvqDDG9W",
-        "sourceHandle": "n0RACUQBwTOd-source-bottom",
-        "targetHandle": "r7ApMvqDDG9W-target-top"
+        "source": "ieTMMM1NNxC1",
+        "target": "fct0uYf3caoL",
+        "sourceHandle": "ieTMMM1NNxC1-source-bottom",
+        "targetHandle": "fct0uYf3caoL-target-top"
       },
       {
-        "source": "r7ApMvqDDG9W",
+        "source": "fct0uYf3caoL",
+        "target": "lQrMiGoBK53S",
+        "sourceHandle": "fct0uYf3caoL-source-IF",
+        "targetHandle": "lQrMiGoBK53S-target-left"
+      },
+      {
+        "source": "lQrMiGoBK53S",
+        "target": "kJp5N79HaBxn",
+        "sourceHandle": "lQrMiGoBK53S-source-right",
+        "targetHandle": "kJp5N79HaBxn-target-left"
+      },
+      {
+        "source": "kJp5N79HaBxn",
         "target": "pluginOutput",
-        "sourceHandle": "r7ApMvqDDG9W-source-IF",
+        "sourceHandle": "kJp5N79HaBxn-source-IF",
         "targetHandle": "pluginOutput-target-left"
       }
     ]
