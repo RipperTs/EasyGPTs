@@ -9,3 +9,11 @@ export type UpdateChatFeedbackProps = {
   userBadFeedback?: string;
   userGoodFeedback?: string;
 };
+
+export type V2UpdateChatFeedbackProps = OutLinkChatAuthProps & {
+  appId: string;
+  chatId: string;
+  dataId: string;
+  userBadFeedback?: string;
+  userGoodFeedback?: string;
+};
