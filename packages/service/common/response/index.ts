@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { ERROR_ENUM, ERROR_RESPONSE, proxyError } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
@@ -87,7 +87,12 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = `${error?.error?.code} ${error?.error?.message}`;
   }
 
-  addLog.error(`sse error: ${msg}`, error);
+  // 判断 This model's maximum context length  文字是否在错误信息中
+  if (msg.includes("This model's maximum context length")) {
+    addLog.error('当前对话内容已超出限制, 请新建对话窗口或删除部分对话记录后再试~');
+  } else {
+    addLog.error(`sse error: ${msg}`, error);
+  }
 
   responseWrite({
     res,
