@@ -243,6 +243,8 @@ export const iconPaths = {
   'core/workflow/template/SolarSortBold': () =>
     import('./icons/core/workflow/template/SolarSortBold.svg'),
   'core/workflow/template/bochaai': () => import('./icons/core/workflow/template/bochaai.svg'),
+  'core/workflow/template/zhipuwebsearch': () =>
+    import('./icons/core/workflow/template/zhipuwebsearch.svg'),
   'core/workflow/template/pychart': () => import('./icons/core/workflow/template/pychart.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),

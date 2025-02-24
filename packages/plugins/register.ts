@@ -35,7 +35,8 @@ const packagePluginList = [
   'drawing',
   'drawing/baseChart',
   'sleep',
-  'redisConnection'
+  'redisConnection',
+  'webSearchPro'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
