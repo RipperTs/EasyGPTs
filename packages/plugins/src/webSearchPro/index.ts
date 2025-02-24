@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 type Props = {
   apiKey: string;
   query: string;
+  count: number;
 };
 
 type SearchResult = {
@@ -40,7 +41,7 @@ type Response = Promise<{
   error_msg?: string;
 }>;
 
-const main = async ({ apiKey, query }: Props): Response => {
+const main = async ({ apiKey, query, count }: Props): Response => {
   // Check the apikey
   if (!apiKey) {
     return {
@@ -100,6 +101,10 @@ const main = async ({ apiKey, query }: Props): Response => {
     const searchResult: SearchResult[] = [];
     toolCalls.forEach((toolCall: any) => {
       if (toolCall.type === 'search_result') {
+        // 分割搜索结果, 最大数量为count
+        const maxCount = Math.min(count, toolCall.search_result.length);
+        toolCall.search_result = toolCall.search_result.slice(0, maxCount);
+        // 处理搜索结果
         toolCall.search_result.forEach((result: any) => {
           searchResult.push({
             id: null,

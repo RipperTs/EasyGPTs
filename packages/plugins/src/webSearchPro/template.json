@@ -62,6 +62,27 @@
             ],
             "required": true,
             "toolDescription": "查询的关键词或语句"
+          },
+          {
+            "renderTypeList": [
+              "numberInput"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "count",
+            "label": "count",
+            "description": "最大返回结果数量限制",
+            "defaultValue": "10",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "min": 1,
+            "max": 100
           }
         ],
         "outputs": [
@@ -77,6 +98,13 @@
             "valueType": "string",
             "key": "query",
             "label": "query",
+            "type": "hidden"
+          },
+          {
+            "id": "count",
+            "valueType": "number",
+            "key": "count",
+            "label": "count",
             "type": "hidden"
           }
         ]
@@ -251,7 +279,7 @@
               "hidden"
             ],
             "valueType": "any",
-            "value": "{\n  \"query\": \"{{要的查询内容}}\",\n  \"apiKey\": \"{{秘钥}}\"\n}",
+            "value": "{\n  \"query\": \"{{要的查询内容}}\",\n  \"apiKey\": \"{{秘钥}}\",\n  \"count\": {{结果数量}}\n}",
             "label": "",
             "required": false,
             "valueDesc": "",
@@ -353,6 +381,40 @@
             "value": [
               "pluginInput",
               "query"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "结果数量",
+            "label": "结果数量",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "count"
             ]
           }
         ],
