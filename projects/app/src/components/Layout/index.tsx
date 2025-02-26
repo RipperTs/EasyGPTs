@@ -25,6 +25,7 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
+  '/chat/preview': true,
   '/chat/team': true,
   '/app/edit': true,
   '/chat': true,
@@ -37,6 +38,7 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
+  '/chat/preview': true,
   '/chat/team': true,
   '/tools/price': true,
   '/price': true

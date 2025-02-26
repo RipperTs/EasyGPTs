@@ -19,6 +19,7 @@ const ToolMenu = ({
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
   const router = useRouter();
+  const { shareId = '', chatId = '' } = router.query;
   const cardNo = Cookies.get('card_no') || '';
 
   return history.length > 0 ? (
@@ -64,6 +65,17 @@ const ToolMenu = ({
               icon: 'core/chat/export/pdf',
               label: `PDF ${t('common:Export')}`,
               onClick: () => onExportChat({ type: 'pdf', history })
+            }
+          ]
+        },
+        {
+          children: [
+            {
+              icon: 'support/outlink/shareLight',
+              label: '分享对话',
+              onClick: () => {
+                window.open(`/chat/preview?shareId=${shareId}&chatId=${chatId}`, '_blank');
+              }
             }
           ]
         },

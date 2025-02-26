@@ -40,6 +40,7 @@ export type InitChatResponse = {
   appId: string;
   userAvatar?: string;
   title?: string;
+  customTitle?: string;
   variables: Record<string, any>;
   history: ChatItemType[];
   app: {
