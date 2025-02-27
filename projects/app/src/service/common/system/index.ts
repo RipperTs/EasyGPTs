@@ -98,7 +98,8 @@ export async function initSystemConfig() {
     vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
     reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
     audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
-    whisperModel: dbConfig.whisperModel || fileRes.whisperModel
+    whisperModel: dbConfig.whisperModel || fileRes.whisperModel,
+    ocrModel: dbConfig.ocrModel || fileRes.ocrModel || 'Qwen/Qwen2-VL-72B-Instruct'
   };
 
   // set config

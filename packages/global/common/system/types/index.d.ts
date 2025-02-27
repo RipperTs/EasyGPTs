@@ -12,14 +12,15 @@ import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
 /* fastgpt main */
 export type FastGPTConfigFileType = {
-  feConfigs: FastGPTFeConfigsType;
-  systemEnv: SystemEnvType;
-  subPlans?: SubPlanType;
-  llmModels: ChatModelItemType[];
-  vectorModels: VectorModelItemType[];
-  reRankModels: ReRankModelItemType[];
-  audioSpeechModels: AudioSpeechModelType[];
-  whisperModel: WhisperModelType;
+  feConfigs?: FastGPTFeConfigsType;
+  systemEnv?: Record<string, any>;
+  subPlans?: Record<string, any>;
+  llmModels?: Record<string, any>[];
+  vectorModels?: Record<string, any>[];
+  reRankModels?: Record<string, any>[];
+  audioSpeechModels?: Record<string, any>[];
+  whisperModel?: Record<string, any>;
+  ocrModel?: string;
 };
 
 export type FastGPTFeConfigsType = {

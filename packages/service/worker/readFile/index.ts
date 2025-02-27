@@ -7,6 +7,7 @@ import { readDocsFile } from './extension/docx';
 import { readPptxRawText } from './extension/pptx';
 import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
+import { readImageRawText } from './extension/image';
 
 parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
   const readRawContentByFileBuffer = async (params: ReadRawTextByBuffer) => {
@@ -26,8 +27,14 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
         return readXlsxRawText(params);
       case 'csv':
         return readCsvRawText(params);
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return readImageRawText(params);
       default:
-        return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
+        return Promise.reject(
+          'Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx, .png, .jpg, .jpeg'
+        );
     }
   };
 
