@@ -1,4 +1,4 @@
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type.d';
 import { readConfigData } from '../../../../../projects/app/src/service/common/system';
 import json5 from 'json5';
 
