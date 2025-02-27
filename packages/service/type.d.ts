@@ -4,11 +4,11 @@ import {
   ReRankModelItemType,
   WhisperModelType,
   VectorModelItemType,
-  LLMModelItemType
+  LLMModelItemType,
+  OcrModelTyoe
 } from '@fastgpt/global/core/ai/model.d';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { WorkerNameEnum, WorkerPool } from './worker/utils';
-import { Worker } from 'worker_threads';
 import { TemplateMarketItemType } from '@fastgpt/global/core/workflow/type';
 
 declare global {
@@ -21,6 +21,7 @@ declare global {
   var audioSpeechModels: AudioSpeechModelType[];
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];
+  var ocrModel: OcrModelTyoe;
 
   var systemLoadedGlobalVariables: boolean;
   var systemLoadedGlobalConfig: boolean;

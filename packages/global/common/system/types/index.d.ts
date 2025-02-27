@@ -20,7 +20,7 @@ export type FastGPTConfigFileType = {
   reRankModels?: Record<string, any>[];
   audioSpeechModels?: Record<string, any>[];
   whisperModel?: Record<string, any>;
-  ocrModel?: string;
+  ocrModel?: Record<string, any>;
 };
 
 export type FastGPTFeConfigsType = {

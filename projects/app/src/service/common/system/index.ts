@@ -99,7 +99,7 @@ export async function initSystemConfig() {
     reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
     audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
     whisperModel: dbConfig.whisperModel || fileRes.whisperModel,
-    ocrModel: dbConfig.ocrModel || fileRes.ocrModel || 'Qwen/Qwen2-VL-72B-Instruct'
+    ocrModel: dbConfig.ocrModel || fileRes.ocrModel
   };
 
   // set config

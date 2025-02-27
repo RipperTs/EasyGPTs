@@ -1,5 +1,18 @@
-import { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import {
+  FastGPTConfigFileType,
+  FastGPTFeConfigsType,
+  SystemEnvType
+} from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
+import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import {
+  AudioSpeechModelType,
+  ReRankModelItemType,
+  WhisperModelType,
+  VectorModelItemType,
+  LLMModelItemType,
+  OcrModelTyoe
+} from '@fastgpt/global/core/ai/model.d';
 
 export const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;
 export const SERVICE_LOCAL_HOST =
@@ -10,15 +23,16 @@ export const SERVICE_LOCAL_HOST =
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   if (!config) return;
 
-  global.feConfigs = config.feConfigs;
-  global.systemEnv = config.systemEnv;
-  global.subPlans = config.subPlans;
+  global.feConfigs = config.feConfigs as FastGPTFeConfigsType;
+  global.systemEnv = config.systemEnv as SystemEnvType;
+  global.subPlans = config.subPlans as SubPlanType;
 
-  global.llmModels = config.llmModels;
-  global.vectorModels = config.vectorModels;
-  global.audioSpeechModels = config.audioSpeechModels;
-  global.whisperModel = config.whisperModel;
-  global.reRankModels = config.reRankModels;
+  global.llmModels = config.llmModels as LLMModelItemType[];
+  global.vectorModels = config.vectorModels as VectorModelItemType[];
+  global.audioSpeechModels = config.audioSpeechModels as AudioSpeechModelType[];
+  global.whisperModel = config.whisperModel as WhisperModelType;
+  global.reRankModels = config.reRankModels as ReRankModelItemType[];
+  global.ocrModel = config.ocrModel as OcrModelTyoe;
 };
 
 export const systemStartCb = () => {

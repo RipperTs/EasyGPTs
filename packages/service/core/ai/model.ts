@@ -34,17 +34,23 @@ export function getReRankModel(model?: string) {
   return global.reRankModels.find((item) => item.model === model);
 }
 
+export function getOcrModel(model?: string) {
+  return global.ocrModel;
+}
+
 export enum ModelTypeEnum {
   llm = 'llm',
   vector = 'vector',
   audioSpeech = 'audioSpeech',
   whisper = 'whisper',
-  rerank = 'rerank'
+  rerank = 'rerank',
+  ocr = 'ocr'
 }
 export const getModelMap = {
   [ModelTypeEnum.llm]: getLLMModel,
   [ModelTypeEnum.vector]: getVectorModel,
   [ModelTypeEnum.audioSpeech]: getAudioSpeechModel,
   [ModelTypeEnum.whisper]: getWhisperModel,
-  [ModelTypeEnum.rerank]: getReRankModel
+  [ModelTypeEnum.rerank]: getReRankModel,
+  [ModelTypeEnum.ocr]: getOcrModel
 };

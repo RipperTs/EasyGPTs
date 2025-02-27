@@ -64,3 +64,11 @@ export type WhisperModelType = {
   name: string;
   charsPointsPrice: number; // 60s = n points
 };
+
+export type OcrModelTyoe = {
+  model: string;
+  name: string;
+  charsPointsPrice: number;
+  requestUrl: string;
+  requestAuth: string;
+};

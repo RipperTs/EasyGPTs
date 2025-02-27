@@ -111,5 +111,12 @@
     "model": "whisper-1",
     "name": "Whisper1",
     "charsPointsPrice": 0
+  },
+  "ocrModel": {
+    "model": "vl-ocr",
+    "name": "Qwen-OCR",
+    "charsPointsPrice": 0,
+    "requestUrl": "http://10.6.80.35:3800/v1",
+    "requestAuth": "sk-xxx"
   }
 }
