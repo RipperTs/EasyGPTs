@@ -673,7 +673,7 @@
         "Link name": "网络链接",
         "Link name placeholder": "仅支持静态链接，如果上传后数据为空，可能该链接无法被读取\n每行一个，每次最多 10 个链接",
         "Local file": "本地文件",
-        "Local file desc": "上传 PDF、TXT、DOCX 等格式的文件",
+        "Local file desc": "上传 PDF、TXT、PNG、JPEG 等格式的文件",
         "Preview chunks": "预览分段（最多 5 段）",
         "Preview raw text": "预览源文本（最多 3000 字）",
         "Process way": "处理方式",
