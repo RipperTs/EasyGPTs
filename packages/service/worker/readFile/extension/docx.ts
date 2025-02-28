@@ -1,8 +1,6 @@
 import mammoth from 'mammoth';
 import { ReadRawTextByBuffer, ReadFileResponse, ImageType } from '../type';
 import { html2md } from '../../htmlStr2Md/utils';
-import fs from 'fs';
-import path from 'path';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 /**
@@ -14,12 +12,6 @@ export const readDocsFile = async ({
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   try {
     const imageList: ImageType[] = [];
-
-    // 创建图片保存目录
-    const imgDir = path.join(process.cwd(), 'public/images', teamId);
-    if (!fs.existsSync(imgDir)) {
-      fs.mkdirSync(imgDir, { recursive: true });
-    }
 
     // 自定义图片处理器
     const options = {
