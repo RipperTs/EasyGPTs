@@ -46,7 +46,7 @@ export const readImageRawText = async ({
 
   // 创建 AbortController 用于超时控制
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000); // 300秒超时
+  const timeoutId = setTimeout(() => controller.abort(), 180000); // 180秒超时
 
   try {
     // 直接使用 fetch 调用 API
@@ -91,7 +91,7 @@ export const readImageRawText = async ({
     };
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      throw new Error('OCR 请求超时 (300秒)');
+      throw new Error('OCR 请求超时 (180秒)');
     }
     throw error;
   } finally {
