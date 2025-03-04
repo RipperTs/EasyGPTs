@@ -10,7 +10,7 @@ export const readImageRawText = async ({
   // 读取配置文件获取配置
   const configContent = readConfigData('config.json');
   const config = json5.parse(configContent);
-  const ocrModel = config?.ocrModel?.model || 'Qwen/Qwen2-VL-72B-Instruct';
+  const ocrModel = config?.ocrModel?.model || 'qwen/qwen-vl-plus:free';
 
   // 从配置文件中获取 API URL 和 Key
   const baseUrl = config?.ocrModel?.requestUrl || 'http://10.6.80.35:3800/v1';
@@ -29,6 +29,18 @@ export const readImageRawText = async ({
 5. 保持原文的段落格式和换行
 6. 明显的换行使用\\n表示
 7. 确保所有数学符号都被正确包裹在$或$$中
+
+对于手写体文本:
+1. 请尽量保持原文的格式，不要进行任何修改
+2. 不要使用LaTeX格式
+3. 对于无法识别的字符，请使用[UNK]表示
+4. 不要使用任何额外的标记或符号
+
+对于表格识别：
+1. 保持表格的结构和布局, 使用Markdown表格格式
+2. 对于表格中的每个单元格内容，准确转录文本
+3. 对于跨行或跨列的单元格，适当合并
+4. 保持原始文本的格式（如粗体、斜体等）
 
 不要输出任何额外的解释或说明`;
 
