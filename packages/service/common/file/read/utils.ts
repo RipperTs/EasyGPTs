@@ -67,6 +67,38 @@ export const readRawContentByFileBuffer = async ({
     )
       return;
 
+    // 如果是PDF文件，先检查页数
+    if (extension === 'pdf') {
+      try {
+        // 使用pdfjs获取页数
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        // @ts-ignore
+        await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+
+        // 将Buffer转换为Uint8Array
+        const uint8Array = new Uint8Array(buffer);
+
+        const loadingTask = pdfjs.getDocument(uint8Array);
+        const doc = await loadingTask.promise;
+        const numPages = doc.numPages;
+
+        // 释放资源
+        loadingTask.destroy();
+
+        // 如果页数超过80页，直接使用本地解析服务
+        if (numPages > 80) {
+          addLog.warn(
+            `PDF has ${numPages} pages, exceeding 80 page limit. Using local parsing service.`
+          );
+          return;
+        }
+
+        addLog.info(`PDF has ${numPages} pages, using external service for parsing.`);
+      } catch (error) {
+        addLog.error(`Failed to check PDF page count: ${error}. Falling back to external service.`);
+      }
+    }
+
     const start = Date.now();
     addLog.info('Parsing files from an external service');
 
@@ -76,7 +108,6 @@ export const readRawContentByFileBuffer = async ({
     });
     data.append('extension', extension);
     data.append('ocr', ocrParse);
-    // todo 为每个数据集单独设置解析类型
     data.append('type', customReadFileServiceType);
     const { data: response } = await axios.post<{
       success: boolean;
