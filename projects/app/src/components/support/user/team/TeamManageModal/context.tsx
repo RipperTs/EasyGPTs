@@ -20,6 +20,7 @@ import {
   CollaboratorItemType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
+import { setToken } from '@/web/support/user/auth';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
@@ -98,8 +99,10 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   const { mutate: onSwitchTeam, isLoading: isSwitchingTeam } = useRequest({
     mutationFn: async (teamId: string) => {
-      await putSwitchTeam(teamId);
-      return initUserInfo();
+      const token = await putSwitchTeam(teamId);
+      setToken(token);
+      await initUserInfo();
+      return true;
     },
     errorToast: t('common:user.team.Switch Team Failed')
   });

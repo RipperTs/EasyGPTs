@@ -42,7 +42,7 @@ const TeamMembersModal = dynamic(() => import('./TeamMembersModal'));
 const TeamManagement = () => {
   const { t } = useTranslation();
   const toast = useToast();
-  const { userInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
 
   // 创建团队模态框
   const {
@@ -149,19 +149,19 @@ const TeamManagement = () => {
       console.log('切换团队', teamId);
 
       // 调用切换团队API
-      await putSwitchTeam(teamId);
+      const token = await putSwitchTeam(teamId);
+
+      // 设置新token
+      setToken(token);
+
+      // 刷新用户信息
+      await initUserInfo();
 
       toast({
-        title: '切换团队成功，请重新登录',
+        title: '切换团队成功',
         status: 'success',
         position: 'top'
       });
-
-      // 清除token并退出登录
-      setTimeout(() => {
-        clearToken();
-        window.location.href = '/login';
-      }, 1500);
     },
     errorToast: '切换团队失败'
   });

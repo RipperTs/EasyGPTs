@@ -5,7 +5,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import { createJWT } from '@fastgpt/service/support/permission/controller';
+import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -52,6 +52,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tmbId: String(teamMember._id)
       }
     });
+
+    // 设置cookie
+    setCookie(res, token);
 
     return jsonRes(res, {
       code: 200,
