@@ -15,7 +15,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
@@ -25,6 +25,9 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
+import { debounce } from 'lodash';
+import { searchUsers } from '@/web/support/user/api';
+import { createTeamMember } from '@/web/support/user/team/api';
 
 export type AddModalPropsType = {
   onClose: () => void;
@@ -32,42 +35,115 @@ export type AddModalPropsType = {
 
 function AddMemberModal({ onClose }: AddModalPropsType) {
   const { t } = useTranslation();
-  const { userInfo, loadAndGetTeamMembers } = useUserStore();
+  const { userInfo } = useUserStore();
+  const toast = useToast();
 
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
 
-  const { data: members = [], loading: loadingMembers } = useRequest2(
-    async () => {
-      if (!userInfo?.team?.teamId) return [];
-      const members = await loadAndGetTeamMembers(true);
-      return members;
+  // 搜索结果
+  const {
+    data: searchResults = [],
+    loading: loadingSearch,
+    run: fetchUsers
+  } = useRequest2(
+    async (keyword: string) => {
+      if (!keyword) return [];
+      const users = await searchUsers(keyword);
+      return users;
     },
     {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
+      manual: true
     }
   );
-  const filterMembers = useMemo(() => {
-    return members.filter((item) => {
-      // if (item.permission.isOwner) return false;
-      if (item.tmbId === userInfo?.team?.tmbId) return false;
-      if (!searchText) return true;
-      return item.memberName.includes(searchText);
-    });
-  }, [members, searchText, userInfo?.team?.tmbId]);
 
-  const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
+  // 使用debounce处理搜索，避免频繁请求
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      if (value) {
+        fetchUsers(value);
+      }
+    }, 300),
+    [fetchUsers]
+  );
+
+  // 处理搜索输入
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setSearchText(value);
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  const [selectedUsers, setSelectedUsers] = useState<
+    Array<{
+      userId: string;
+      username: string;
+      avatar: string;
+      tmbId?: string;
+    }>
+  >([]);
   const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);
   const perLabel = useMemo(() => {
     return getPerLabelList(selectedPermission).join('、');
   }, [getPerLabelList, selectedPermission]);
 
+  // 过滤掉已经是协作者的用户
+  const filteredSearchResults = useMemo(() => {
+    return searchResults.filter((user) => {
+      // 排除已选择的用户
+      if (selectedUsers.some((selected) => selected.userId === user.userId)) {
+        return false;
+      }
+
+      // 排除已经是协作者的用户
+      const isCollaborator = collaboratorList.some((collaborator) => {
+        // 这里需要根据实际情况判断，可能需要调整
+        return false; // 暂时不过滤
+      });
+
+      return !isCollaborator;
+    });
+  }, [searchResults, selectedUsers, collaboratorList]);
+
   const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (selectedUsers.length === 0) {
+        toast({
+          title: '请先选择用户',
+          status: 'warning'
+        });
+        return Promise.reject('请先选择用户');
+      }
+
+      // 为每个用户创建团队成员
+      const createMemberPromises = selectedUsers.map(async (user) => {
+        if (user.tmbId) return user.tmbId;
+        try {
+          const { tmbId } = await createTeamMember(user.userId);
+          return tmbId;
+        } catch (error) {
+          console.error('创建团队成员失败:', error);
+          return null;
+        }
+      });
+
+      const tmbIds = (await Promise.all(createMemberPromises)).filter(Boolean) as string[];
+
+      if (tmbIds.length === 0) {
+        toast({
+          title: '创建团队成员失败',
+          status: 'error'
+        });
+        return Promise.reject('创建团队成员失败');
+      }
+
+      // 添加协作者
       return onUpdateCollaborators({
-        tmbIds: selectedMemberIdList,
+        tmbIds,
         permission: selectedPermission
       });
     },
@@ -88,7 +164,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
     >
       <ModalBody>
         <MyBox
-          isLoading={loadingMembers}
+          isLoading={loadingSearch}
           display={'grid'}
           minH="400px"
           border="1px solid"
@@ -111,22 +187,19 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
               <Input
                 placeholder={t('user:search_user')}
                 bgColor="myGray.50"
-                onChange={(e) => setSearchText(e.target.value)}
+                value={searchText}
+                onChange={handleSearchChange}
               />
             </InputGroup>
             <Flex flexDirection="column" mt="2">
-              {filterMembers.map((member) => {
+              {filteredSearchResults.map((user) => {
                 const onChange = () => {
-                  if (selectedMemberIdList.includes(member.tmbId)) {
-                    setSelectedMembers(selectedMemberIdList.filter((v) => v !== member.tmbId));
-                  } else {
-                    setSelectedMembers([...selectedMemberIdList, member.tmbId]);
-                  }
+                  setSelectedUsers([...selectedUsers, user]);
                 };
-                const collaborator = collaboratorList.find((v) => v.tmbId === member.tmbId);
+
                 return (
                   <Flex
-                    key={member.tmbId}
+                    key={user.userId}
                     mt="1"
                     py="1"
                     px="3"
@@ -134,71 +207,57 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                     alignItems="center"
                     _hover={{
                       bgColor: 'myGray.50',
-                      cursor: 'pointer',
-                      ...(!selectedMemberIdList.includes(member.tmbId)
-                        ? { svg: { color: 'myGray.50' } }
-                        : {})
+                      cursor: 'pointer'
                     }}
+                    onClick={onChange}
                   >
-                    <Checkbox
-                      mr="3"
-                      isChecked={selectedMemberIdList.includes(member.tmbId)}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
-                      onChange={onChange}
-                    />
-                    <Flex
-                      flexDirection="row"
-                      onClick={onChange}
-                      w="full"
-                      justifyContent="space-between"
-                    >
+                    <Flex flexDirection="row" w="full" justifyContent="space-between">
                       <Flex flexDirection="row" alignItems="center">
-                        <MyAvatar src={member.avatar} w="32px" />
-                        <Box ml="2">{member.memberName}</Box>
+                        <MyAvatar src={user.avatar} w="32px" />
+                        <Box ml="2">{user.username}</Box>
                       </Flex>
-                      {!!collaborator && (
-                        <PermissionTags permission={collaborator.permission.value} />
-                      )}
                     </Flex>
                   </Flex>
                 );
               })}
+              {searchText && filteredSearchResults.length === 0 && (
+                <Flex justifyContent="center" alignItems="center" h="100px">
+                  没有找到匹配的用户
+                </Flex>
+              )}
             </Flex>
           </Flex>
           <Flex p="4" flexDirection="column">
             <Box>
-              {t('user:has_chosen') + ': '}+ {selectedMemberIdList.length}
+              {t('user:has_chosen') + ': '}+ {selectedUsers.length}
             </Box>
             <Flex flexDirection="column" mt="2">
-              {selectedMemberIdList.map((tmbId) => {
-                const member = filterMembers.find((v) => v.tmbId === tmbId);
-                return member ? (
-                  <Flex
-                    key={tmbId}
-                    alignItems="center"
-                    justifyContent="space-between"
-                    py="2"
-                    px={3}
-                    borderRadius={'md'}
-                    _hover={{ bg: 'myGray.50' }}
-                    _notLast={{ mb: 2 }}
-                  >
-                    <Avatar src={member.avatar} w="24px" />
-                    <Box w="full">{member.memberName}</Box>
-                    <MyIcon
-                      name="common/closeLight"
-                      w="16px"
-                      cursor={'pointer'}
-                      _hover={{
-                        color: 'red.600'
-                      }}
-                      onClick={() =>
-                        setSelectedMembers(selectedMemberIdList.filter((v) => v !== tmbId))
-                      }
-                    />
-                  </Flex>
-                ) : null;
-              })}
+              {selectedUsers.map((user) => (
+                <Flex
+                  key={user.userId}
+                  alignItems="center"
+                  justifyContent="space-between"
+                  py="2"
+                  px={3}
+                  borderRadius={'md'}
+                  _hover={{ bg: 'myGray.50' }}
+                  _notLast={{ mb: 2 }}
+                >
+                  <Avatar src={user.avatar} w="24px" />
+                  <Box w="full">{user.username}</Box>
+                  <MyIcon
+                    name="common/closeLight"
+                    w="16px"
+                    cursor={'pointer'}
+                    _hover={{
+                      color: 'red.600'
+                    }}
+                    onClick={() =>
+                      setSelectedUsers(selectedUsers.filter((item) => item.userId !== user.userId))
+                    }
+                  />
+                </Flex>
+              ))}
             </Flex>
           </Flex>
         </MyBox>

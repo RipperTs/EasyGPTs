@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { createJWT } from '@fastgpt/service/support/permission/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,11 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 获取请求体
-    const { name, avatar, teamId } = req.body as {
-      name?: string;
-      avatar?: string;
-      teamId?: string;
-    };
+    const { teamId } = req.body as { teamId: string };
 
     if (!teamId) {
       return jsonRes(res, {
@@ -30,37 +27,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // 检查用户是否是团队所有者
+    // 检查用户是否是该团队的成员
     const teamMember = await MongoTeamMember.findOne({
       teamId,
       userId,
-      role: TeamMemberRoleEnum.owner
+      status: TeamMemberStatusEnum.active
     });
 
     if (!teamMember) {
       return jsonRes(res, {
         code: 403,
-        error: '只有团队所有者才能更新团队信息'
+        error: '您不是该团队的成员'
       });
     }
 
-    // 更新团队信息
-    const updateData: Record<string, any> = {};
-    if (name) updateData.name = name;
-    if (avatar) updateData.avatar = avatar;
+    // 更新用户最后登录的团队ID
+    await MongoUser.updateOne({ _id: userId }, { $set: { lastLoginTmbId: teamMember._id } });
 
-    if (Object.keys(updateData).length === 0) {
-      return jsonRes(res, {
-        code: 400,
-        error: '没有要更新的数据'
-      });
-    }
-
-    await MongoTeam.updateOne({ _id: teamId }, { $set: updateData });
+    // 生成新的JWT token
+    const token = createJWT({
+      _id: userId,
+      team: {
+        teamId,
+        tmbId: String(teamMember._id)
+      }
+    });
 
     return jsonRes(res, {
       code: 200,
-      data: true
+      data: token
     });
   } catch (error) {
     return jsonRes(res, {

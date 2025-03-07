@@ -18,6 +18,8 @@ const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'))
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
+const TeamManagement = dynamic(() => import('./components/Team/TeamManagement'));
+
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
@@ -26,6 +28,7 @@ enum TabEnum {
   'inform' = 'inform',
   'individuation' = 'individuation',
   'apikey' = 'apikey',
+  'team' = 'team',
   'loginout' = 'loginout'
 }
 
@@ -38,6 +41,11 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
       icon: 'support/user/userLight',
       label: '个人信息',
       value: TabEnum.info
+    },
+    {
+      icon: 'support/team/memberLight',
+      label: '团队管理',
+      value: TabEnum.team
     },
     ...(userInfo?.team?.permission.hasWritePer
       ? [
@@ -126,6 +134,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
             {currentTab === TabEnum.individuation && <Individuation />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
+            {currentTab === TabEnum.team && <TeamManagement />}
           </Box>
         </Flex>
         <ConfirmModal />

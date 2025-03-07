@@ -17,11 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 获取请求体
-    const { name, avatar, teamId } = req.body as {
-      name?: string;
-      avatar?: string;
-      teamId?: string;
-    };
+    const { teamId } = req.query as { teamId: string };
+
+    console.log('删除团队API', { teamId, query: req.query, body: req.body });
 
     if (!teamId) {
       return jsonRes(res, {
@@ -40,29 +38,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!teamMember) {
       return jsonRes(res, {
         code: 403,
-        error: '只有团队所有者才能更新团队信息'
+        error: '只有团队所有者才能删除团队'
       });
     }
 
-    // 更新团队信息
-    const updateData: Record<string, any> = {};
-    if (name) updateData.name = name;
-    if (avatar) updateData.avatar = avatar;
+    // 删除团队
+    await MongoTeam.findByIdAndDelete(teamId);
 
-    if (Object.keys(updateData).length === 0) {
-      return jsonRes(res, {
-        code: 400,
-        error: '没有要更新的数据'
-      });
-    }
-
-    await MongoTeam.updateOne({ _id: teamId }, { $set: updateData });
+    // 删除团队成员
+    await MongoTeamMember.deleteMany({ teamId });
 
     return jsonRes(res, {
-      code: 200,
-      data: true
+      code: 200
     });
   } catch (error) {
+    console.error('删除团队失败:', error);
     return jsonRes(res, {
       code: 500,
       error

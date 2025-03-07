@@ -3,12 +3,104 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { request } from 'http';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import { parse } from 'url';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
+
+// 知识库协作者接口路径
+const datasetCollaboratorPaths = [
+  'core/dataset/collaborator/list',
+  'core/dataset/collaborator/update',
+  'core/dataset/collaborator/delete'
+];
+
+// 团队成员接口路径
+const teamMemberPaths = ['support/user/team/member/list', 'support/user/team/member/create'];
+
+// 用户搜索接口路径
+const userSearchPaths = ['support/user/search'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
     const { path = [], ...query } = req.query as any;
-    const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
+    const pathStr = path?.join('/');
+    const requestPath = `/api/${pathStr}?${new URLSearchParams(query).toString()}`;
+
+    // 处理知识库协作者接口
+    if (datasetCollaboratorPaths.includes(pathStr)) {
+      // 处理CORS
+      await withNextCors(req, res);
+
+      // 根据路径加载对应的处理函数
+      const pathParts = pathStr.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+
+      try {
+        // 动态导入对应的处理函数
+        const handlerModule = await import(`../core/dataset/collaborator/${fileName}`);
+        const handler = handlerModule.default;
+
+        if (typeof handler !== 'function') {
+          throw new Error(`Handler for ${fileName} is not a function`);
+        }
+
+        return handler(req, res);
+      } catch (error) {
+        console.error(`Error loading handler for ${fileName}:`, error);
+        return jsonRes(res, {
+          code: 500,
+          error: `Failed to load handler for ${fileName}`
+        });
+      }
+    }
+
+    // 处理团队成员接口
+    if (teamMemberPaths.includes(pathStr)) {
+      // 处理CORS
+      await withNextCors(req, res);
+
+      try {
+        // 动态导入对应的处理函数
+        const handlerModule = await import(`../${pathStr}`);
+        const handler = handlerModule.default;
+
+        if (typeof handler !== 'function') {
+          throw new Error(`Handler for ${pathStr} is not a function`);
+        }
+
+        return handler(req, res);
+      } catch (error) {
+        console.error(`Error loading handler for ${pathStr}:`, error);
+        return jsonRes(res, {
+          code: 500,
+          error: `Failed to load handler for ${pathStr}`
+        });
+      }
+    }
+
+    // 处理用户搜索接口
+    if (userSearchPaths.includes(pathStr)) {
+      // 处理CORS
+      await withNextCors(req, res);
+
+      try {
+        // 动态导入对应的处理函数
+        const handlerModule = await import(`../${pathStr}`);
+        const handler = handlerModule.default;
+
+        if (typeof handler !== 'function') {
+          throw new Error(`Handler for ${pathStr} is not a function`);
+        }
+
+        return handler(req, res);
+      } catch (error) {
+        console.error(`Error loading handler for ${pathStr}:`, error);
+        return jsonRes(res, {
+          code: 500,
+          error: `Failed to load handler for ${pathStr}`
+        });
+      }
+    }
 
     if (!requestPath) {
       throw new Error('url is empty');
@@ -53,6 +145,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export const config = {
   api: {
-    bodyParser: false
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
   }
 };

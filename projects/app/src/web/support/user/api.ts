@@ -117,3 +117,11 @@ export const getCaptchaPic = (username: string) =>
   GET<{
     captchaImage: string;
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+
+export const getSystemUserInfo = () => GET<UserType>('/support/user/getSystemUserInfo');
+export const putUpdateUserInfo = (data: UserUpdateParams) => PUT('/support/user/updateInfo', data);
+
+export const searchUsers = (keyword: string) =>
+  GET<{ userId: string; username: string; avatar: string }[]>('/support/user/search', {
+    keyword
+  });
