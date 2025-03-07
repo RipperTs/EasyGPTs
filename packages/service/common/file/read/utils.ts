@@ -87,7 +87,7 @@ export const readRawContentByFileBuffer = async ({
         duration: number;
       };
     }>(customReadfileUrl, data, {
-      timeout: 600000,
+      timeout: 1200000,
       headers: {
         ...data.getHeaders()
       }
