@@ -191,6 +191,77 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
           bg={'myWhite.600'}
           {...register('intro')}
         />
+
+        {/* role */}
+        {appDetail.permission.hasManagePer && (
+          <>
+            {!appDetail.inheritPermission && appDetail.parentId && (
+              <Box mt={3}>
+                <ResumeInherit onResume={resumeInheritPermission} />
+              </Box>
+            )}
+            <Box mt="4">
+              <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
+              <DefaultPermissionList
+                mt="2"
+                per={appDetail.defaultPermission}
+                defaultPer={AppDefaultPermissionVal}
+                isInheritPermission={appDetail.inheritPermission}
+                onChange={(v) => {
+                  setValue('defaultPermission', v);
+                  return handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
+                }}
+                hasParent={!!appDetail.parentId}
+              />
+            </Box>
+            <Box mt={6}>
+              <CollaboratorContextProvider
+                permission={appDetail.permission}
+                onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
+                permissionList={AppPermissionList}
+                onUpdateCollaborators={onUpdateCollaborators}
+                onDelOneCollaborator={onDelCollaborator}
+                refreshDeps={[appDetail.inheritPermission]}
+                isInheritPermission={appDetail.inheritPermission}
+                hasParent={!!appDetail.parentId}
+              >
+                {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+                  return (
+                    <>
+                      <Flex
+                        alignItems="center"
+                        flexDirection="row"
+                        justifyContent="space-between"
+                        w="full"
+                      >
+                        <Box fontSize={'sm'}>{commonT('permission.Collaborator')}</Box>
+                        <Flex flexDirection="row" gap="2">
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="common/settingLight" />}
+                            onClick={onOpenManageModal}
+                          >
+                            {t('common:permission.Manage')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
+                            onClick={onOpenAddMember}
+                          >
+                            {t('common:common.Add')}
+                          </Button>
+                        </Flex>
+                      </Flex>
+                      <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
+                    </>
+                  );
+                }}
+              </CollaboratorContextProvider>
+            </Box>
+          </>
+        )}
       </ModalBody>
 
       <ModalFooter>
