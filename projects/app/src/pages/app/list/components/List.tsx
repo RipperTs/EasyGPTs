@@ -231,6 +231,13 @@ const ListItem = () => {
                         </Box>
                       </HStack>
                     )}
+
+                    <PermissionIconText
+                      defaultPermission={app.defaultPermission}
+                      color={'myGray.500'}
+                      iconColor={'myGray.400'}
+                      w={'0.875rem'}
+                    />
                   </HStack>
 
                   <HStack>
