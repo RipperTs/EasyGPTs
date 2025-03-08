@@ -170,7 +170,12 @@ const TeamManagement = () => {
     <Box p={5}>
       <Flex justifyContent="space-between" alignItems="center" mb={6}>
         <Heading size="md">团队管理</Heading>
-        <Button size="sm" onClick={onCreateTeamModalOpen} colorScheme="primary">
+        <Button
+          size="sm"
+          onClick={onCreateTeamModalOpen}
+          colorScheme="primary"
+          leftIcon={<MyIcon name="common/addLight" w="14px" />}
+        >
           创建团队
         </Button>
       </Flex>
@@ -209,15 +214,26 @@ const TeamManagement = () => {
                         variant="ghost"
                         isLoading={isSwitchingTeam}
                         onClick={() => switchTeam(team.teamId)}
+                        leftIcon={<MyIcon name="change" w="14px" />}
                       >
                         切换
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => handleViewTeamMembers(team)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleViewTeamMembers(team)}
+                      leftIcon={<MyIcon name="support/team/memberLight" w="14px" />}
+                    >
                       成员
                     </Button>
                     {team.role === 'owner' && (
-                      <Button size="sm" variant="ghost" onClick={() => handleEditTeam(team)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEditTeam(team)}
+                        leftIcon={<MyIcon name="edit" w="14px" />}
+                      >
                         编辑
                       </Button>
                     )}
@@ -227,6 +243,7 @@ const TeamManagement = () => {
                         variant="ghost"
                         colorScheme="red"
                         onClick={() => handleDeleteTeam(team)}
+                        leftIcon={<MyIcon name="common/trash" w="14px" />}
                       >
                         删除
                       </Button>
