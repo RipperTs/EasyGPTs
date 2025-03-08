@@ -23,7 +23,8 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  useDisclosure
+  useDisclosure,
+  Spinner
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -136,33 +137,50 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredMembers.map((member) => (
-                  <Tr key={member.tmbId}>
-                    <Td>
-                      <Flex alignItems="center">
-                        <Avatar size="sm" name={member.memberName} src={member.avatar} mr={2} />
-                        <Text>{member.memberName}</Text>
+                {loadingMembers ? (
+                  <Tr>
+                    <Td colSpan={team.permission.isOwner ? 4 : 3} textAlign="center" py={4}>
+                      <Flex justify="center" align="center">
+                        <Spinner size="sm" color="primary.500" mr={2} />
+                        <Text>加载中...</Text>
                       </Flex>
                     </Td>
-                    <Td>{member.role}</Td>
-                    <Td>{member.status}</Td>
-                    {team.permission.isOwner && (
-                      <Td>
-                        {member.role !== 'owner' && (
-                          <IconButton
-                            aria-label="Remove Member"
-                            icon={<MyIcon name="delete" w="16px" />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="red"
-                            isLoading={isRemoving}
-                            onClick={openConfirm(() => removeMember(member.tmbId))}
-                          />
-                        )}
-                      </Td>
-                    )}
                   </Tr>
-                ))}
+                ) : filteredMembers.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={team.permission.isOwner ? 4 : 3} textAlign="center" py={4}>
+                      <Text>暂无成员</Text>
+                    </Td>
+                  </Tr>
+                ) : (
+                  filteredMembers.map((member) => (
+                    <Tr key={member.tmbId}>
+                      <Td>
+                        <Flex alignItems="center">
+                          <Avatar size="sm" name={member.memberName} src={member.avatar} mr={2} />
+                          <Text>{member.memberName}</Text>
+                        </Flex>
+                      </Td>
+                      <Td>{member.role}</Td>
+                      <Td>{member.status}</Td>
+                      {team.permission.isOwner && (
+                        <Td>
+                          {member.role !== 'owner' && (
+                            <IconButton
+                              aria-label="Remove Member"
+                              icon={<MyIcon name="delete" w="16px" />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="red"
+                              isLoading={isRemoving}
+                              onClick={openConfirm(() => removeMember(member.tmbId))}
+                            />
+                          )}
+                        </Td>
+                      )}
+                    </Tr>
+                  ))
+                )}
               </Tbody>
             </Table>
           </Box>
