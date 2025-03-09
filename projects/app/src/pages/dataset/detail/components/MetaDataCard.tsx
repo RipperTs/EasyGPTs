@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Flex, Button, IconButton, Input, Textarea, HStack } from '@chakra-ui/react';
-import { DeleteIcon } from '@chakra-ui/icons';
+import React, { useMemo } from 'react';
+import { Box, Flex, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
