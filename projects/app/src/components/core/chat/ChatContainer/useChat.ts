@@ -19,16 +19,13 @@ export const useChat = () => {
 
       setChatRecords(records);
 
-      // Reset to empty input
-      const data = variablesForm.getValues();
-      for (const key in data) {
-        data[key] = '';
+      // 只设置提供的变量，不清空其他输入
+      if (Object.keys(variables).length > 0) {
+        variablesForm.reset({
+          ...variablesForm.getValues(),
+          ...variables
+        });
       }
-
-      variablesForm.reset({
-        ...data,
-        ...variables
-      });
 
       setTimeout(
         () => {
@@ -42,11 +39,6 @@ export const useChat = () => {
 
   const clearChatRecords = useCallback(() => {
     setChatRecords([]);
-
-    const data = variablesForm.getValues();
-    for (const key in data) {
-      variablesForm.setValue(key, '');
-    }
 
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);

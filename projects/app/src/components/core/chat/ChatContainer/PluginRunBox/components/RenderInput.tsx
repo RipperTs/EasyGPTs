@@ -67,8 +67,11 @@ const RenderInput = () => {
 
   useEffect(() => {
     if (isEqual(getValues(), defaultFormValues)) return;
+
+    if (histories.length === 0 && Object.values(getValues()).some((val) => !!val)) return;
+
     reset(historyFormValues || defaultFormValues);
-  }, [defaultFormValues, getValues, historyFormValues, reset]);
+  }, [defaultFormValues, getValues, historyFormValues, reset, histories.length]);
 
   const isDisabledInput = histories.length > 0;
 
