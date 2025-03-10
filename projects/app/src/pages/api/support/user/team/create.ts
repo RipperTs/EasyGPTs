@@ -9,6 +9,7 @@ import {
   TeamMemberStatusEnum
 } from '@fastgpt/global/support/user/team/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -38,7 +39,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             name,
             avatar,
-            ownerId: userId
+            ownerId: userId,
+            balance: 9999 * PRICE_SCALE,
+            createTime: new Date()
           }
         ],
         { session }
@@ -50,10 +53,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             teamId: team[0]._id,
             userId,
-            name: '创建者',
+            name: 'Owner',
             role: TeamMemberRoleEnum.owner,
             status: TeamMemberStatusEnum.active,
-            defaultTeam: false
+            defaultTeam: false,
+            createTime: new Date()
           }
         ],
         { session }
