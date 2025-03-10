@@ -30,7 +30,8 @@ export const delDeleteTeam = (teamId: string) => {
 };
 
 /* --------------- team member ---------------- */
-export const getTeamMembers = () => GET<TeamMemberItemType[]>(`/support/user/team/member/list`);
+export const getTeamMembers = (teamId?: string) =>
+  GET<TeamMemberItemType[]>(`/support/user/team/member/list`, teamId ? { teamId } : undefined);
 export const postInviteTeamMember = (data: InviteMemberProps) =>
   POST<InviteMemberResponse>(`/support/user/team/member/invite`, data);
 export const putUpdateMemberName = (name: string) =>

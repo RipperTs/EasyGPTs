@@ -61,7 +61,7 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
     data: members = [],
     loading: loadingMembers,
     refresh: refreshMembers
-  } = useRequest2(() => getTeamMembers(), {
+  } = useRequest2(() => getTeamMembers(team.teamId), {
     refreshDeps: [team.teamId],
     manual: false
   });
@@ -69,8 +69,7 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
   // 过滤团队成员
   const filteredMembers = members.filter(
     (member) =>
-      member.teamId === team.teamId &&
-      (searchText === '' || member.memberName.toLowerCase().includes(searchText.toLowerCase()))
+      searchText === '' || member.memberName.toLowerCase().includes(searchText.toLowerCase())
   );
 
   // 删除成员确认

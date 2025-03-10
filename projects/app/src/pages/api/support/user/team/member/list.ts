@@ -11,10 +11,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取当前用户信息
-    const { userId, teamId } = await parseHeaderCert({
+    const { userId, teamId: currentTeamId } = await parseHeaderCert({
       req,
       authToken: true
     });
+
+    // 获取请求参数中的teamId，如果没有则使用当前用户的teamId
+    const { teamId: queryTeamId } = req.query as { teamId?: string };
+    const teamId = queryTeamId || currentTeamId;
 
     if (!teamId) {
       return jsonRes(res, {
