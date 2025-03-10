@@ -12,35 +12,26 @@ import {
   Tr,
   Th,
   Td,
-  IconButton,
   useToast,
   Avatar,
   Tag,
   HStack
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  getTeamList,
-  postCreateTeam,
-  putUpdateTeam,
-  delDeleteTeam,
-  putSwitchTeam
-} from '@/web/support/user/team/api';
+import { getTeamList, delDeleteTeam, putSwitchTeam } from '@/web/support/user/team/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamTmbItemType } from '@fastgpt/global/support/user/team/type.d';
-import { setToken, clearToken } from '@/web/support/user/auth';
+import { setToken } from '@/web/support/user/auth';
 
 const CreateTeamModal = dynamic(() => import('./CreateTeamModal'));
 const EditTeamModal = dynamic(() => import('./EditTeamModal'));
 const TeamMembersModal = dynamic(() => import('./TeamMembersModal'));
 
 const TeamManagement = () => {
-  const { t } = useTranslation();
   const toast = useToast();
   const { userInfo, initUserInfo } = useUserStore();
 
@@ -146,8 +137,6 @@ const TeamManagement = () => {
   // 切换团队
   const { mutate: switchTeam, isLoading: isSwitchingTeam } = useRequest({
     mutationFn: async (teamId: string) => {
-      console.log('切换团队', teamId);
-
       // 调用切换团队API
       const token = await putSwitchTeam(teamId);
 
