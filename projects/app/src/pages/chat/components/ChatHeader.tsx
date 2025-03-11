@@ -67,7 +67,11 @@ const ChatHeader = ({
           <PcHeader
             alternativeModelList={alternativeModelList}
             title={chatData.title || t('common:core.chat.New Chat')}
-            chatModels={chatData.app.chatModels}
+            chatModels={
+              (chatData.app?.chatModels || []).length > 0
+                ? chatData.app.chatModels
+                : [chatData.app.name]
+            }
             history={history}
           />
           <Box flex={1} />
@@ -367,19 +371,16 @@ export const PcHeader = ({
         </Box>
       </MyTag>
       {/* 当前模型名称 */}
-      {!!chatModels &&
-        chatModels.length > 0 &&
-        !!alternativeModelList &&
-        alternativeModelList.length > 0 && (
-          <MyTooltip label="使用的 AI 模型, 点击可切换其他应用和模型">
-            <MyTag ml={2} colorSchema={'green'}>
-              <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-              <Box ml={1} maxW={'200px'} cursor="pointer" className="textEllipsis" onClick={onOpen}>
-                切换应用模型
-              </Box>
-            </MyTag>
-          </MyTooltip>
-        )}
+      {!!alternativeModelList && alternativeModelList.length > 0 && (
+        <MyTooltip label="当前 AI 模型, 点击可切换其他应用模型">
+          <MyTag ml={2} colorSchema={'green'}>
+            <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
+            <Box ml={1} maxW={'200px'} cursor="pointer" className="textEllipsis" onClick={onOpen}>
+              {!!chatModels && chatModels.length > 0 ? chatModels[0] : '切换应用模型'}
+            </Box>
+          </MyTag>
+        </MyTooltip>
+      )}
       <Box flex={1} />
       <SelectModelModal
         alternativeModelList={alternativeModelList}
