@@ -45,6 +45,16 @@ export const delLeaveTeam = (teamId: string) =>
 export const createTeamMember = (userId: string) =>
   POST<{ tmbId: string }>(`/support/user/team/member/create`, { userId });
 
+/* 搜索团队成员作为协作者 */
+export const searchTeamCollaborators = (keyword: string, teamId?: string) =>
+  GET<{ userId: string; username: string; avatar: string; tmbId?: string }[]>(
+    `/support/user/team/collaborator/search`,
+    {
+      keyword,
+      ...(teamId ? { teamId } : {})
+    }
+  );
+
 /* -------------- team collaborator -------------------- */
 export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
   PUT('/support/user/team/collaborator/update', data);

@@ -26,8 +26,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { debounce } from 'lodash';
-import { searchUsers } from '@/web/support/user/api';
-import { createTeamMember } from '@/web/support/user/team/api';
+import { createTeamMember, searchTeamCollaborators } from '@/web/support/user/team/api';
 
 export type AddModalPropsType = {
   onClose: () => void;
@@ -50,7 +49,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
   } = useRequest2(
     async (keyword: string) => {
       if (!keyword) return [];
-      const users = await searchUsers(keyword);
+      const users = await searchTeamCollaborators(keyword);
       return users;
     },
     {
@@ -119,19 +118,19 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
         return Promise.reject('请先选择用户');
       }
 
-      // 为每个用户创建团队成员
-      const createMemberPromises = selectedUsers.map(async (user) => {
-        if (user.tmbId) return user.tmbId;
-        try {
-          const { tmbId } = await createTeamMember(user.userId);
-          return tmbId;
-        } catch (error) {
-          console.error('创建团队成员失败:', error);
-          return null;
-        }
-      });
-
-      const tmbIds = (await Promise.all(createMemberPromises)).filter(Boolean) as string[];
+      // 获取tmbIds，如果用户已经有tmbId则直接使用，否则创建新的团队成员
+      const tmbIds = await Promise.all(
+        selectedUsers.map(async (user) => {
+          if (user.tmbId) return user.tmbId;
+          try {
+            const { tmbId } = await createTeamMember(user.userId);
+            return tmbId;
+          } catch (error) {
+            console.error('创建团队成员失败:', error);
+            return null;
+          }
+        })
+      ).then((ids) => ids.filter(Boolean) as string[]);
 
       if (tmbIds.length === 0) {
         toast({
