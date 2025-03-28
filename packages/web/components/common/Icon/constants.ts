@@ -266,6 +266,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/variableUpdate.svg'),
   'core/workflow/template/workflowStart': () =>
     import('./icons/core/workflow/template/workflowStart.svg'),
+  'plugins/email': () => import('./icons/plugins/email.svg'),
   'core/workflow/undo': () => import('./icons/core/workflow/undo.svg'),
   'core/workflow/upload': () => import('./icons/core/workflow/upload.svg'),
   'core/workflow/versionHistories': () => import('./icons/core/workflow/versionHistories.svg'),
