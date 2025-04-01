@@ -16,8 +16,6 @@ import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
 import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { getLatestNodeTemplate } from '@/web/core/workflow/utils';
-import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   JS_TEMPLATE,
@@ -38,7 +36,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
   // 重置模板确认
