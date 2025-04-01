@@ -4,15 +4,32 @@ import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react'
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 
-type Props = Omit<EditorProps, 'resize'> & {};
+type Props = Omit<EditorProps, 'resize'> & { language?: string };
+function getLanguage(language: string | undefined): string {
+  let fullName: string;
+  switch (language) {
+    case 'py':
+      fullName = 'python';
+      break;
+    case 'js':
+      fullName = 'typescript';
+      break;
+    default:
+      fullName = `typescript`;
+      break;
+  }
+  return fullName;
+}
 
 const CodeEditor = (props: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { language, ...otherProps } = props;
+  const fullName = getLanguage(language);
 
   return (
     <>
-      <MyEditor {...props} resize onOpenModal={onOpen} />
+      <MyEditor {...props} resize onOpenModal={onOpen} language={fullName} />
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
@@ -21,7 +38,7 @@ const CodeEditor = (props: Props) => {
         w={'full'}
       >
         <ModalBody>
-          <MyEditor {...props} bg={'myGray.50'} defaultHeight={600} />
+          <MyEditor {...props} bg={'myGray.50'} defaultHeight={600} language={fullName} />
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>

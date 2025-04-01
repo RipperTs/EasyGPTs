@@ -18,18 +18,37 @@ import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getLatestNodeTemplate } from '@/web/core/workflow/utils';
 import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import {
+  JS_TEMPLATE,
+  PY_TEMPLATE,
+  SandboxCodeTypeEnum,
+  SNADBOX_CODE_TEMPLATE
+} from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { workflowT } = useI18n();
   const { nodeId, inputs, outputs } = data;
+
+  const codeType = inputs.find(
+    (item) => item.key === NodeInputKeyEnum.codeType
+  ) as FlowNodeInputItemType;
+
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
-  const { ConfirmModal, openConfirm } = useConfirm({
+  // 重置模板确认
+  const { ConfirmModal: ResetTemplateConfirm, openConfirm: openResetTemplateConfirm } = useConfirm({
     content: workflowT('code.Reset template confirm')
+  });
+
+  // 切换语言确认
+  const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
+    content: '切换语言将重置代码，是否继续？'
   });
 
   const CustomComponent = useMemo(() => {
@@ -37,16 +56,55 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       [NodeInputKeyEnum.code]: (item: FlowNodeInputItemType) => {
         return (
           <Box>
-            <Flex mb={1} alignItems={'flex-end'}>
-              <Box flex={'1'}>{'Javascript ' + workflowT('Code')}</Box>
+            <Flex mb={2} alignItems={'center'} className="nodrag">
+              <MySelect<SandboxCodeTypeEnum>
+                fontSize="xs"
+                size="sm"
+                list={[
+                  { label: 'JavaScript', value: SandboxCodeTypeEnum.js },
+                  { label: 'Python 3', value: SandboxCodeTypeEnum.py }
+                ]}
+                value={codeType?.value}
+                onchange={(newLang) => {
+                  const confirmFn = openSwitchLangConfirm(() => {
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: NodeInputKeyEnum.codeType,
+                      value: { ...codeType, value: newLang }
+                    });
+
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: SNADBOX_CODE_TEMPLATE[newLang]
+                      }
+                    });
+                  });
+                  confirmFn();
+                }}
+              />
+              {codeType.value === 'py' && (
+                <QuestionTip ml={2} label="支持import列表：pandas，numpy" />
+              )}
               <Box
                 cursor={'pointer'}
                 color={'primary.500'}
                 fontSize={'xs'}
-                onClick={openConfirm(() => {
-                  onResetNode({
-                    id: nodeId,
-                    node: getLatestNodeTemplate(data, CodeNode)
+                ml="auto"
+                mr={2}
+                onClick={openResetTemplateConfirm(() => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: item.key,
+                    value: {
+                      ...item,
+                      value: codeType.value === 'js' ? JS_TEMPLATE : PY_TEMPLATE
+                    }
                   });
                 })}
               >
@@ -62,27 +120,23 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   nodeId,
                   type: 'updateInput',
                   key: item.key,
-                  value: {
-                    ...item,
-                    value: e
-                  }
+                  value: { ...item, value: e }
                 });
               }}
+              language={codeType.value}
             />
           </Box>
         );
       }
     };
-  }, [nodeId, onChangeNode, openConfirm, workflowT]);
+  }, [codeType, nodeId, onChangeNode, openResetTemplateConfirm, openSwitchLangConfirm, workflowT]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
       {isTool && (
-        <>
-          <Container>
-            <RenderToolInput nodeId={nodeId} inputs={inputs} />
-          </Container>
-        </>
+        <Container>
+          <RenderToolInput nodeId={nodeId} inputs={inputs} />
+        </Container>
       )}
       <Container>
         <IOTitle text={t('common:common.Input')} />
@@ -96,7 +150,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
-      <ConfirmModal />
+      <ResetTemplateConfirm />
+      <SwitchLangConfirm />
     </NodeCard>
   );
 };
