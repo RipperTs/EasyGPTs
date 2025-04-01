@@ -15,6 +15,7 @@ export const readDocsFile = async ({
 
     // 自定义图片处理器
     const options = {
+      ignoreEmptyParagraphs: false,
       convertImage: mammoth.images.imgElement(async (image) => {
         // 读取图片数据
         const imageBuffer = await image.read();
