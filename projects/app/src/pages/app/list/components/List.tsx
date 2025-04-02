@@ -49,10 +49,8 @@ const ListItem = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { lastChatAppId, setLastChatAppId } = useChatStore();
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
-    AppListContext,
-    (v) => v
-  );
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
+    useContextSelector(AppListContext, (v) => v);
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -178,6 +176,7 @@ const ListItem = () => {
                 }}
                 onClick={() => {
                   if (AppFolderTypeList.includes(app.type)) {
+                    setSearchKey('');
                     router.push({
                       query: {
                         ...router.query,
