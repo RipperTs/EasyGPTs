@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { GetHistoriesProps } from '@/global/core/chat/api';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { outLinkUid, perPage } = req.query as GetHistoriesProps;
     if (!outLinkUid) {
@@ -23,8 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authApiKey: true,
       per: ReadPermissionVal
     });
-
-    await connectToDatabase();
 
     const limit = perPage || 30;
 
@@ -57,3 +55,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(handler);
