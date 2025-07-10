@@ -167,7 +167,9 @@ const QuoteItem = ({
                       borderWidth={'1px'}
                       borderRadius={'sm'}
                       mr={'2px'}
-                      {...(scoreTheme[i] && scoreTheme[i])}
+                      color={scoreTheme[i]?.color}
+                      bg={scoreTheme[i]?.bg}
+                      borderColor={scoreTheme[i]?.borderColor}
                     >
                       <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
                     </Box>
@@ -183,9 +185,7 @@ const QuoteItem = ({
                         w={'100%'}
                         size="sm"
                         borderRadius={'20px'}
-                        {...(scoreTheme[i] && {
-                          colorScheme: scoreTheme[i].colorScheme
-                        })}
+                        colorScheme={scoreTheme[i]?.colorScheme}
                         bg="#E8EBF0"
                       />
                     )}

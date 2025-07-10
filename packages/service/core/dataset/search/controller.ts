@@ -51,6 +51,9 @@ type SearchDatasetDataProps = {
 };
 
 export async function searchDatasetData(props: SearchDatasetDataProps) {
+  console.log(`[SearchDatasetData] 函数开始执行 - 时间戳: ${Date.now()}`);
+  const functionStart = Date.now();
+
   let {
     teamId,
     reRankQuery,
@@ -63,6 +66,11 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     datasetIds = [],
     collectionFilterMatch
   } = props;
+
+  console.log(`[SearchDatasetData] 参数初始化完成 - 耗时: ${Date.now() - functionStart}ms`);
+  console.log(
+    `[SearchDatasetData] 参数: teamId=${teamId}, datasetIds=${datasetIds}, searchMode=${searchMode}, queries数量=${queries.length}`
+  );
 
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
@@ -92,6 +100,9 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     };
   };
   const getForbidData = async () => {
+    console.log(`[SearchDatasetData] 获取禁用数据开始 - 时间戳: ${Date.now()}`);
+    const forbidStart = Date.now();
+
     const collections = await MongoDatasetCollection.find(
       {
         teamId,
@@ -101,9 +112,14 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       '_id'
     );
 
-    return {
+    const result = {
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
+
+    console.log(
+      `[SearchDatasetData] 获取禁用数据完成 - 耗时: ${Date.now() - forbidStart}ms, 禁用数量: ${result.forbidCollectionIdList.length}`
+    );
+    return result;
   };
   /* 
     Collection metadata filter
@@ -248,12 +264,24 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     forbidCollectionIdList: string[];
     filterCollectionIdList?: string[];
   }) => {
+    console.log(
+      `[SearchDatasetData-EmbRecall] 向量召回开始 - query长度: ${query.length}, limit: ${limit}`
+    );
+    const embRecallStart = Date.now();
+
+    console.log(`[SearchDatasetData-EmbRecall] 开始获取文本向量 - 时间戳: ${Date.now()}`);
+    const vectorStart = Date.now();
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
       input: query,
       type: 'query'
     });
+    console.log(
+      `[SearchDatasetData-EmbRecall] 获取文本向量完成 - 耗时: ${Date.now() - vectorStart}ms`
+    );
 
+    console.log(`[SearchDatasetData-EmbRecall] 开始向量存储召回 - 时间戳: ${Date.now()}`);
+    const vectorSearchStart = Date.now();
     const { results } = await recallFromVectorStore({
       teamId,
       datasetIds,
@@ -262,8 +290,13 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       forbidCollectionIdList,
       filterCollectionIdList
     });
+    console.log(
+      `[SearchDatasetData-EmbRecall] 向量存储召回完成 - 耗时: ${Date.now() - vectorSearchStart}ms, 结果数量: ${results.length}`
+    );
 
     // get q and a
+    console.log(`[SearchDatasetData-EmbRecall] 开始MongoDB查询 - 时间戳: ${Date.now()}`);
+    const mongoStart = Date.now();
     const dataList = (await MongoDatasetData.find(
       {
         teamId,
@@ -275,6 +308,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     )
       .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
       .lean()) as DatasetDataWithCollectionType[];
+    console.log(
+      `[SearchDatasetData-EmbRecall] MongoDB查询完成 - 耗时: ${Date.now() - mongoStart}ms, 数据条数: ${dataList.length}`
+    );
+
+    console.log(`[SearchDatasetData-EmbRecall] 开始数据处理和排序 - 时间戳: ${Date.now()}`);
+    const processStart = Date.now();
 
     // add score to data(It's already sorted. The first one is the one with the most points)
     const concatResults = dataList.map((data) => {
@@ -310,6 +349,11 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
       return result;
     });
+
+    console.log(
+      `[SearchDatasetData-EmbRecall] 数据处理和排序完成 - 耗时: ${Date.now() - processStart}ms`
+    );
+    console.log(`[SearchDatasetData-EmbRecall] 向量召回总耗时: ${Date.now() - embRecallStart}ms`);
 
     return {
       embeddingRecallResults: formatResult,
@@ -484,18 +528,37 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     embeddingLimit: number;
     fullTextLimit: number;
   }) => {
+    console.log(
+      `[SearchDatasetData-MultiQuery] 多查询召回开始 - embeddingLimit: ${embeddingLimit}, fullTextLimit: ${fullTextLimit}`
+    );
+    const multiQueryStart = Date.now();
+
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
     let totalTokens = 0;
 
+    console.log(`[SearchDatasetData-MultiQuery] 开始获取元数据过滤 - 时间戳: ${Date.now()}`);
+    const metadataStart = Date.now();
     const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
       getForbidData(),
       filterCollectionByMetadata()
     ]);
+    console.log(
+      `[SearchDatasetData-MultiQuery] 元数据过滤完成 - 耗时: ${Date.now() - metadataStart}ms`
+    );
 
+    console.log(
+      `[SearchDatasetData-MultiQuery] 开始执行多查询并行召回 - queries数量: ${queries.length}`
+    );
+    const parallelStart = Date.now();
     await Promise.all(
-      queries.map(async (query) => {
+      queries.map(async (query, index) => {
+        console.log(
+          `[SearchDatasetData-MultiQuery] 开始处理第${index + 1}个查询: "${query.substring(0, 50)}..."`
+        );
+        const singleQueryStart = Date.now();
+
         const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
           embeddingRecall({
             query,
@@ -513,9 +576,18 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
         embeddingRecallResList.push(embeddingRecallResults);
         fullTextRecallResList.push(fullTextRecallResults);
+
+        console.log(
+          `[SearchDatasetData-MultiQuery] 第${index + 1}个查询完成 - 耗时: ${Date.now() - singleQueryStart}ms, embedding结果: ${embeddingRecallResults.length}, fullText结果: ${fullTextRecallResults.length}`
+        );
       })
     );
+    console.log(
+      `[SearchDatasetData-MultiQuery] 并行召回完成 - 耗时: ${Date.now() - parallelStart}ms`
+    );
 
+    console.log(`[SearchDatasetData-MultiQuery] 开始RRF合并 - 时间戳: ${Date.now()}`);
+    const rrfStart = Date.now();
     // rrf concat
     const rrfEmbRecall = datasetSearchResultConcat(
       embeddingRecallResList.map((list) => ({ k: 60, list }))
@@ -523,7 +595,11 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     const rrfFTRecall = datasetSearchResultConcat(
       fullTextRecallResList.map((list) => ({ k: 60, list }))
     ).slice(0, fullTextLimit);
+    console.log(`[SearchDatasetData-MultiQuery] RRF合并完成 - 耗时: ${Date.now() - rrfStart}ms`);
 
+    console.log(
+      `[SearchDatasetData-MultiQuery] 多查询召回总耗时: ${Date.now() - multiQueryStart}ms`
+    );
     return {
       tokens: totalTokens,
       embeddingRecallResults: rrfEmbRecall,
@@ -532,16 +608,26 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   };
 
   /* main step */
+  console.log(`[SearchDatasetData] 开始主要步骤 - 时间戳: ${Date.now()}`);
+
   // count limit
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
+  console.log(
+    `[SearchDatasetData] 召回限制计算完成 - embeddingLimit: ${embeddingLimit}, fullTextLimit: ${fullTextLimit}`
+  );
 
   // recall
+  console.log(`[SearchDatasetData] 开始多查询召回 - 时间戳: ${Date.now()}`);
+  const recallStart = Date.now();
   const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
+  console.log(`[SearchDatasetData] 多查询召回完成 - 耗时: ${Date.now() - recallStart}ms`);
 
   // ReRank results
+  console.log(`[SearchDatasetData] 开始ReRank处理 - 时间戳: ${Date.now()}`);
+  const reRankStart = Date.now();
   const reRankResults = await (async () => {
     if (!usingReRank) return [];
 
@@ -564,6 +650,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       data: filterSameDataResults
     });
   })();
+  console.log(
+    `[SearchDatasetData] ReRank处理完成 - 耗时: ${Date.now() - reRankStart}ms, 结果数量: ${reRankResults.length}`
+  );
+
+  console.log(`[SearchDatasetData] 开始最终结果处理 - 时间戳: ${Date.now()}`);
+  const finalProcessStart = Date.now();
 
   // embedding recall and fullText recall rrf concat
   const rrfConcatResults = datasetSearchResultConcat([
@@ -632,6 +724,9 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     return results.length === 0 ? scoreFilter.slice(0, 1) : results;
   })();
+
+  console.log(`[SearchDatasetData] 最终结果处理完成 - 耗时: ${Date.now() - finalProcessStart}ms`);
+  console.log(`[SearchDatasetData] 函数执行总耗时: ${Date.now() - functionStart}ms`);
 
   return {
     searchRes: filterMaxTokensResult,
