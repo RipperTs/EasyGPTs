@@ -19,15 +19,22 @@ import {
   VStack,
   HStack,
   Text,
-  Divider
+  Divider,
+  Select,
+  Avatar,
+  Flex
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelSchema, CreateLLMModelParams } from '@fastgpt/global/core/model/type.d';
 
+interface LLMModelWithId extends LLMModelSchema {
+  _id: string;
+}
+
 interface Props {
-  model?: LLMModelSchema;
+  model?: LLMModelWithId;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -35,6 +42,33 @@ interface Props {
 const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const isEdit = !!model;
+
+  // 模型图标选项
+  const modelIcons = [
+    'baichuan.svg',
+    'chatglm.svg',
+    'claude.svg',
+    'deepseek.svg',
+    'ernie.svg',
+    'gemini.svg',
+    'huggingface.svg',
+    'liantong.svg',
+    'llm.svg',
+    'meta.svg',
+    'minimax.svg',
+    'moonshot.svg',
+    'NVIDIA.svg',
+    'ollama.svg',
+    'openai.svg',
+    'poe.svg',
+    'qwen.svg',
+    'siliconflow.svg',
+    'sparkDesk.svg',
+    'stability.svg',
+    'websearch.svg',
+    'xai.svg',
+    'yi.svg'
+  ];
 
   const {
     register,
@@ -65,10 +99,15 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
           functionCall: model.functionCall,
           customCQPrompt: model.customCQPrompt,
           customExtractPrompt: model.customExtractPrompt,
-          defaultSystemChatPrompt: model.defaultSystemChatPrompt
+          defaultSystemChatPrompt: model.defaultSystemChatPrompt,
+          sort: model.sort
         }
       : {
           avatar: '/imgs/model/openai.svg',
+          maxContext: 16000,
+          maxResponse: 4000,
+          quoteMaxToken: 13000,
+          maxTemperature: 1,
           charsPointsPrice: 0,
           censor: false,
           vision: false,
@@ -82,7 +121,8 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
           functionCall: false,
           customCQPrompt: '',
           customExtractPrompt: '',
-          defaultSystemChatPrompt: ''
+          defaultSystemChatPrompt: '',
+          sort: 100
         }
   });
 
@@ -110,6 +150,7 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
   );
 
   const onSubmit = handleSubmit(async (data) => {
+    console.log('表单提交数据:', data);
     await submitData(data);
   });
 
@@ -161,7 +202,16 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl>
                     <FormLabel>模型图标</FormLabel>
-                    <Input {...register('avatar')} placeholder="图标URL" />
+                    <Flex align="center" gap={3}>
+                      <Avatar src={watch('avatar')} size="sm" bg="gray.100" />
+                      <Select {...register('avatar')} placeholder="选择模型图标">
+                        {modelIcons.map((icon) => (
+                          <option key={icon} value={`/imgs/model/${icon}`}>
+                            {icon.replace('.svg', '')}
+                          </option>
+                        ))}
+                      </Select>
+                    </Flex>
                   </FormControl>
                 </GridItem>
                 <GridItem>
@@ -170,6 +220,17 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                     <NumberInput>
                       <NumberInputField
                         {...register('charsPointsPrice', { valueAsNumber: true })}
+                      />
+                    </NumberInput>
+                  </FormControl>
+                </GridItem>
+                <GridItem>
+                  <FormControl>
+                    <FormLabel>排序值</FormLabel>
+                    <NumberInput>
+                      <NumberInputField
+                        {...register('sort', { valueAsNumber: true })}
+                        placeholder="数字越小越靠前，默认100"
                       />
                     </NumberInput>
                   </FormControl>

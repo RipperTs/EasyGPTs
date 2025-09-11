@@ -27,47 +27,48 @@ const DEFAULT_TMB_ID = process.env.DEFAULT_TMB_ID;
 async function migrateConfig() {
   try {
     console.log('开始迁移模型配置...');
-    
+
     // 检查环境变量
     if (!DEFAULT_TEAM_ID || !DEFAULT_TMB_ID) {
       console.error('请设置环境变量 DEFAULT_TEAM_ID 和 DEFAULT_TMB_ID');
       process.exit(1);
     }
-    
+
     // 连接数据库
     await mongoose.connect(MONGODB_URI);
     console.log('数据库连接成功');
-    
+
     // 读取配置文件
     if (!fs.existsSync(CONFIG_PATH)) {
       console.error(`配置文件不存在: ${CONFIG_PATH}`);
       process.exit(1);
     }
-    
+
     const configContent = fs.readFileSync(CONFIG_PATH, 'utf8');
     const config = JSON5.parse(configContent);
     console.log('配置文件读取成功');
-    
+
     // 获取原生MongoDB连接以便直接插入数据
     const db = mongoose.connection.db;
-    
+
     // 迁移LLM模型
     if (config.llmModels && config.llmModels.length > 0) {
       console.log(`开始迁移 ${config.llmModels.length} 个LLM模型...`);
       const llmCollection = db.collection('llm_models');
-      
+
+      let count = 50;
       for (const model of config.llmModels) {
         try {
           const existing = await llmCollection.findOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
-          
+
           if (existing) {
             console.log(`LLM模型 ${model.model} 已存在，跳过`);
             continue;
           }
-          
+
           await llmCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
@@ -95,33 +96,36 @@ async function migrateConfig() {
             defaultConfig: model.defaultConfig || {},
             isActive: true,
             createTime: new Date(),
-            updateTime: new Date()
+            updateTime: new Date(),
+            sort: count
           });
-          
+
           console.log(`LLM模型 ${model.model} 迁移成功`);
         } catch (error) {
           console.error(`LLM模型 ${model.model} 迁移失败:`, error.message);
+        } finally {
+          count ++;
         }
       }
     }
-    
+
     // 迁移重排模型
     if (config.reRankModels && config.reRankModels.length > 0) {
       console.log(`开始迁移 ${config.reRankModels.length} 个重排模型...`);
       const reRankCollection = db.collection('rerank_models');
-      
+
       for (const model of config.reRankModels) {
         try {
           const existing = await reRankCollection.findOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
-          
+
           if (existing) {
             console.log(`重排模型 ${model.model} 已存在，跳过`);
             continue;
           }
-          
+
           await reRankCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
@@ -134,31 +138,31 @@ async function migrateConfig() {
             createTime: new Date(),
             updateTime: new Date()
           });
-          
+
           console.log(`重排模型 ${model.model} 迁移成功`);
         } catch (error) {
           console.error(`重排模型 ${model.model} 迁移失败:`, error.message);
         }
       }
     }
-    
+
     // 迁移TTS模型
     if (config.audioSpeechModels && config.audioSpeechModels.length > 0) {
       console.log(`开始迁移 ${config.audioSpeechModels.length} 个TTS模型...`);
       const ttsCollection = db.collection('tts_models');
-      
+
       for (const model of config.audioSpeechModels) {
         try {
           const existing = await ttsCollection.findOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
-          
+
           if (existing) {
             console.log(`TTS模型 ${model.model} 已存在，跳过`);
             continue;
           }
-          
+
           await ttsCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
@@ -170,25 +174,25 @@ async function migrateConfig() {
             createTime: new Date(),
             updateTime: new Date()
           });
-          
+
           console.log(`TTS模型 ${model.model} 迁移成功`);
         } catch (error) {
           console.error(`TTS模型 ${model.model} 迁移失败:`, error.message);
         }
       }
     }
-    
+
     // 迁移语音识别模型
     if (config.whisperModel) {
       console.log('开始迁移语音识别模型...');
       const whisperCollection = db.collection('whisper_models');
-      
+
       try {
         const existing = await whisperCollection.findOne({
           teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           model: config.whisperModel.model
         });
-        
+
         if (!existing) {
           await whisperCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
@@ -208,18 +212,18 @@ async function migrateConfig() {
         console.error('语音识别模型迁移失败:', error.message);
       }
     }
-    
+
     // 迁移OCR模型
     if (config.ocrModel) {
       console.log('开始迁移OCR模型...');
       const ocrCollection = db.collection('ocr_models');
-      
+
       try {
         const existing = await ocrCollection.findOne({
           teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           model: config.ocrModel.model
         });
-        
+
         if (!existing) {
           await ocrCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
@@ -241,7 +245,7 @@ async function migrateConfig() {
         console.error('OCR模型迁移失败:', error.message);
       }
     }
-    
+
     // 迁移系统配置
     const systemConfigCollection = db.collection('system_configs');
     const systemConfigs = [
@@ -261,14 +265,14 @@ async function migrateConfig() {
         description: '向量模型配置'
       }
     ];
-    
+
     for (const sysConfig of systemConfigs) {
       try {
         const existing = await systemConfigCollection.findOne({
           teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           configKey: sysConfig.configKey
         });
-        
+
         if (!existing) {
           await systemConfigCollection.insertOne({
             teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
@@ -286,9 +290,9 @@ async function migrateConfig() {
         console.error(`系统配置 ${sysConfig.configKey} 迁移失败:`, error.message);
       }
     }
-    
+
     console.log('模型配置迁移完成！');
-    
+
   } catch (error) {
     console.error('迁移失败:', error);
     process.exit(1);

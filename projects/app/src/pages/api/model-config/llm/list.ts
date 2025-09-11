@@ -38,11 +38,14 @@ export default async function handler(
     const [total, data] = await Promise.all([
       MongoLLMModel.countDocuments(filter),
       MongoLLMModel.find(filter)
-        .sort({ updateTime: -1 })
+        .sort({ sort: 1, createTime: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean()
     ]);
+
+    // 添加调试日志
+    console.log('查询到的数据示例:', data[0]);
 
     res.json({
       data,

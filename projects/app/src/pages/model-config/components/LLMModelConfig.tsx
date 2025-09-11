@@ -28,6 +28,10 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import LLMModelModal from './LLMModelModal';
 import type { LLMModelSchema } from '@fastgpt/global/core/model/type.d';
 
+interface LLMModelWithId extends LLMModelSchema {
+  _id: string;
+}
+
 // API 函数
 const getLLMModelList = async ({
   pageNum,
@@ -37,7 +41,7 @@ const getLLMModelList = async ({
   pageNum: number;
   pageSize: number;
   search?: string;
-}) => {
+}): Promise<any> => {
   const params = new URLSearchParams({
     page: pageNum.toString(),
     pageSize: pageSize.toString()
@@ -55,22 +59,21 @@ const getLLMModelList = async ({
   return response.json();
 };
 
-const LLMModelConfig = () => {
+const LLMModelConfig: React.FC = () => {
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editModel, setEditModel] = useState<LLMModelSchema | undefined>();
+  const [editModel, setEditModel] = useState<LLMModelWithId | undefined>();
   const [search, setSearch] = useState('');
 
   const {
     data: models = [],
-    loading,
+    isLoading,
     total,
     pageNum,
-    current,
     pageSize,
     Pagination,
     getData
-  } = usePagination<LLMModelSchema>({
+  } = usePagination<LLMModelWithId>({
     api: getLLMModelList,
     pageSize: 20,
     params: {
@@ -90,7 +93,7 @@ const LLMModelConfig = () => {
           title: '删除成功',
           status: 'success'
         });
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '删除失败'
     }
@@ -105,14 +108,14 @@ const LLMModelConfig = () => {
       }),
     {
       onSuccess() {
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '状态更新失败'
     }
   );
 
   const handleEdit = useCallback(
-    (model: LLMModelSchema) => {
+    (model: LLMModelWithId) => {
       setEditModel(model);
       onOpen();
     },
@@ -126,11 +129,11 @@ const LLMModelConfig = () => {
 
   const handleSuccess = useCallback(() => {
     onClose();
-    getData(current);
-  }, [onClose, getData, current]);
+    getData(pageNum);
+  }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(
-    (model: LLMModelSchema) => {
+    (model: LLMModelWithId) => {
       updateStatus({ id: model._id, isActive: !model.isActive });
     },
     [updateStatus]
@@ -144,7 +147,7 @@ const LLMModelConfig = () => {
           LLM模型配置
         </Text>
         <Button
-          leftIcon={<MyIcon name="common/add" w="14px" />}
+          leftIcon={<MyIcon name="common/addLight" w="14px" />}
           onClick={handleCreate}
           colorScheme="blue"
         >
@@ -156,7 +159,7 @@ const LLMModelConfig = () => {
       <Box mb={4}>
         <InputGroup maxW="300px">
           <InputLeftElement>
-            <MyIcon name="common/search" w="14px" color="myGray.500" />
+            <MyIcon name="common/searchLight" w="14px" color="myGray.500" />
           </InputLeftElement>
           <Input
             placeholder="搜索模型名称..."
@@ -178,6 +181,7 @@ const LLMModelConfig = () => {
             <Th>模型信息</Th>
             <Th>配置参数</Th>
             <Th>功能支持</Th>
+            <Th>排序</Th>
             <Th>状态</Th>
             <Th>操作</Th>
           </Tr>
@@ -228,6 +232,11 @@ const LLMModelConfig = () => {
                 </HStack>
               </Td>
               <Td>
+                <Text fontSize="sm" fontWeight="semibold">
+                  {model.sort}
+                </Text>
+              </Td>
+              <Td>
                 <Switch
                   isChecked={model.isActive}
                   onChange={() => handleToggleStatus(model)}
@@ -238,7 +247,7 @@ const LLMModelConfig = () => {
                 <HStack spacing={2}>
                   <Tooltip label="编辑">
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(model)}>
-                      <MyIcon name="common/edit" w="14px" />
+                      <MyIcon name="edit" w="14px" />
                     </Button>
                   </Tooltip>
                   <Tooltip label="删除">
@@ -246,7 +255,10 @@ const LLMModelConfig = () => {
                       size="sm"
                       variant="ghost"
                       colorScheme="red"
-                      onClick={() => openConfirm(() => deleteModel(model._id))()}
+                      onClick={() => {
+                        const deleteAction = () => deleteModel(model._id);
+                        openConfirm(deleteAction)();
+                      }}
                     >
                       <MyIcon name="common/trash" w="14px" />
                     </Button>

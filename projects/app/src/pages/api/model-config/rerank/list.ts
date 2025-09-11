@@ -1,26 +1,26 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoReRankModel } from '@fastgpt/service/core/model/schema';
-import type { RerankModelSchema } from '@fastgpt/global/core/model/type.d';
+import { MongoReRankModel } from '@fastgpt/service/core/model-config/rerank/schema';
+import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
-export type RerankModelListQuery = PaginationProps<{
+export type ReRankModelListQuery = PaginationProps<{
   search?: string;
   isActive?: boolean;
 }>;
 
-export type RerankModelListResponse = PaginationResponse<RerankModelSchema>;
+export type ReRankModelListResponse = PaginationResponse<ReRankModelSchema>;
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<RerankModelListResponse>
+  res: NextApiResponse<ReRankModelListResponse>
 ) {
   try {
     await connectToDatabase();
     const { teamId } = await authUserPer({ req, authToken: true });
 
-    const { page = 1, pageSize = 20, search, isActive } = req.query as RerankModelListQuery;
+    const { page = 1, pageSize = 20, search, isActive } = req.query as ReRankModelListQuery;
 
     const filter: any = { teamId };
 
@@ -38,7 +38,7 @@ export default async function handler(
     const [total, data] = await Promise.all([
       MongoReRankModel.countDocuments(filter),
       MongoReRankModel.find(filter)
-        .sort({ updateTime: -1 })
+        .sort({ createdAt: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean()

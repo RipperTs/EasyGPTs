@@ -31,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       customCQPrompt = '',
       customExtractPrompt = '',
       defaultSystemChatPrompt = '',
-      defaultConfig = {}
+      defaultConfig = {},
+      sort = 100
     } = req.body as CreateLLMModelParams;
 
     // 检查模型名是否已存在
@@ -72,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       customExtractPrompt,
       defaultSystemChatPrompt,
       defaultConfig,
-      isActive: true
+      isActive: true,
+      sort
     });
 
     res.json(newModel.toJSON());

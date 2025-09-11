@@ -25,6 +25,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import TTSModelModal from './TTSModelModal';
 import type { TTSModelSchema } from '@fastgpt/global/core/model/type.d';
 
 // API 函数
@@ -143,7 +144,7 @@ const TTSModelConfig = () => {
           TTS模型配置
         </Text>
         <Button
-          leftIcon={<MyIcon name="common/add" w="14px" />}
+          leftIcon={<MyIcon name="common/addLight" w="14px" />}
           onClick={handleCreate}
           colorScheme="blue"
         >
@@ -155,7 +156,7 @@ const TTSModelConfig = () => {
       <Box mb={4}>
         <InputGroup maxW="300px">
           <InputLeftElement>
-            <MyIcon name="common/search" w="14px" color="myGray.500" />
+            <MyIcon name="common/searchLight" w="14px" color="myGray.500" />
           </InputLeftElement>
           <Input
             placeholder="搜索模型名称..."
@@ -176,7 +177,6 @@ const TTSModelConfig = () => {
           <Tr>
             <Th>模型信息</Th>
             <Th>语音配置</Th>
-            <Th>请求配置</Th>
             <Th>定价</Th>
             <Th>状态</Th>
             <Th>操作</Th>
@@ -208,12 +208,6 @@ const TTSModelConfig = () => {
                       +{(model.voices?.length || 0) - 3}
                     </Tag>
                   )}
-                </Box>
-              </Td>
-              <Td>
-                <Box fontSize="sm">
-                  <Text>URL: {model.requestUrl}</Text>
-                  <Text>Headers: {Object.keys(model.requestHeader || {}).length} 个</Text>
                 </Box>
               </Td>
               <Td>
@@ -254,6 +248,9 @@ const TTSModelConfig = () => {
       <Box mt={4}>
         <Pagination />
       </Box>
+
+      {/* 模型配置弹窗 */}
+      {isOpen && <TTSModelModal model={editModel} onClose={onClose} onSuccess={handleSuccess} />}
 
       <ConfirmModal />
     </Box>

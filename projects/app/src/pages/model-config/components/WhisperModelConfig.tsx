@@ -147,7 +147,6 @@ const WhisperModelConfig = () => {
         <Thead>
           <Tr>
             <Th>模型信息</Th>
-            <Th>请求配置</Th>
             <Th>定价</Th>
             <Th>状态</Th>
             <Th>操作</Th>
@@ -165,12 +164,6 @@ const WhisperModelConfig = () => {
                     </Text>
                   </Box>
                 </Flex>
-              </Td>
-              <Td>
-                <Box fontSize="sm">
-                  <Text>URL: {model.requestUrl}</Text>
-                  <Text>Headers: {Object.keys(model.requestHeader || {}).length} 个</Text>
-                </Box>
               </Td>
               <Td>
                 <Text fontSize="sm">{model.charsPointsPrice} 点/千字符</Text>

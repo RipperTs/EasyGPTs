@@ -24,7 +24,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import type { RerankModelSchema } from '@fastgpt/global/core/model/type.d';
+import ReRankModelModal from './ReRankModelModal';
+import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 
 // API 函数
 const getRerankModelList = async ({
@@ -56,7 +57,7 @@ const getRerankModelList = async ({
 const RerankModelConfig = () => {
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editModel, setEditModel] = useState<RerankModelSchema | undefined>();
+  const [editModel, setEditModel] = useState<ReRankModelSchema | undefined>();
   const [search, setSearch] = useState('');
 
   const {
@@ -68,7 +69,7 @@ const RerankModelConfig = () => {
     pageSize,
     Pagination,
     getData
-  } = usePagination<RerankModelSchema>({
+  } = usePagination<ReRankModelSchema>({
     api: getRerankModelList,
     pageSize: 20,
     params: {
@@ -110,7 +111,7 @@ const RerankModelConfig = () => {
   );
 
   const handleEdit = useCallback(
-    (model: RerankModelSchema) => {
+    (model: ReRankModelSchema) => {
       setEditModel(model);
       onOpen();
     },
@@ -128,7 +129,7 @@ const RerankModelConfig = () => {
   }, [onClose, getData, current]);
 
   const handleToggleStatus = useCallback(
-    (model: RerankModelSchema) => {
+    (model: ReRankModelSchema) => {
       updateStatus({ id: model._id, isActive: !model.isActive });
     },
     [updateStatus]
@@ -196,7 +197,7 @@ const RerankModelConfig = () => {
               <Td>
                 <Box fontSize="sm">
                   <Text>URL: {model.requestUrl}</Text>
-                  <Text>Headers: {Object.keys(model.requestHeader || {}).length} 个</Text>
+                  <Text>Auth: {model.requestAuth ? '已配置' : '未配置'}</Text>
                 </Box>
               </Td>
               <Td>
@@ -237,6 +238,9 @@ const RerankModelConfig = () => {
       <Box mt={4}>
         <Pagination />
       </Box>
+
+      {/* 模型配置弹窗 */}
+      {isOpen && <ReRankModelModal model={editModel} onClose={onClose} onSuccess={handleSuccess} />}
 
       <ConfirmModal />
     </Box>

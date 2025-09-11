@@ -26,6 +26,7 @@ export interface LLMModelSchema extends MongoSchema {
   defaultSystemChatPrompt: string; // 对话默认携带的系统提示词
   defaultConfig: Record<string, any>; // 请求API时，挟带一些默认配置
   isActive: boolean; // 是否启用
+  sort: number; // 排序字段，数字越小越靠前
 }
 
 export interface ReRankModelSchema extends MongoSchema {
@@ -106,6 +107,7 @@ export interface CreateLLMModelParams {
   customExtractPrompt?: string;
   defaultSystemChatPrompt?: string;
   defaultConfig?: Record<string, any>;
+  sort?: number;
 }
 
 export interface UpdateLLMModelParams extends Partial<CreateLLMModelParams> {

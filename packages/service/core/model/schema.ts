@@ -133,6 +133,11 @@ const LLMModelSchema = new Schema({
     default: true,
     comment: '是否启用'
   },
+  sort: {
+    type: Number,
+    default: 100,
+    comment: '排序值，数字越小越靠前'
+  },
   createTime: {
     type: Date,
     default: () => new Date()

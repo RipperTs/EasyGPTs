@@ -48,18 +48,11 @@ export default async function handler(
 
       res.json(model.toJSON());
     } else if (req.method === 'DELETE') {
-      // 删除模型（软删除）
-      const model = await MongoLLMModel.findOneAndUpdate(
-        {
-          _id: id,
-          teamId
-        },
-        {
-          isActive: false,
-          updateTime: new Date()
-        },
-        { new: true }
-      );
+      // 删除模型（真删除）
+      const model = await MongoLLMModel.findOneAndDelete({
+        _id: id,
+        teamId
+      });
 
       if (!model) {
         return res.status(404).json({ message: '模型不存在' });
