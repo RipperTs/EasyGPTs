@@ -133,8 +133,24 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   content: string;
   showAnimation: boolean;
 }) {
+  const [isOpen, setIsOpen] = React.useState(0);
+
+  // 当思考内容完成输出时自动折叠
+  React.useEffect(() => {
+    if (showAnimation) {
+      // 正在生成时保持展开
+      setIsOpen(0);
+    } else {
+      // 生成完成后自动折叠
+      const timer = setTimeout(() => {
+        setIsOpen(-1);
+      }, 500); // 延迟500ms后自动折叠
+      return () => clearTimeout(timer);
+    }
+  }, [showAnimation]);
+
   return (
-    <Accordion allowToggle defaultIndex={0}>
+    <Accordion allowToggle index={isOpen} onChange={(index) => setIsOpen(index as number)}>
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
         <AccordionButton
           w={'auto'}
