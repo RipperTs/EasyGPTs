@@ -10,3 +10,5 @@ README.md
 yalc.lock
 testApi/
 *.local.*
+.cursor
+CLAUDE.md
