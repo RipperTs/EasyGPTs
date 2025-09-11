@@ -81,7 +81,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           storeWelcomeText: chat?.welcomeText,
           isPublicFetch: false
         }),
-        chatModels: getChatModelNameListByModules(nodes),
+        chatModels: await getChatModelNameListByModules(nodes),
         name: app.name,
         avatar: app.avatar,
         intro: app.intro,

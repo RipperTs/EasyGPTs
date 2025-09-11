@@ -11,12 +11,12 @@ const LLMModelSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   model: {
     type: String,
@@ -148,6 +148,10 @@ const LLMModelSchema = new Schema({
   }
 });
 
+LLMModelSchema.index({ updateTime: -1 });
+LLMModelSchema.index({ isActive: 1, sort: 1 });
+LLMModelSchema.index({ model: 1 });
+// 保留team相关索引以支持过渡期间的数据
 LLMModelSchema.index({ teamId: 1, updateTime: -1 });
 LLMModelSchema.index({ teamId: 1, isActive: 1 });
 
@@ -160,12 +164,12 @@ const ReRankModelSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   model: {
     type: String,
@@ -216,6 +220,10 @@ const ReRankModelSchema = new Schema({
   }
 });
 
+ReRankModelSchema.index({ updateTime: -1 });
+ReRankModelSchema.index({ isActive: 1, sort: 1 });
+ReRankModelSchema.index({ model: 1 });
+// 保留team相关索引以支持过渡期间的数据
 ReRankModelSchema.index({ teamId: 1, updateTime: -1 });
 ReRankModelSchema.index({ teamId: 1, isActive: 1 });
 
@@ -228,12 +236,12 @@ const TTSModelSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   model: {
     type: String,
@@ -289,6 +297,10 @@ const TTSModelSchema = new Schema({
   }
 });
 
+TTSModelSchema.index({ updateTime: -1 });
+TTSModelSchema.index({ isActive: 1, sort: 1 });
+TTSModelSchema.index({ model: 1 });
+// 保留team相关索引以支持过渡期间的数据
 TTSModelSchema.index({ teamId: 1, updateTime: -1 });
 TTSModelSchema.index({ teamId: 1, isActive: 1 });
 
@@ -301,12 +313,12 @@ const WhisperModelSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   model: {
     type: String,
@@ -357,6 +369,10 @@ const WhisperModelSchema = new Schema({
   }
 });
 
+WhisperModelSchema.index({ updateTime: -1 });
+WhisperModelSchema.index({ isActive: 1, sort: 1 });
+WhisperModelSchema.index({ model: 1 });
+// 保留team相关索引以支持过渡期间的数据
 WhisperModelSchema.index({ teamId: 1, updateTime: -1 });
 WhisperModelSchema.index({ teamId: 1, isActive: 1 });
 
@@ -369,12 +385,12 @@ const OCRModelSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   model: {
     type: String,
@@ -425,6 +441,10 @@ const OCRModelSchema = new Schema({
   }
 });
 
+OCRModelSchema.index({ updateTime: -1 });
+OCRModelSchema.index({ isActive: 1, sort: 1 });
+OCRModelSchema.index({ model: 1 });
+// 保留team相关索引以支持过渡期间的数据
 OCRModelSchema.index({ teamId: 1, updateTime: -1 });
 OCRModelSchema.index({ teamId: 1, isActive: 1 });
 
@@ -437,12 +457,12 @@ const SystemConfigSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
-    required: true
+    required: false
   },
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: false
   },
   configKey: {
     type: String,

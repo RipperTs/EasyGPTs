@@ -127,15 +127,22 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
   });
 
   const { runAsync: submitData, loading } = useRequest2(
-    (data: CreateLLMModelParams) => {
+    async (data: CreateLLMModelParams) => {
       const url = isEdit ? `/api/model-config/llm/${model!._id}` : '/api/model-config/llm/create';
       const method = isEdit ? 'PUT' : 'POST';
 
-      return fetch(url, {
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+      }
+
+      return response.json();
     },
     {
       onSuccess() {
@@ -145,13 +152,41 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
         });
         onSuccess();
       },
-      errorToast: isEdit ? '更新失败' : '创建失败'
+      onError(error) {
+        console.error('提交失败:', error);
+      }
     }
   );
 
   const onSubmit = handleSubmit(async (data) => {
-    console.log('表单提交数据:', data);
-    await submitData(data);
+    try {
+      // 确保数值类型正确
+      const processedData = {
+        ...data,
+        maxContext: Number(data.maxContext),
+        maxResponse: Number(data.maxResponse),
+        quoteMaxToken: Number(data.quoteMaxToken),
+        maxTemperature: Number(data.maxTemperature),
+        charsPointsPrice: Number(data.charsPointsPrice || 0),
+        sort: Number(data.sort || 100),
+        // 确保布尔值正确
+        censor: Boolean(data.censor),
+        vision: Boolean(data.vision),
+        reasoning: Boolean(data.reasoning),
+        datasetProcess: Boolean(data.datasetProcess),
+        usedInClassify: Boolean(data.usedInClassify),
+        usedInExtractFields: Boolean(data.usedInExtractFields),
+        usedInToolCall: Boolean(data.usedInToolCall),
+        usedInQueryExtension: Boolean(data.usedInQueryExtension),
+        toolChoice: Boolean(data.toolChoice),
+        functionCall: Boolean(data.functionCall)
+      };
+
+      await submitData(processedData);
+    } catch (error) {
+      // 错误已经在 useRequest2 的 onError 中处理，这里只需要记录日志
+      console.error('表单提交错误:', error);
+    }
   });
 
   const booleanFields = [
@@ -217,9 +252,10 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl>
                     <FormLabel>价格(积分/1k tokens)</FormLabel>
-                    <NumberInput>
+                    <NumberInput min={0}>
                       <NumberInputField
-                        {...register('charsPointsPrice', { valueAsNumber: true })}
+                        {...register('charsPointsPrice', { valueAsNumber: true, min: 0 })}
+                        placeholder="0"
                       />
                     </NumberInput>
                   </FormControl>
@@ -227,9 +263,9 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl>
                     <FormLabel>排序值</FormLabel>
-                    <NumberInput>
+                    <NumberInput min={0}>
                       <NumberInputField
-                        {...register('sort', { valueAsNumber: true })}
+                        {...register('sort', { valueAsNumber: true, min: 0 })}
                         placeholder="数字越小越靠前，默认100"
                       />
                     </NumberInput>
@@ -247,12 +283,14 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl isRequired>
                     <FormLabel>最大上下文</FormLabel>
-                    <NumberInput>
+                    <NumberInput min={1}>
                       <NumberInputField
                         {...register('maxContext', {
                           required: '最大上下文不能为空',
-                          valueAsNumber: true
+                          valueAsNumber: true,
+                          min: 1
                         })}
+                        placeholder="16000"
                       />
                     </NumberInput>
                   </FormControl>
@@ -260,12 +298,14 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl isRequired>
                     <FormLabel>最大回复</FormLabel>
-                    <NumberInput>
+                    <NumberInput min={1}>
                       <NumberInputField
                         {...register('maxResponse', {
                           required: '最大回复不能为空',
-                          valueAsNumber: true
+                          valueAsNumber: true,
+                          min: 1
                         })}
+                        placeholder="4000"
                       />
                     </NumberInput>
                   </FormControl>
@@ -273,12 +313,14 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem>
                   <FormControl isRequired>
                     <FormLabel>最大引用Token</FormLabel>
-                    <NumberInput>
+                    <NumberInput min={1}>
                       <NumberInputField
                         {...register('quoteMaxToken', {
                           required: '最大引用Token不能为空',
-                          valueAsNumber: true
+                          valueAsNumber: true,
+                          min: 1
                         })}
+                        placeholder="13000"
                       />
                     </NumberInput>
                   </FormControl>
@@ -290,8 +332,11 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                       <NumberInputField
                         {...register('maxTemperature', {
                           required: '最大温度不能为空',
-                          valueAsNumber: true
+                          valueAsNumber: true,
+                          min: 0,
+                          max: 2
                         })}
+                        placeholder="1.0"
                       />
                     </NumberInput>
                   </FormControl>

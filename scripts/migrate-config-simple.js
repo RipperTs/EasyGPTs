@@ -70,8 +70,6 @@ async function migrateConfig() {
           }
 
           await llmCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             model: model.model,
             name: model.name,
             avatar: model.avatar || '/imgs/model/openai.svg',

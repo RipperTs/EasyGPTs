@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
 import type { UpdateLLMModelParams, LLMModelSchema } from '@fastgpt/global/core/model/type.d';
 
@@ -10,15 +9,11 @@ export default async function handler(
 ) {
   try {
     await connectToDatabase();
-    const { teamId } = await authUserPer({ req, authToken: true });
     const { id } = req.query;
 
     if (req.method === 'GET') {
-      // 获取单个模型
-      const model = await MongoLLMModel.findOne({
-        _id: id,
-        teamId
-      });
+      // 获取单个模型（系统级）
+      const model = await MongoLLMModel.findById(id);
 
       if (!model) {
         return res.status(404).json({ message: '模型不存在' });
@@ -26,15 +21,13 @@ export default async function handler(
 
       res.json(model.toJSON());
     } else if (req.method === 'PUT') {
-      // 更新模型
+      // 更新模型（系统级）
+      console.log('更新模型请求数据:', req.body);
       const updateData = req.body as Partial<UpdateLLMModelParams>;
       delete (updateData as any).id;
 
-      const model = await MongoLLMModel.findOneAndUpdate(
-        {
-          _id: id,
-          teamId
-        },
+      const model = await MongoLLMModel.findByIdAndUpdate(
+        id,
         {
           ...updateData,
           updateTime: new Date()
@@ -48,11 +41,8 @@ export default async function handler(
 
       res.json(model.toJSON());
     } else if (req.method === 'DELETE') {
-      // 删除模型（真删除）
-      const model = await MongoLLMModel.findOneAndDelete({
-        _id: id,
-        teamId
-      });
+      // 删除模型（系统级，真删除）
+      const model = await MongoLLMModel.findByIdAndDelete(id);
 
       if (!model) {
         return res.status(404).json({ message: '模型不存在' });

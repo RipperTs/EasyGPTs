@@ -167,16 +167,17 @@ export const pushGenerateVectorUsage = ({
 export const pushQuestionGuideUsage = ({
   tokens,
   teamId,
-  tmbId
+  tmbId,
+  model
 }: {
   tokens: number;
   teamId: string;
   tmbId: string;
+  model: string;
 }) => {
-  const qgModel = global.llmModels[0];
   const { totalPoints, modelName } = formatModelChars2Points({
     tokens,
-    model: qgModel.model,
+    model: model,
     modelType: ModelTypeEnum.llm
   });
 

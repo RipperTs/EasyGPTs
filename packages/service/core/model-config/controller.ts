@@ -43,115 +43,102 @@ export const loadConfigFile = () => {
   }
 };
 
-// 初始化LLM模型配置
-export const initLLMModels = async (teamId: string, tmbId: string) => {
+// 初始化LLM模型配置（系统级）
+export const initLLMModels = async () => {
   const config = loadConfigFile();
   if (!config?.llmModels) return;
 
-  const existingModels = await MongoLLMModel.find({ teamId });
+  const existingModels = await MongoLLMModel.find({});
   const existingModelKeys = new Set(existingModels.map((m) => m.model));
 
   for (const modelConfig of config.llmModels) {
     if (!existingModelKeys.has(modelConfig.model)) {
       await MongoLLMModel.create({
         ...modelConfig,
-        teamId,
-        tmbId,
         isActive: true
       });
     }
   }
 };
 
-// 初始化ReRank模型配置
-export const initReRankModels = async (teamId: string, tmbId: string) => {
+// 初始化ReRank模型配置（系统级）
+export const initReRankModels = async () => {
   const config = loadConfigFile();
   if (!config?.reRankModels) return;
 
-  const existingModels = await MongoReRankModel.find({ teamId });
+  const existingModels = await MongoReRankModel.find({});
   const existingModelKeys = new Set(existingModels.map((m) => m.model));
 
   for (const modelConfig of config.reRankModels) {
     if (!existingModelKeys.has(modelConfig.model)) {
       await MongoReRankModel.create({
         ...modelConfig,
-        teamId,
-        tmbId,
         isActive: true
       });
     }
   }
 };
 
-// 初始化TTS模型配置
-export const initTTSModels = async (teamId: string, tmbId: string) => {
+// 初始化TTS模型配置（系统级）
+export const initTTSModels = async () => {
   const config = loadConfigFile();
   if (!config?.audioSpeechModels) return;
 
-  const existingModels = await MongoTTSModel.find({ teamId });
+  const existingModels = await MongoTTSModel.find({});
   const existingModelKeys = new Set(existingModels.map((m) => m.model));
 
   for (const modelConfig of config.audioSpeechModels) {
     if (!existingModelKeys.has(modelConfig.model)) {
       await MongoTTSModel.create({
         ...modelConfig,
-        teamId,
-        tmbId,
         isActive: true
       });
     }
   }
 };
 
-// 初始化Whisper模型配置
-export const initWhisperModels = async (teamId: string, tmbId: string) => {
+// 初始化Whisper模型配置（系统级）
+export const initWhisperModels = async () => {
   const config = loadConfigFile();
   if (!config?.whisperModel) return;
 
   const existingModel = await MongoWhisperModel.findOne({
-    teamId,
     model: config.whisperModel.model
   });
 
   if (!existingModel) {
     await MongoWhisperModel.create({
       ...config.whisperModel,
-      teamId,
-      tmbId,
       isActive: true
     });
   }
 };
 
-// 初始化OCR模型配置
-export const initOCRModels = async (teamId: string, tmbId: string) => {
+// 初始化OCR模型配置（系统级）
+export const initOCRModels = async () => {
   const config = loadConfigFile();
   if (!config?.ocrModel) return;
 
-  const existingModel = await MongoOCRModel.findOne({ teamId, model: config.ocrModel.model });
+  const existingModel = await MongoOCRModel.findOne({ model: config.ocrModel.model });
 
   if (!existingModel) {
     await MongoOCRModel.create({
       ...config.ocrModel,
-      teamId,
-      tmbId,
       isActive: true
     });
   }
 };
 
-// 初始化系统配置
-export const initSystemConfigs = async (teamId: string, tmbId: string) => {
+// 初始化系统配置（系统级）
+export const initSystemConfigs = async () => {
   const config = loadConfigFile();
   if (!config) return;
 
   // 初始化系统环境配置
   if (config.systemEnv) {
-    const existingConfig = await MongoSystemConfig.findOne({ teamId, configKey: 'systemEnv' });
+    const existingConfig = await MongoSystemConfig.findOne({ configKey: 'systemEnv' });
     if (!existingConfig) {
       await MongoSystemConfig.create({
-        teamId,
-        tmbId,
         configKey: 'systemEnv',
         configValue: config.systemEnv,
         description: '系统环境配置',
@@ -162,11 +149,9 @@ export const initSystemConfigs = async (teamId: string, tmbId: string) => {
 
   // 初始化前端配置
   if (config.feConfigs) {
-    const existingConfig = await MongoSystemConfig.findOne({ teamId, configKey: 'feConfigs' });
+    const existingConfig = await MongoSystemConfig.findOne({ configKey: 'feConfigs' });
     if (!existingConfig) {
       await MongoSystemConfig.create({
-        teamId,
-        tmbId,
         configKey: 'feConfigs',
         configValue: config.feConfigs,
         description: '前端配置',
@@ -176,49 +161,46 @@ export const initSystemConfigs = async (teamId: string, tmbId: string) => {
   }
 };
 
-// 初始化所有配置
-export const initAllConfigs = async (teamId: string, tmbId: string) => {
+// 初始化所有配置（系统级）
+export const initAllConfigs = async () => {
   await Promise.all([
-    initLLMModels(teamId, tmbId),
-    initReRankModels(teamId, tmbId),
-    initTTSModels(teamId, tmbId),
-    initWhisperModels(teamId, tmbId),
-    initOCRModels(teamId, tmbId),
-    initSystemConfigs(teamId, tmbId)
+    initLLMModels(),
+    initReRankModels(),
+    initTTSModels(),
+    initWhisperModels(),
+    initOCRModels(),
+    initSystemConfigs()
   ]);
 };
 
-// 获取当前活跃的LLM模型配置
-export const getActiveLLMModels = async (teamId: string): Promise<LLMModelSchema[]> => {
-  return MongoLLMModel.find({ teamId, isActive: true }).lean();
+// 获取当前活跃的LLM模型配置（系统级）
+export const getActiveLLMModels = async (): Promise<LLMModelSchema[]> => {
+  return MongoLLMModel.find({ isActive: true }).sort({ sort: 1, createTime: -1 }).lean();
 };
 
-// 获取当前活跃的ReRank模型配置
-export const getActiveReRankModels = async (teamId: string): Promise<ReRankModelSchema[]> => {
-  return MongoReRankModel.find({ teamId, isActive: true }).lean();
+// 获取当前活跃的ReRank模型配置（系统级）
+export const getActiveReRankModels = async (): Promise<ReRankModelSchema[]> => {
+  return MongoReRankModel.find({ isActive: true }).sort({ sort: 1, createTime: -1 }).lean();
 };
 
-// 获取当前活跃的TTS模型配置
-export const getActiveTTSModels = async (teamId: string): Promise<TTSModelSchema[]> => {
-  return MongoTTSModel.find({ teamId, isActive: true }).lean();
+// 获取当前活跃的TTS模型配置（系统级）
+export const getActiveTTSModels = async (): Promise<TTSModelSchema[]> => {
+  return MongoTTSModel.find({ isActive: true }).sort({ sort: 1, createTime: -1 }).lean();
 };
 
-// 获取当前活跃的Whisper模型配置
-export const getActiveWhisperModel = async (teamId: string): Promise<WhisperModelSchema | null> => {
-  return MongoWhisperModel.findOne({ teamId, isActive: true }).lean();
+// 获取当前活跃的Whisper模型配置（系统级）
+export const getActiveWhisperModel = async (): Promise<WhisperModelSchema | null> => {
+  return MongoWhisperModel.findOne({ isActive: true }).lean();
 };
 
-// 获取当前活跃的OCR模型配置
-export const getActiveOCRModel = async (teamId: string): Promise<OCRModelSchema | null> => {
-  return MongoOCRModel.findOne({ teamId, isActive: true }).lean();
+// 获取当前活跃的OCR模型配置（系统级）
+export const getActiveOCRModel = async (): Promise<OCRModelSchema | null> => {
+  return MongoOCRModel.findOne({ isActive: true }).lean();
 };
 
-// 获取系统配置
-export const getSystemConfig = async (
-  teamId: string,
-  configKey: string
-): Promise<SystemConfigSchema | null> => {
-  return MongoSystemConfig.findOne({ teamId, configKey, isActive: true }).lean();
+// 获取系统配置（系统级）
+export const getSystemConfig = async (configKey: string): Promise<SystemConfigSchema | null> => {
+  return MongoSystemConfig.findOne({ configKey, isActive: true }).lean();
 };
 
 // 刷新配置缓存

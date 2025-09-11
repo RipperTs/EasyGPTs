@@ -1,13 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
 import type { CreateLLMModelParams, LLMModelSchema } from '@fastgpt/global/core/model/type.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<LLMModelSchema>) {
   try {
     await connectToDatabase();
-    const { teamId, tmbId } = await authUserPer({ req, authToken: true });
+
+    console.log('创建模型请求数据:', req.body);
 
     const {
       model,
@@ -35,9 +35,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       sort = 100
     } = req.body as CreateLLMModelParams;
 
-    // 检查模型名是否已存在
+    // 验证必填字段
+    if (
+      !model ||
+      !name ||
+      !maxContext ||
+      !maxResponse ||
+      !quoteMaxToken ||
+      maxTemperature === undefined
+    ) {
+      return res.status(400).json({
+        error: '缺少必填字段'
+      } as any);
+    }
+
+    // 检查模型名是否已存在（系统级）
     const existingModel = await MongoLLMModel.findOne({
-      teamId,
       model,
       isActive: true
     });
@@ -49,8 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const newModel = await MongoLLMModel.create({
-      teamId,
-      tmbId,
       model,
       name,
       avatar,

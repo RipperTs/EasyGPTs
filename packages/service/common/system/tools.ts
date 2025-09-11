@@ -36,12 +36,12 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   global.ocrModel = config.ocrModel as OcrModelTyoe;
 };
 
-// 从数据库初始化FastGPT配置
-export const initFastGPTConfigFromDB = async (teamId?: string) => {
+// 从数据库初始化FastGPT配置（系统级）
+export const initFastGPTConfigFromDB = async () => {
   try {
     console.log('开始从数据库加载模型配置...');
 
-    const config = await getLegacyConfig(teamId);
+    const config = await getLegacyConfig();
 
     if (!config) {
       console.warn('数据库中未找到配置，将使用默认配置');

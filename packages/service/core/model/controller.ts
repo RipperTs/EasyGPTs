@@ -41,20 +41,17 @@ export function clearModelCache(): void {
   modelCache = null;
 }
 
-// 获取所有活跃的LLM模型
-export async function getAllLLMModels(teamId?: string): Promise<LLMModelSchema[]> {
+// 获取所有活跃的LLM模型（系统级）
+export async function getAllLLMModels(): Promise<LLMModelSchema[]> {
   try {
     // 如果有缓存且有效，直接返回
     if (isCacheValid() && modelCache?.llmModels) {
       return modelCache.llmModels;
     }
 
-    const filter: any = { isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const models = await MongoLLMModel.find(filter).sort({ updateTime: -1 }).lean();
+    const models = await MongoLLMModel.find({ isActive: true })
+      .sort({ sort: 1, createTime: -1 })
+      .lean();
 
     // 更新缓存
     if (!modelCache) {
@@ -78,62 +75,55 @@ export async function getAllLLMModels(teamId?: string): Promise<LLMModelSchema[]
   }
 }
 
-// 根据功能获取LLM模型
+// 根据功能获取LLM模型（系统级）
 export async function getLLMModelsByFeature(
-  feature: keyof LLMModelSchema,
-  teamId?: string
+  feature: keyof LLMModelSchema
 ): Promise<LLMModelSchema[]> {
-  const allModels = await getAllLLMModels(teamId);
+  const allModels = await getAllLLMModels();
   return allModels.filter((model) => model[feature] === true);
 }
 
-// 获取支持数据集处理的模型
-export async function getDatasetProcessModels(teamId?: string): Promise<LLMModelSchema[]> {
-  return getLLMModelsByFeature('datasetProcess', teamId);
+// 获取支持数据集处理的模型（系统级）
+export async function getDatasetProcessModels(): Promise<LLMModelSchema[]> {
+  return getLLMModelsByFeature('datasetProcess');
 }
 
-// 获取支持分类的模型
-export async function getClassifyModels(teamId?: string): Promise<LLMModelSchema[]> {
-  return getLLMModelsByFeature('usedInClassify', teamId);
+// 获取支持分类的模型（系统级）
+export async function getClassifyModels(): Promise<LLMModelSchema[]> {
+  return getLLMModelsByFeature('usedInClassify');
 }
 
-// 获取支持内容提取的模型
-export async function getExtractFieldsModels(teamId?: string): Promise<LLMModelSchema[]> {
-  return getLLMModelsByFeature('usedInExtractFields', teamId);
+// 获取支持内容提取的模型（系统级）
+export async function getExtractFieldsModels(): Promise<LLMModelSchema[]> {
+  return getLLMModelsByFeature('usedInExtractFields');
 }
 
-// 获取支持工具调用的模型
-export async function getToolCallModels(teamId?: string): Promise<LLMModelSchema[]> {
-  return getLLMModelsByFeature('usedInToolCall', teamId);
+// 获取支持工具调用的模型（系统级）
+export async function getToolCallModels(): Promise<LLMModelSchema[]> {
+  return getLLMModelsByFeature('usedInToolCall');
 }
 
-// 获取支持查询扩展的模型
-export async function getQueryExtensionModels(teamId?: string): Promise<LLMModelSchema[]> {
-  return getLLMModelsByFeature('usedInQueryExtension', teamId);
+// 获取支持查询扩展的模型（系统级）
+export async function getQueryExtensionModels(): Promise<LLMModelSchema[]> {
+  return getLLMModelsByFeature('usedInQueryExtension');
 }
 
-// 获取特定LLM模型
-export async function getLLMModel(
-  modelName: string,
-  teamId?: string
-): Promise<LLMModelSchema | null> {
-  const allModels = await getAllLLMModels(teamId);
+// 获取特定LLM模型（系统级）
+export async function getLLMModel(modelName: string): Promise<LLMModelSchema | null> {
+  const allModels = await getAllLLMModels();
   return allModels.find((model) => model.model === modelName) || null;
 }
 
-// 获取所有重排模型
-export async function getAllReRankModels(teamId?: string): Promise<ReRankModelSchema[]> {
+// 获取所有重排模型（系统级）
+export async function getAllReRankModels(): Promise<ReRankModelSchema[]> {
   try {
     if (isCacheValid() && modelCache?.reRankModels) {
       return modelCache.reRankModels;
     }
 
-    const filter: any = { isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const models = await MongoReRankModel.find(filter).sort({ updateTime: -1 }).lean();
+    const models = await MongoReRankModel.find({ isActive: true })
+      .sort({ sort: 1, createTime: -1 })
+      .lean();
 
     if (!modelCache) {
       modelCache = {
@@ -156,19 +146,16 @@ export async function getAllReRankModels(teamId?: string): Promise<ReRankModelSc
   }
 }
 
-// 获取所有TTS模型
-export async function getAllTTSModels(teamId?: string): Promise<TTSModelSchema[]> {
+// 获取所有TTS模型（系统级）
+export async function getAllTTSModels(): Promise<TTSModelSchema[]> {
   try {
     if (isCacheValid() && modelCache?.ttsModels) {
       return modelCache.ttsModels;
     }
 
-    const filter: any = { isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const models = await MongoTTSModel.find(filter).sort({ updateTime: -1 }).lean();
+    const models = await MongoTTSModel.find({ isActive: true })
+      .sort({ sort: 1, createTime: -1 })
+      .lean();
 
     if (!modelCache) {
       modelCache = {
@@ -191,19 +178,14 @@ export async function getAllTTSModels(teamId?: string): Promise<TTSModelSchema[]
   }
 }
 
-// 获取Whisper模型
-export async function getWhisperModel(teamId?: string): Promise<WhisperModelSchema | null> {
+// 获取Whisper模型（系统级）
+export async function getWhisperModel(): Promise<WhisperModelSchema | null> {
   try {
     if (isCacheValid() && modelCache?.whisperModels && modelCache.whisperModels.length > 0) {
       return modelCache.whisperModels[0];
     }
 
-    const filter: any = { isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const model = await MongoWhisperModel.findOne(filter).lean();
+    const model = await MongoWhisperModel.findOne({ isActive: true }).lean();
 
     if (!modelCache) {
       modelCache = {
@@ -226,19 +208,14 @@ export async function getWhisperModel(teamId?: string): Promise<WhisperModelSche
   }
 }
 
-// 获取OCR模型
-export async function getOCRModel(teamId?: string): Promise<OCRModelSchema | null> {
+// 获取OCR模型（系统级）
+export async function getOCRModel(): Promise<OCRModelSchema | null> {
   try {
     if (isCacheValid() && modelCache?.ocrModels && modelCache.ocrModels.length > 0) {
       return modelCache.ocrModels[0];
     }
 
-    const filter: any = { isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const model = await MongoOCRModel.findOne(filter).lean();
+    const model = await MongoOCRModel.findOne({ isActive: true }).lean();
 
     if (!modelCache) {
       modelCache = {
@@ -261,19 +238,14 @@ export async function getOCRModel(teamId?: string): Promise<OCRModelSchema | nul
   }
 }
 
-// 获取系统配置
-export async function getSystemConfig(configKey: string, teamId?: string): Promise<any> {
+// 获取系统配置（系统级）
+export async function getSystemConfig(configKey: string): Promise<any> {
   try {
     if (isCacheValid() && modelCache?.systemConfigs && modelCache.systemConfigs[configKey]) {
       return modelCache.systemConfigs[configKey];
     }
 
-    const filter: any = { configKey, isActive: true };
-    if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    const config = await MongoSystemConfig.findOne(filter).lean();
+    const config = await MongoSystemConfig.findOne({ configKey, isActive: true }).lean();
 
     if (!modelCache) {
       modelCache = {
@@ -299,19 +271,19 @@ export async function getSystemConfig(configKey: string, teamId?: string): Promi
   }
 }
 
-// 获取前端配置
-export async function getFeConfigs(teamId?: string): Promise<any> {
-  return getSystemConfig('feConfigs', teamId);
+// 获取前端配置（系统级）
+export async function getFeConfigs(): Promise<any> {
+  return getSystemConfig('feConfigs');
 }
 
-// 获取系统环境配置
-export async function getSystemEnv(teamId?: string): Promise<any> {
-  return getSystemConfig('systemEnv', teamId);
+// 获取系统环境配置（系统级）
+export async function getSystemEnv(): Promise<any> {
+  return getSystemConfig('systemEnv');
 }
 
-// 获取向量模型配置
-export async function getVectorModels(teamId?: string): Promise<any[]> {
-  const vectorModels = await getSystemConfig('vectorModels', teamId);
+// 获取向量模型配置（系统级）
+export async function getVectorModels(): Promise<any[]> {
+  const vectorModels = await getSystemConfig('vectorModels');
   return vectorModels || [];
 }
 
@@ -320,8 +292,8 @@ export function updateModelCache(): void {
   clearModelCache();
 }
 
-// 获取兼容的旧格式配置（用于过渡期间）
-export async function getLegacyConfig(teamId?: string): Promise<any> {
+// 获取兼容的旧格式配置（用于过渡期间，系统级）
+export async function getLegacyConfig(): Promise<any> {
   try {
     const [
       llmModels,
@@ -333,14 +305,14 @@ export async function getLegacyConfig(teamId?: string): Promise<any> {
       systemEnv,
       vectorModels
     ] = await Promise.all([
-      getAllLLMModels(teamId),
-      getAllReRankModels(teamId),
-      getAllTTSModels(teamId),
-      getWhisperModel(teamId),
-      getOCRModel(teamId),
-      getFeConfigs(teamId),
-      getSystemEnv(teamId),
-      getVectorModels(teamId)
+      getAllLLMModels(),
+      getAllReRankModels(),
+      getAllTTSModels(),
+      getWhisperModel(),
+      getOCRModel(),
+      getFeConfigs(),
+      getSystemEnv(),
+      getVectorModels()
     ]);
 
     return {

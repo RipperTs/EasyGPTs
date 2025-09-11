@@ -74,7 +74,7 @@ async function handler(
         storeWelcomeText: chat?.welcomeText,
         isPublicFetch: false
       }),
-      chatModels: getChatModelNameListByModules(nodes),
+      chatModels: await getChatModelNameListByModules(nodes),
       name: app.name,
       avatar: app.avatar,
       intro: app.intro,
