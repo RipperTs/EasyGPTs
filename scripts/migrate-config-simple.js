@@ -60,7 +60,6 @@ async function migrateConfig() {
       for (const model of config.llmModels) {
         try {
           const existing = await llmCollection.findOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
 
@@ -115,7 +114,6 @@ async function migrateConfig() {
       for (const model of config.reRankModels) {
         try {
           const existing = await reRankCollection.findOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
 
@@ -129,7 +127,7 @@ async function migrateConfig() {
             name: model.name,
             charsPointsPrice: model.charsPointsPrice || 0,
             requestUrl: model.requestUrl,
-            auth: model.requestAuth,
+            apiKey: model.requestAuth,
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()
@@ -150,7 +148,6 @@ async function migrateConfig() {
       for (const model of config.audioSpeechModels) {
         try {
           const existing = await ttsCollection.findOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
             model: model.model
           });
 
@@ -162,8 +159,12 @@ async function migrateConfig() {
           await ttsCollection.insertOne({
             model: model.model,
             name: model.name,
+            avatar: model.avatar || '/imgs/model/tts.svg',
             charsPointsPrice: model.charsPointsPrice || 0,
+            requestUrl: model.requestUrl,
+            requestHeader: model.requestHeader || {},
             voices: model.voices || [],
+            defaultConfig: model.defaultConfig || {},
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()
@@ -183,7 +184,6 @@ async function migrateConfig() {
 
       try {
         const existing = await whisperCollection.findOne({
-          teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           model: config.whisperModel.model
         });
 
@@ -191,7 +191,11 @@ async function migrateConfig() {
           await whisperCollection.insertOne({
             model: config.whisperModel.model,
             name: config.whisperModel.name,
+            avatar: config.whisperModel.avatar || '/imgs/model/whisper.svg',
             charsPointsPrice: config.whisperModel.charsPointsPrice || 0,
+            requestUrl: config.whisperModel.requestUrl,
+            requestHeader: config.whisperModel.requestHeader || {},
+            defaultConfig: config.whisperModel.defaultConfig || {},
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()
@@ -212,7 +216,6 @@ async function migrateConfig() {
 
       try {
         const existing = await ocrCollection.findOne({
-          teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           model: config.ocrModel.model
         });
 
@@ -220,9 +223,11 @@ async function migrateConfig() {
           await ocrCollection.insertOne({
             model: config.ocrModel.model,
             name: config.ocrModel.name,
+            avatar: config.ocrModel.avatar || '/imgs/model/ocr.svg',
             charsPointsPrice: config.ocrModel.charsPointsPrice || 0,
             requestUrl: config.ocrModel.requestUrl,
-            auth: config.ocrModel.requestAuth,
+            requestHeader: config.ocrModel.requestHeader || {},
+            defaultConfig: config.ocrModel.defaultConfig || {},
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()
@@ -259,14 +264,11 @@ async function migrateConfig() {
     for (const sysConfig of systemConfigs) {
       try {
         const existing = await systemConfigCollection.findOne({
-          teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
           configKey: sysConfig.configKey
         });
 
         if (!existing) {
           await systemConfigCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             ...sysConfig,
             isActive: true,
             createTime: new Date(),

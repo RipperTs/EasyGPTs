@@ -1,5 +1,6 @@
 import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
+import { MongoReRankModel } from '../../model/rerankSchema';
 
 type PostReRankResponse = {
   id: string;
@@ -10,14 +11,19 @@ type PostReRankResponse = {
 };
 type ReRankCallResult = { id: string; score?: number }[];
 
-export function reRankRecall({
+export async function reRankRecall({
   query,
   documents
 }: {
   query: string;
   documents: { id: string; text: string }[];
 }): Promise<ReRankCallResult> {
-  const model = global.reRankModels[0];
+  // 从数据库查询已启用的重排模型
+  const model = await MongoReRankModel.findOne(
+    { isActive: true },
+    {},
+    { sort: { updateTime: -1 } }
+  );
 
   if (!model || !model?.requestUrl) {
     return Promise.reject('no rerank model');
