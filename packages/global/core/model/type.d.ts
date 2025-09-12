@@ -64,6 +64,21 @@ export interface OCRModelSchema extends MongoSchema {
   isActive: boolean; // 是否启用
 }
 
+export interface EmbeddingModelSchema extends MongoSchema {
+  model: string; // 模型名（与OneAPI对应）
+  name: string; // 模型展示名
+  avatar: string; // logo
+  charsPointsPrice: number; // n积分/1k token
+  defaultToken: number; // 默认文本分割时候的 token
+  maxToken: number; // 最大 token
+  weight: number; // 优先训练权重
+  defaultConfig: Record<string, any>; // 自定义额外参数
+  dbConfig: Record<string, any>; // 存储时的额外参数
+  queryConfig: Record<string, any>; // 查询时的额外参数
+  isActive: boolean; // 是否启用
+  sort: number; // 排序字段，数字越小越靠前
+}
+
 export interface SystemConfigSchema extends MongoSchema {
   configKey: string; // 配置键名
   configValue: Record<string, any>; // 配置值
@@ -148,6 +163,24 @@ export interface CreateOCRModelParams {
 }
 
 export interface UpdateOCRModelParams extends Partial<CreateOCRModelParams> {
+  id: string;
+}
+
+export interface CreateEmbeddingModelParams {
+  model: string;
+  name: string;
+  avatar?: string;
+  charsPointsPrice?: number;
+  defaultToken: number;
+  maxToken: number;
+  weight?: number;
+  defaultConfig?: Record<string, any>;
+  dbConfig?: Record<string, any>;
+  queryConfig?: Record<string, any>;
+  sort?: number;
+}
+
+export interface UpdateEmbeddingModelParams extends Partial<CreateEmbeddingModelParams> {
   id: string;
 }
 

@@ -9,6 +9,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const LLMModelConfig = dynamic(() => import('./components/LLMModelConfig'));
+const EmbeddingModelConfig = dynamic(() => import('./components/EmbeddingModelConfig'));
 const ReRankModelConfig = dynamic(() => import('./components/ReRankModelConfig'));
 const TTSModelConfig = dynamic(() => import('./components/TTSModelConfig'));
 const WhisperModelConfig = dynamic(() => import('./components/WhisperModelConfig'));
@@ -16,12 +17,13 @@ const OCRModelConfig = dynamic(() => import('./components/OCRModelConfig'));
 const SystemConfig = dynamic(() => import('./components/SystemConfig'));
 
 enum TabEnum {
-  'llm' = 'llm',
-  'rerank' = 'rerank',
-  'tts' = 'tts',
-  'whisper' = 'whisper',
-  'ocr' = 'ocr',
-  'system' = 'system'
+  llm = 'llm',
+  embedding = 'embedding',
+  rerank = 'rerank',
+  tts = 'tts',
+  whisper = 'whisper',
+  ocr = 'ocr',
+  system = 'system'
 }
 
 const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
@@ -34,6 +36,11 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
       icon: '',
       label: 'LLM模型',
       value: TabEnum.llm
+    },
+    {
+      icon: '',
+      label: '嵌入模型',
+      value: TabEnum.embedding
     },
     {
       icon: '',
@@ -111,6 +118,7 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
 
         <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
           {currentTab === TabEnum.llm && <LLMModelConfig />}
+          {currentTab === TabEnum.embedding && <EmbeddingModelConfig />}
           {currentTab === TabEnum.rerank && <ReRankModelConfig />}
           {currentTab === TabEnum.tts && <TTSModelConfig />}
           {currentTab === TabEnum.whisper && <WhisperModelConfig />}
