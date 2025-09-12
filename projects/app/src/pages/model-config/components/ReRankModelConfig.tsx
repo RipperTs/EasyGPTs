@@ -208,7 +208,7 @@ const RerankModelConfig = () => {
               <Td>
                 <Box fontSize="sm">
                   <Text>URL: {model.requestUrl}</Text>
-                  <Text>Auth: {model.requestAuth ? '已配置' : '未配置'}</Text>
+                  <Text>Auth: {model.apiKey ? '已配置' : '未配置'}</Text>
                 </Box>
               </Td>
               <Td>

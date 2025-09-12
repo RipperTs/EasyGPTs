@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoTTSModel } from '@fastgpt/service/core/model/schema';
+import { MongoTTSModel } from '@fastgpt/service/core/model/ttsSchema';
 import type { TTSModelSchema } from '@fastgpt/global/core/model/type.d';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoReRankModel } from '@fastgpt/service/core/model-config/rerank/schema';
+import { MongoReRankModel } from '@fastgpt/service/core/model/rerankSchema';
 import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 
 export interface ReRankModelListQuery {
@@ -22,13 +22,14 @@ export default async function handler(
 ) {
   try {
     await connectToDatabase();
-    const { teamId } = await authUserPer({ req, authToken: true });
+    // 移除用户认证，改为全局数据
+    // const { teamId } = await authUserPer({ req, authToken: true });
 
     const { current = 1, pageSize = 20, search, isActive } = req.query;
     const currentPage = Number(current);
     const pageSizeNum = Number(pageSize);
 
-    const filter: any = { teamId };
+    const filter: any = {};
 
     if (search) {
       filter.$or = [

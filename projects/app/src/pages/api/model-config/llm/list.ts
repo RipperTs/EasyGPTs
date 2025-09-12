@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
+import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
 import type { LLMModelSchema } from '@fastgpt/global/core/model/type.d';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 

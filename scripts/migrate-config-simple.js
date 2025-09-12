@@ -125,13 +125,11 @@ async function migrateConfig() {
           }
 
           await reRankCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             model: model.model,
             name: model.name,
             charsPointsPrice: model.charsPointsPrice || 0,
             requestUrl: model.requestUrl,
-            requestAuth: model.requestAuth,
+            auth: model.requestAuth,
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()
@@ -162,8 +160,6 @@ async function migrateConfig() {
           }
 
           await ttsCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             model: model.model,
             name: model.name,
             charsPointsPrice: model.charsPointsPrice || 0,
@@ -193,8 +189,6 @@ async function migrateConfig() {
 
         if (!existing) {
           await whisperCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             model: config.whisperModel.model,
             name: config.whisperModel.name,
             charsPointsPrice: config.whisperModel.charsPointsPrice || 0,
@@ -224,13 +218,11 @@ async function migrateConfig() {
 
         if (!existing) {
           await ocrCollection.insertOne({
-            teamId: new mongoose.Types.ObjectId(DEFAULT_TEAM_ID),
-            tmbId: new mongoose.Types.ObjectId(DEFAULT_TMB_ID),
             model: config.ocrModel.model,
             name: config.ocrModel.name,
             charsPointsPrice: config.ocrModel.charsPointsPrice || 0,
             requestUrl: config.ocrModel.requestUrl,
-            requestAuth: config.ocrModel.requestAuth,
+            auth: config.ocrModel.requestAuth,
             isActive: true,
             createTime: new Date(),
             updateTime: new Date()

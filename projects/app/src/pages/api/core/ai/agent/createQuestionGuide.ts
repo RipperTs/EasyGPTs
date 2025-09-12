@@ -5,7 +5,7 @@ import type { CreateQuestionGuideParams } from '@/global/core/ai/api.d';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authChatCert } from '@/service/support/permission/auth/chat';
-import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
+import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

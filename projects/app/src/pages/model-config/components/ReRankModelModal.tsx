@@ -46,7 +46,7 @@ const ReRankModelModal = ({ model, onClose, onSuccess }: Props) => {
           name: model.name,
           charsPointsPrice: model.charsPointsPrice,
           requestUrl: model.requestUrl,
-          requestAuth: model.requestAuth
+          apiKey: model.apiKey
         }
       : {
           charsPointsPrice: 0
@@ -135,7 +135,7 @@ const ReRankModelModal = ({ model, onClose, onSuccess }: Props) => {
               <FormControl isRequired>
                 <FormLabel>认证信息</FormLabel>
                 <Input
-                  {...register('requestAuth', { required: '认证信息不能为空' })}
+                  {...register('apiKey', { required: '认证信息不能为空' })}
                   placeholder="如: Bearer your-api-key"
                   type="password"
                 />

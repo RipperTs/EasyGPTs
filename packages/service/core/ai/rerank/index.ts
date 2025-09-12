@@ -33,7 +33,7 @@ export function reRankRecall({
     },
     {
       headers: {
-        Authorization: `Bearer ${model.requestAuth}`
+        Authorization: `Bearer ${model.apiKey}`
       },
       timeout: 30000
     }

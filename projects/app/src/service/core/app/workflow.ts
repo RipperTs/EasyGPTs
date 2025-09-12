@@ -1,6 +1,6 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
+import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
 
 export const getChatModelNameListByModules = async (
   nodes: StoreNodeItemType[]

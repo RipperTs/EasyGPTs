@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { connectToDatabase } from '@/service/mongo';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
+import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();

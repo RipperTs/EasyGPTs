@@ -7,7 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
+import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
 
 export type QuestionGuideUsageProps = {
   model?: string;

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoSystemConfig } from '@fastgpt/service/core/model/schema';
+import { MongoSystemConfig } from '@fastgpt/service/core/model/systemConfigSchema';
 import type {
   UpdateSystemConfigParams,
   SystemConfigSchema

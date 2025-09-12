@@ -1,8 +1,6 @@
 import { MongoSchema } from '@fastgpt/global/common/system/types';
 
 export interface LLMModelSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   model: string; // 模型名(对应OneAPI中渠道的模型名)
   name: string; // 模型别名
   avatar: string; // 模型的logo
@@ -30,19 +28,15 @@ export interface LLMModelSchema extends MongoSchema {
 }
 
 export interface ReRankModelSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   model: string; // 模型名
   name: string; // 模型显示名
   charsPointsPrice: number; // 价格配置
   requestUrl: string; // 请求地址
-  requestAuth: string; // 请求认证
+  apiKey: string; // API密钥
   isActive: boolean; // 是否启用
 }
 
 export interface TTSModelSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   model: string; // 模型名
   name: string; // 模型显示名
   charsPointsPrice: number; // 价格配置
@@ -55,8 +49,6 @@ export interface TTSModelSchema extends MongoSchema {
 }
 
 export interface WhisperModelSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   model: string; // 模型名
   name: string; // 模型显示名
   charsPointsPrice: number; // 价格配置
@@ -64,8 +56,6 @@ export interface WhisperModelSchema extends MongoSchema {
 }
 
 export interface OCRModelSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   model: string; // 模型名
   name: string; // 模型显示名
   charsPointsPrice: number; // 价格配置
@@ -75,8 +65,6 @@ export interface OCRModelSchema extends MongoSchema {
 }
 
 export interface SystemConfigSchema extends MongoSchema {
-  teamId: string;
-  tmbId: string;
   configKey: string; // 配置键名
   configValue: Record<string, any>; // 配置值
   description: string; // 配置描述
@@ -119,7 +107,7 @@ export interface CreateReRankModelParams {
   name: string;
   charsPointsPrice?: number;
   requestUrl: string;
-  requestAuth: string;
+  apiKey: string;
 }
 
 export interface UpdateReRankModelParams extends Partial<CreateReRankModelParams> {

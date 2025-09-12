@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoWhisperModel } from '@fastgpt/service/core/model/schema';
+import { MongoWhisperModel } from '@fastgpt/service/core/model/whisperSchema';
 import type {
   UpdateWhisperModelParams,
   WhisperModelSchema
