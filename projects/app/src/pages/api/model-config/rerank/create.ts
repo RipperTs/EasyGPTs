@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoReRankModel } from '@fastgpt/service/core/model/schema';
-import type { CreateRerankModelParams, RerankModelSchema } from '@fastgpt/global/core/model/type.d';
+import { MongoReRankModel } from '@fastgpt/service/core/model-config/rerank/schema';
+import type { CreateReRankModelParams, ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<RerankModelSchema>
+  res: NextApiResponse<ReRankModelSchema>
 ) {
   try {
     await connectToDatabase();
@@ -15,12 +15,10 @@ export default async function handler(
     const {
       model,
       name,
-      avatar = '/imgs/model/rerank.svg',
       charsPointsPrice = 0,
       requestUrl,
-      requestHeader = {},
-      defaultConfig = {}
-    } = req.body as CreateRerankModelParams;
+      requestAuth
+    } = req.body as CreateReRankModelParams;
 
     // 检查模型名是否已存在
     const existingModel = await MongoReRankModel.findOne({
@@ -40,11 +38,9 @@ export default async function handler(
       tmbId,
       model,
       name,
-      avatar,
       charsPointsPrice,
       requestUrl,
-      requestHeader,
-      defaultConfig,
+      requestAuth,
       isActive: true
     });
 

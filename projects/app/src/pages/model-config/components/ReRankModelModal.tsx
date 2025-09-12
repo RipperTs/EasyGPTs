@@ -21,8 +21,12 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { ReRankModelSchema, CreateReRankModelParams } from '@fastgpt/global/core/model/type.d';
 
+interface ReRankModelWithId extends ReRankModelSchema {
+  _id: string;
+}
+
 interface Props {
-  model?: ReRankModelSchema;
+  model?: ReRankModelWithId;
   onClose: () => void;
   onSuccess: () => void;
 }

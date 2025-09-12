@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoReRankModel } from '@fastgpt/service/core/model/schema';
-import type { UpdateRerankModelParams, RerankModelSchema } from '@fastgpt/global/core/model/type.d';
+import { MongoReRankModel } from '@fastgpt/service/core/model-config/rerank/schema';
+import type { UpdateReRankModelParams, ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<RerankModelSchema | { message: string }>
+  res: NextApiResponse<ReRankModelSchema | { message: string }>
 ) {
   try {
     await connectToDatabase();
@@ -27,7 +27,7 @@ export default async function handler(
       res.json(model.toJSON());
     } else if (req.method === 'PUT') {
       // 更新模型
-      const updateData = req.body as Partial<UpdateRerankModelParams>;
+      const updateData = req.body as Partial<UpdateReRankModelParams>;
       delete (updateData as any).id;
 
       const model = await MongoReRankModel.findOneAndUpdate(

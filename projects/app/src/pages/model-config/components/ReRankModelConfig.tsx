@@ -27,6 +27,10 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import ReRankModelModal from './ReRankModelModal';
 import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
 
+interface ReRankModelWithId extends ReRankModelSchema {
+  _id: string;
+}
+
 // API 函数
 const getRerankModelList = async ({
   pageNum,
@@ -36,9 +40,9 @@ const getRerankModelList = async ({
   pageNum: number;
   pageSize: number;
   search?: string;
-}) => {
+}): Promise<any> => {
   const params = new URLSearchParams({
-    page: pageNum.toString(),
+    current: pageNum.toString(),
     pageSize: pageSize.toString()
   });
 
@@ -51,25 +55,32 @@ const getRerankModelList = async ({
     throw new Error('获取模型列表失败');
   }
 
-  return response.json();
+  const result = await response.json();
+
+  // 适配usePagination期望的格式
+  return {
+    data: result.list,
+    total: result.total,
+    pageNum,
+    pageSize
+  };
 };
 
 const RerankModelConfig = () => {
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editModel, setEditModel] = useState<ReRankModelSchema | undefined>();
+  const [editModel, setEditModel] = useState<ReRankModelWithId | undefined>();
   const [search, setSearch] = useState('');
 
   const {
     data: models = [],
-    loading,
+    isLoading,
     total,
     pageNum,
-    current,
     pageSize,
     Pagination,
     getData
-  } = usePagination<ReRankModelSchema>({
+  } = usePagination<ReRankModelWithId>({
     api: getRerankModelList,
     pageSize: 20,
     params: {
@@ -89,7 +100,7 @@ const RerankModelConfig = () => {
           title: '删除成功',
           status: 'success'
         });
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '删除失败'
     }
@@ -104,14 +115,14 @@ const RerankModelConfig = () => {
       }),
     {
       onSuccess() {
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '状态更新失败'
     }
   );
 
   const handleEdit = useCallback(
-    (model: ReRankModelSchema) => {
+    (model: ReRankModelWithId) => {
       setEditModel(model);
       onOpen();
     },
@@ -125,11 +136,11 @@ const RerankModelConfig = () => {
 
   const handleSuccess = useCallback(() => {
     onClose();
-    getData(current);
-  }, [onClose, getData, current]);
+    getData(pageNum);
+  }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(
-    (model: ReRankModelSchema) => {
+    (model: ReRankModelWithId) => {
       updateStatus({ id: model._id, isActive: !model.isActive });
     },
     [updateStatus]
@@ -143,7 +154,7 @@ const RerankModelConfig = () => {
           重排模型配置
         </Text>
         <Button
-          leftIcon={<MyIcon name="common/add" w="14px" />}
+          leftIcon={<MyIcon name="common/addLight" w="14px" />}
           onClick={handleCreate}
           colorScheme="blue"
         >
@@ -155,7 +166,7 @@ const RerankModelConfig = () => {
       <Box mb={4}>
         <InputGroup maxW="300px">
           <InputLeftElement>
-            <MyIcon name="common/search" w="14px" color="myGray.500" />
+            <MyIcon name="common/searchLight" w="14px" color="myGray.500" />
           </InputLeftElement>
           <Input
             placeholder="搜索模型名称..."
@@ -214,7 +225,7 @@ const RerankModelConfig = () => {
                 <HStack spacing={2}>
                   <Tooltip label="编辑">
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(model)}>
-                      <MyIcon name="common/edit" w="14px" />
+                      <MyIcon name="edit" w="14px" />
                     </Button>
                   </Tooltip>
                   <Tooltip label="删除">

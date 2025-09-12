@@ -3,14 +3,18 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoReRankModel } from '@fastgpt/service/core/model-config/rerank/schema';
 import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
-export type ReRankModelListQuery = PaginationProps<{
+export interface ReRankModelListQuery {
+  current?: number;
+  pageSize?: number;
   search?: string;
   isActive?: boolean;
-}>;
+}
 
-export type ReRankModelListResponse = PaginationResponse<ReRankModelSchema>;
+export interface ReRankModelListResponse {
+  list: ReRankModelSchema[];
+  total: number;
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,7 +24,9 @@ export default async function handler(
     await connectToDatabase();
     const { teamId } = await authUserPer({ req, authToken: true });
 
-    const { page = 1, pageSize = 20, search, isActive } = req.query as ReRankModelListQuery;
+    const { current = 1, pageSize = 20, search, isActive } = req.query;
+    const currentPage = Number(current);
+    const pageSizeNum = Number(pageSize);
 
     const filter: any = { teamId };
 
@@ -32,31 +38,27 @@ export default async function handler(
     }
 
     if (isActive !== undefined) {
-      filter.isActive = isActive === true || isActive === 'true';
+      filter.isActive = isActive === 'true';
     }
 
     const [total, data] = await Promise.all([
       MongoReRankModel.countDocuments(filter),
       MongoReRankModel.find(filter)
         .sort({ createdAt: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
+        .skip((currentPage - 1) * pageSizeNum)
+        .limit(pageSizeNum)
         .lean()
     ]);
 
     res.json({
-      data,
-      total,
-      pageNum: Number(page),
-      pageSize: Number(pageSize)
+      list: data,
+      total
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      data: [],
-      total: 0,
-      pageNum: 0,
-      pageSize: 0
+      list: [],
+      total: 0
     });
   }
 }
