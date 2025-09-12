@@ -76,17 +76,10 @@ export default async function handler(
 
       res.json(model.toJSON());
     } else if (req.method === 'DELETE') {
-      // 删除模型（软删除）
-      const model = await MongoReRankModel.findOneAndUpdate(
-        {
-          _id: id
-        },
-        {
-          isActive: false,
-          updateTime: new Date()
-        },
-        { new: true }
-      );
+      // 删除模型（硬删除）
+      const model = await MongoReRankModel.findOneAndDelete({
+        _id: id
+      });
 
       if (!model) {
         return res.status(404).json({ message: '模型不存在' });
