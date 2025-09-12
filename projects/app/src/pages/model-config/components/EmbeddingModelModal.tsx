@@ -31,6 +31,7 @@ import type {
   EmbeddingModelSchema,
   CreateEmbeddingModelParams
 } from '@fastgpt/global/core/model/type.d';
+import { MODEL_ICONS } from '@/constants/modelIcons';
 
 interface EmbeddingModelWithId extends EmbeddingModelSchema {
   _id: string;
@@ -46,33 +47,6 @@ const EmbeddingModelModal = ({ model, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const isEdit = !!model;
   const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // 模型图标选项
-  const modelIcons = [
-    'baichuan.svg',
-    'chatglm.svg',
-    'claude.svg',
-    'deepseek.svg',
-    'ernie.svg',
-    'gemini.svg',
-    'huggingface.svg',
-    'liantong.svg',
-    'llm.svg',
-    'meta.svg',
-    'minimax.svg',
-    'moonshot.svg',
-    'NVIDIA.svg',
-    'ollama.svg',
-    'openai.svg',
-    'poe.svg',
-    'qwen.svg',
-    'siliconflow.svg',
-    'sparkDesk.svg',
-    'stability.svg',
-    'websearch.svg',
-    'xai.svg',
-    'yi.svg'
-  ];
 
   const {
     register,
@@ -253,7 +227,7 @@ const EmbeddingModelModal = ({ model, onClose, onSuccess }: Props) => {
                     <Flex align="center" gap={3}>
                       <Avatar src={watch('avatar')} size="sm" bg="gray.100" />
                       <Select {...register('avatar')} placeholder="选择模型图标">
-                        {modelIcons.map((icon) => (
+                        {MODEL_ICONS.map((icon) => (
                           <option key={icon} value={`/imgs/model/${icon}`}>
                             {icon.replace('.svg', '')}
                           </option>

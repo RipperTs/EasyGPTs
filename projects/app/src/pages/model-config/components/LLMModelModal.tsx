@@ -28,6 +28,7 @@ import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelSchema, CreateLLMModelParams } from '@fastgpt/global/core/model/type.d';
+import { MODEL_ICONS } from '@/constants/modelIcons';
 
 interface LLMModelWithId extends LLMModelSchema {
   _id: string;
@@ -42,33 +43,6 @@ interface Props {
 const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const isEdit = !!model;
-
-  // 模型图标选项
-  const modelIcons = [
-    'baichuan.svg',
-    'chatglm.svg',
-    'claude.svg',
-    'deepseek.svg',
-    'ernie.svg',
-    'gemini.svg',
-    'huggingface.svg',
-    'liantong.svg',
-    'llm.svg',
-    'meta.svg',
-    'minimax.svg',
-    'moonshot.svg',
-    'NVIDIA.svg',
-    'ollama.svg',
-    'openai.svg',
-    'poe.svg',
-    'qwen.svg',
-    'siliconflow.svg',
-    'sparkDesk.svg',
-    'stability.svg',
-    'websearch.svg',
-    'xai.svg',
-    'yi.svg'
-  ];
 
   const {
     register,
@@ -240,7 +214,7 @@ const LLMModelModal = ({ model, onClose, onSuccess }: Props) => {
                     <Flex align="center" gap={3}>
                       <Avatar src={watch('avatar')} size="sm" bg="gray.100" />
                       <Select {...register('avatar')} placeholder="选择模型图标">
-                        {modelIcons.map((icon) => (
+                        {MODEL_ICONS.map((icon) => (
                           <option key={icon} value={`/imgs/model/${icon}`}>
                             {icon.replace('.svg', '')}
                           </option>
