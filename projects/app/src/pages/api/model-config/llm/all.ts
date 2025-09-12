@@ -19,6 +19,7 @@ export default async function handler(
       .sort({ sort: 1, createTime: -1 })
       .lean();
 
+    // @ts-ignore
     res.json(data);
   } catch (err) {
     console.error(err);

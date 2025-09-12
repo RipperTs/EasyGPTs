@@ -43,7 +43,7 @@ const getLLMModelList = async ({
   search?: string;
 }): Promise<any> => {
   const params = new URLSearchParams({
-    page: pageNum.toString(),
+    current: pageNum.toString(),
     pageSize: pageSize.toString()
   });
 
@@ -56,7 +56,15 @@ const getLLMModelList = async ({
     throw new Error('获取模型列表失败');
   }
 
-  return response.json();
+  const result = await response.json();
+
+  // 适配usePagination期望的格式
+  return {
+    data: result.list,
+    total: result.total,
+    pageNum,
+    pageSize
+  };
 };
 
 const LLMModelConfig: React.FC = () => {

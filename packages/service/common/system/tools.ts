@@ -75,16 +75,30 @@ export const initFastGPTConfigFromDB = async () => {
 };
 
 // 刷新模型配置缓存
-export const refreshModelConfig = async (teamId?: string) => {
+export const refreshModelConfig = async () => {
   try {
     // 清除缓存
-    const { clearModelCache } = await import('../../core/model/controller');
+    const { clearModelCache, getLegacyConfig } = await import('../../core/model/controller');
     clearModelCache();
 
-    // 重新加载配置
-    await initFastGPTConfigFromDB(teamId);
+    // 重新从数据库读取配置
+    const config = await getLegacyConfig();
 
-    console.log('模型配置缓存已刷新');
+    if (config && config.llmModels) {
+      // 更新全局配置
+      global.llmModels = config.llmModels;
+      global.vectorModels = config.vectorModels || [];
+      global.reRankModels = config.reRankModels || [];
+      global.audioSpeechModels = config.audioSpeechModels || [];
+      global.whisperModel = config.whisperModel;
+      global.ocrModel = config.ocrModel;
+
+      console.log('模型配置缓存已刷新，模型数量:', {
+        llmModels: global.llmModels.length,
+        vectorModels: global.vectorModels.length,
+        reRankModels: global.reRankModels.length
+      });
+    }
   } catch (error) {
     console.error('刷新模型配置失败:', error);
   }

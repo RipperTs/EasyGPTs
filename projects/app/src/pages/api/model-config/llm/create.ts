@@ -2,12 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
 import type { CreateLLMModelParams, LLMModelSchema } from '@fastgpt/global/core/model/type.d';
+import { refreshModelConfig } from '@fastgpt/service/common/system/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<LLMModelSchema>) {
   try {
     await connectToDatabase();
-
-    console.log('创建模型请求数据:', req.body);
 
     const {
       model,
@@ -87,6 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       isActive: true,
       sort
     });
+
+    // 刷新全局模型配置
+    await refreshModelConfig();
 
     res.json(newModel.toJSON());
   } catch (err) {

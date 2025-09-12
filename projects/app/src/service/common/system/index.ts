@@ -4,6 +4,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
+import { getLegacyConfig } from '@fastgpt/service/core/model/controller';
 import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
@@ -75,31 +76,45 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [dbConfig, fileConfig] = await Promise.all([
-    getFastGPTConfigFromDB(),
+  const [dbModelConfig, fileConfig] = await Promise.all([
+    // 使用getLegacyConfig从MongoLLMModel等表中读取模型配置
+    getLegacyConfig(),
     readConfigData('config.json')
   ]);
   const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 
-  // get config from database
+  // 优先使用数据库配置，如果没有则使用文件配置
   const config: FastGPTConfigFileType = {
     feConfigs: {
       ...fileRes?.feConfigs,
       ...defaultFeConfigs,
-      ...(dbConfig.feConfigs || {}),
+      ...(dbModelConfig?.feConfigs || {}),
       isPlus: !!FastGPTProUrl
     },
     systemEnv: {
       ...fileRes.systemEnv,
-      ...(dbConfig.systemEnv || {})
+      ...(dbModelConfig?.systemEnv || {})
     },
-    subPlans: dbConfig.subPlans || fileRes.subPlans,
-    llmModels: dbConfig.llmModels || fileRes.llmModels || [],
-    vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
-    reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
-    audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
-    whisperModel: dbConfig.whisperModel || fileRes.whisperModel,
-    ocrModel: dbConfig.ocrModel || fileRes.ocrModel
+    subPlans: dbModelConfig?.subPlans || fileRes.subPlans,
+    // 如果数据库有模型配置则使用数据库的，否则使用文件的
+    llmModels:
+      dbModelConfig?.llmModels && dbModelConfig.llmModels.length > 0
+        ? dbModelConfig.llmModels
+        : fileRes.llmModels || [],
+    vectorModels:
+      dbModelConfig?.vectorModels && dbModelConfig.vectorModels.length > 0
+        ? dbModelConfig.vectorModels
+        : fileRes.vectorModels || [],
+    reRankModels:
+      dbModelConfig?.reRankModels && dbModelConfig.reRankModels.length > 0
+        ? dbModelConfig.reRankModels
+        : fileRes.reRankModels || [],
+    audioSpeechModels:
+      dbModelConfig?.audioSpeechModels && dbModelConfig.audioSpeechModels.length > 0
+        ? dbModelConfig.audioSpeechModels
+        : fileRes.audioSpeechModels || [],
+    whisperModel: dbModelConfig?.whisperModel || fileRes.whisperModel,
+    ocrModel: dbModelConfig?.ocrModel || fileRes.ocrModel
   };
 
   // set config

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoLLMModel } from '@fastgpt/service/core/model/schema';
 import type { UpdateLLMModelParams, LLMModelSchema } from '@fastgpt/global/core/model/type.d';
+import { refreshModelConfig } from '@fastgpt/service/common/system/tools';
 
 export default async function handler(
   req: NextApiRequest,
@@ -39,6 +40,9 @@ export default async function handler(
         return res.status(404).json({ message: '模型不存在' });
       }
 
+      // 刷新全局模型配置
+      await refreshModelConfig();
+
       res.json(model.toJSON());
     } else if (req.method === 'DELETE') {
       // 删除模型（系统级，真删除）
@@ -47,6 +51,9 @@ export default async function handler(
       if (!model) {
         return res.status(404).json({ message: '模型不存在' });
       }
+
+      // 刷新全局模型配置
+      await refreshModelConfig();
 
       res.json({ message: '删除成功' });
     } else {

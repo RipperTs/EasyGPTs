@@ -5,6 +5,8 @@ import type { LLMModelSchema } from '@fastgpt/global/core/model/type.d';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export type LLMModelListQuery = PaginationProps<{
+  current: number;
+  pageSize: number;
   search?: string;
   isActive?: boolean;
 }>;
@@ -18,7 +20,12 @@ export default async function handler(
   try {
     await connectToDatabase();
 
-    const { page = 1, pageSize = 20, search, isActive } = req.query as LLMModelListQuery;
+    const {
+      current = 1,
+      pageSize = 20,
+      search,
+      isActive
+    } = req.query as unknown as LLMModelListQuery;
 
     const filter: any = {};
 
@@ -30,33 +37,27 @@ export default async function handler(
     }
 
     if (isActive !== undefined) {
-      filter.isActive = isActive === true || isActive === 'true';
+      filter.isActive = String(isActive) === 'true';
     }
 
     const [total, data] = await Promise.all([
       MongoLLMModel.countDocuments(filter),
       MongoLLMModel.find(filter)
         .sort({ sort: 1, createTime: -1 })
-        .skip((page - 1) * pageSize)
+        .skip((current - 1) * pageSize)
         .limit(pageSize)
         .lean()
     ]);
 
-    // 添加调试日志
-    console.log('查询到的数据示例:', data[0]);
-
     res.json({
-      data,
-      total,
-      pageNum: Number(page),
-      pageSize: Number(pageSize)
+      list: data as unknown as LLMModelSchema[],
+      total
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      data: [],
-      total: 0,
-      pageNum: 0
+      list: [],
+      total: 0
     });
   }
 }
