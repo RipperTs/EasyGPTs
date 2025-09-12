@@ -23,6 +23,7 @@ import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
+import { MongoReRankModel } from '../../model/rerankSchema';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -74,7 +75,9 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
-  usingReRank = usingReRank && global.reRankModels.length > 0;
+  // 检查是否有可用的重排模型
+  const hasReRankModel = (await MongoReRankModel.countDocuments({ isActive: true })) > 0;
+  usingReRank = usingReRank && hasReRankModel;
 
   // Compatible with topk limit
   let set = new Set<string>();

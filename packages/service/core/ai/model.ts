@@ -1,3 +1,5 @@
+import { MongoReRankModel } from '../model/rerankSchema';
+
 export const getLLMModel = (model?: string) => {
   return (
     global.llmModels.find((item) => item.model === model || item.name === model) ??
@@ -30,8 +32,14 @@ export function getWhisperModel(model?: string) {
   return global.whisperModel;
 }
 
-export function getReRankModel(model?: string) {
-  return global.reRankModels.find((item) => item.model === model);
+export async function getReRankModel(model?: string) {
+  if (model) {
+    return await MongoReRankModel.findOne({
+      model: model,
+      isActive: true
+    });
+  }
+  return await MongoReRankModel.findOne({ isActive: true }, {}, { sort: { updateTime: -1 } });
 }
 
 export function getOcrModel(model?: string) {

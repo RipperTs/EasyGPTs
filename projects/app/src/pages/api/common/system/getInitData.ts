@@ -3,6 +3,7 @@ import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { connectToDatabase } from '@/service/mongo';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
+import { MongoReRankModel } from '@fastgpt/service/core/model/rerankSchema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -12,6 +13,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     isActive: true
   })
     .sort({ sort: 1, createTime: -1 })
+    .lean();
+
+  // 从数据库获取所有激活的重排模型
+  const reRankModels = await MongoReRankModel.find({
+    isActive: true
+  })
+    .sort({ updateTime: -1 })
     .lean();
 
   jsonRes<InitDateResponse>(res, {
@@ -25,12 +33,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         defaultSystemChatPrompt: model.defaultSystemChatPrompt || ''
       })),
       vectorModels: global.vectorModels,
-      reRankModels:
-        global.reRankModels?.map((item) => ({
-          ...item,
-          requestUrl: '',
-          requestAuth: ''
-        })) || [],
+      reRankModels: reRankModels.map((item) => ({
+        ...item,
+        requestUrl: '',
+        apiKey: ''
+      })),
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
       systemVersion: global.systemVersion || '0.0.0'
