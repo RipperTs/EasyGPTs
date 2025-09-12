@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import json5 from 'json5';
 import { MongoLLMModel } from './llmSchema';
+import { MongoEmbeddingModel } from './embeddingSchema';
 import { MongoReRankModel } from './rerankSchema';
 import { MongoTTSModel } from './ttsSchema';
 import { MongoWhisperModel } from './whisperSchema';
@@ -9,6 +10,7 @@ import { MongoOCRModel } from './ocrSchema';
 import { MongoSystemConfig } from './systemConfigSchema';
 import type {
   LLMModelSchema,
+  EmbeddingModelSchema,
   ReRankModelSchema,
   TTSModelSchema,
   WhisperModelSchema,
@@ -28,6 +30,7 @@ const CONFIG_CACHE_DURATION = 5000; // 5秒缓存
 // 模型缓存对象
 interface ModelCache {
   llmModels: LLMModelSchema[];
+  embeddingModels: EmbeddingModelSchema[];
   reRankModels: ReRankModelSchema[];
   ttsModels: TTSModelSchema[];
   whisperModels: WhisperModelSchema[];
@@ -67,6 +70,7 @@ export async function getAllLLMModels(): Promise<LLMModelSchema[]> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -126,6 +130,55 @@ export async function getLLMModel(modelName: string): Promise<LLMModelSchema | n
   return allModels.find((model) => model.model === modelName) || null;
 }
 
+// 获取所有活跃的向量模型（系统级）
+export async function getAllEmbeddingModels(): Promise<EmbeddingModelSchema[]> {
+  try {
+    // 如果有缓存且有效，直接返回
+    if (isCacheValid() && modelCache?.embeddingModels) {
+      return modelCache.embeddingModels;
+    }
+
+    const models = await MongoEmbeddingModel.find({ isActive: true })
+      .sort({ sort: 1, createTime: -1 })
+      .lean();
+
+    // 更新缓存
+    if (!modelCache) {
+      modelCache = {
+        llmModels: [],
+        embeddingModels: [],
+        reRankModels: [],
+        ttsModels: [],
+        whisperModels: [],
+        ocrModels: [],
+        systemConfigs: {},
+        lastUpdated: new Date()
+      };
+    }
+    // @ts-ignore
+    modelCache.embeddingModels = models;
+    modelCache.lastUpdated = new Date();
+
+    // @ts-ignore
+    return models;
+  } catch (error) {
+    console.error('获取向量模型失败:', error);
+    return [];
+  }
+}
+
+// 获取特定向量模型（系统级）
+export async function getEmbeddingModel(modelName: string): Promise<EmbeddingModelSchema | null> {
+  const allModels = await getAllEmbeddingModels();
+  return allModels.find((model) => model.model === modelName || model.name === modelName) || null;
+}
+
+// 获取默认向量模型（系统级）
+export async function getDefaultEmbeddingModel(): Promise<EmbeddingModelSchema | null> {
+  const allModels = await getAllEmbeddingModels();
+  return allModels.length > 0 ? allModels[0] : null;
+}
+
 // 获取所有重排模型（系统级）
 export async function getAllReRankModels(): Promise<ReRankModelSchema[]> {
   try {
@@ -140,6 +193,7 @@ export async function getAllReRankModels(): Promise<ReRankModelSchema[]> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -172,6 +226,7 @@ export async function getAllTTSModels(): Promise<TTSModelSchema[]> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -204,6 +259,7 @@ export async function getWhisperModel(): Promise<WhisperModelSchema | null> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -236,6 +292,7 @@ export async function getOCRModel(): Promise<OCRModelSchema | null> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -268,6 +325,7 @@ export async function getSystemConfig(configKey: string): Promise<any> {
     if (!modelCache) {
       modelCache = {
         llmModels: [],
+        embeddingModels: [],
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
@@ -303,8 +361,20 @@ export async function getSystemEnv(): Promise<any> {
 
 // 获取向量模型配置（系统级）
 export async function getVectorModels(): Promise<any[]> {
-  const vectorModels = await getSystemConfig('vectorModels');
-  return vectorModels || [];
+  const embeddingModels = await getAllEmbeddingModels();
+  // 转换为旧格式兼容
+  return embeddingModels.map((model) => ({
+    model: model.model,
+    name: model.name,
+    avatar: model.avatar,
+    charsPointsPrice: model.charsPointsPrice,
+    defaultToken: model.defaultToken,
+    maxToken: model.maxToken,
+    weight: model.weight,
+    defaultConfig: model.defaultConfig,
+    dbConfig: model.dbConfig,
+    queryConfig: model.queryConfig
+  }));
 }
 
 // 更新缓存（当模型配置发生变化时调用）
@@ -359,6 +429,24 @@ export const initReRankModels = async () => {
   for (const modelConfig of config.reRankModels) {
     if (!existingModelKeys.has(modelConfig.model)) {
       await MongoReRankModel.create({
+        ...modelConfig,
+        isActive: true
+      });
+    }
+  }
+};
+
+// 初始化向量模型配置（系统级）
+export const initEmbeddingModels = async () => {
+  const config = loadConfigFile();
+  if (!config?.vectorModels) return;
+
+  const existingModels = await MongoEmbeddingModel.find({});
+  const existingModelKeys = new Set(existingModels.map((m) => m.model));
+
+  for (const modelConfig of config.vectorModels) {
+    if (!existingModelKeys.has(modelConfig.model)) {
+      await MongoEmbeddingModel.create({
         ...modelConfig,
         isActive: true
       });
@@ -452,6 +540,7 @@ export const initSystemConfigs = async () => {
 export const initAllConfigs = async () => {
   await Promise.all([
     initLLMModels(),
+    initEmbeddingModels(),
     initReRankModels(),
     initTTSModels(),
     initWhisperModels(),
@@ -497,22 +586,22 @@ export async function getLegacyConfig(): Promise<any> {
   try {
     const [
       llmModels,
+      embeddingModels,
       reRankModels,
       ttsModels,
       whisperModel,
       ocrModel,
       feConfigs,
-      systemEnv,
-      vectorModels
+      systemEnv
     ] = await Promise.all([
       getAllLLMModels(),
+      getAllEmbeddingModels(),
       getAllReRankModels(),
       getAllTTSModels(),
       getWhisperModel(),
       getOCRModel(),
       getFeConfigs(),
-      getSystemEnv(),
-      getVectorModels()
+      getSystemEnv()
     ]);
 
     return {
@@ -571,7 +660,18 @@ export async function getLegacyConfig(): Promise<any> {
         : null,
       feConfigs: feConfigs || {},
       systemEnv: systemEnv || {},
-      vectorModels: vectorModels || []
+      vectorModels: embeddingModels.map((model) => ({
+        model: model.model,
+        name: model.name,
+        avatar: model.avatar,
+        charsPointsPrice: model.charsPointsPrice,
+        defaultToken: model.defaultToken,
+        maxToken: model.maxToken,
+        weight: model.weight,
+        defaultConfig: model.defaultConfig,
+        dbConfig: model.dbConfig,
+        queryConfig: model.queryConfig
+      }))
     };
   } catch (error) {
     console.error('获取兼容配置失败:', error);

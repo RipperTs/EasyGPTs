@@ -10,6 +10,7 @@ import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { initAllConfigs } from '@fastgpt/service/core/model/controller';
 
 export const readConfigData = (name: string) => {
   const isDev = process.env.NODE_ENV === 'development';
@@ -50,6 +51,8 @@ export async function getInitConfig() {
   return Promise.all([
     initSystemConfig(),
     getSystemVersion(),
+    // 初始化所有模型配置（从配置文件导入到数据库）
+    initAllConfigs(),
 
     // abandon
     getSystemPlugin(),
