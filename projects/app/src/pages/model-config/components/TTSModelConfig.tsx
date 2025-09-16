@@ -63,10 +63,9 @@ const TTSModelConfig = () => {
 
   const {
     data: models = [],
-    loading,
+    isLoading,
     total,
     pageNum,
-    current,
     pageSize,
     Pagination,
     getData
@@ -90,7 +89,7 @@ const TTSModelConfig = () => {
           title: '删除成功',
           status: 'success'
         });
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '删除失败'
     }
@@ -105,7 +104,7 @@ const TTSModelConfig = () => {
       }),
     {
       onSuccess() {
-        getData(current);
+        getData(pageNum);
       },
       errorToast: '状态更新失败'
     }
@@ -126,8 +125,8 @@ const TTSModelConfig = () => {
 
   const handleSuccess = useCallback(() => {
     onClose();
-    getData(current);
-  }, [onClose, getData, current]);
+    getData(pageNum);
+  }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(
     (model: TTSModelSchema) => {
@@ -187,6 +186,7 @@ const TTSModelConfig = () => {
             <Tr key={model._id}>
               <Td>
                 <Flex align="center">
+                  <Avatar src={model.avatar || '/imgs/model/tts.svg'} size="sm" mr={3} />
                   <Box>
                     <Text fontWeight="semibold">{model.name}</Text>
                     <Text fontSize="sm" color="gray.500">
@@ -224,7 +224,7 @@ const TTSModelConfig = () => {
                 <HStack spacing={2}>
                   <Tooltip label="编辑">
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(model)}>
-                      <MyIcon name="common/edit" w="14px" />
+                      <MyIcon name="edit" w="14px" />
                     </Button>
                   </Tooltip>
                   <Tooltip label="删除">

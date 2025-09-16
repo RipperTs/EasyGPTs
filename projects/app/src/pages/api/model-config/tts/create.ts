@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTTSModel } from '@fastgpt/service/core/model/ttsSchema';
+import { refreshModelConfig } from '@fastgpt/service/common/system/tools';
 import type { CreateTTSModelParams, TTSModelSchema } from '@fastgpt/global/core/model/type.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<TTSModelSchema>) {
   try {
     await connectToDatabase();
-    const { teamId, tmbId } = await authUserPer({ req, authToken: true });
 
     const {
       model,
@@ -17,12 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       requestUrl,
       requestHeader = {},
       voices = [],
-      defaultConfig = {}
-    } = req.body as CreateTTSModelParams;
+      defaultConfig = {},
+      sort = 100
+    } = req.body as any;
 
     // 检查模型名是否已存在
     const existingModel = await MongoTTSModel.findOne({
-      teamId,
       model,
       isActive: true
     });
@@ -34,8 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const newModel = await MongoTTSModel.create({
-      teamId,
-      tmbId,
       model,
       name,
       avatar,
@@ -44,8 +41,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       requestHeader,
       voices,
       defaultConfig,
+      sort,
       isActive: true
     });
+
+    // 刷新全局模型配置
+    await refreshModelConfig();
 
     res.json(newModel.toJSON());
   } catch (err) {

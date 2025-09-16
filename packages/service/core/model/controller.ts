@@ -455,21 +455,10 @@ export const initEmbeddingModels = async () => {
 };
 
 // 初始化TTS模型配置（系统级）
+// 初始化TTS模型配置（系统级）
+// 说明：不再从本地配置文件自动同步导入 TTS 配置，改为完全由数据库维护
 export const initTTSModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.audioSpeechModels) return;
-
-  const existingModels = await MongoTTSModel.find({});
-  const existingModelKeys = new Set(existingModels.map((m) => m.model));
-
-  for (const modelConfig of config.audioSpeechModels) {
-    if (!existingModelKeys.has(modelConfig.model)) {
-      await MongoTTSModel.create({
-        ...modelConfig,
-        isActive: true
-      });
-    }
-  }
+  return;
 };
 
 // 初始化Whisper模型配置（系统级）

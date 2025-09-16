@@ -40,6 +40,11 @@ export interface TTSModelSchema extends MongoSchema {
   model: string; // 模型名
   name: string; // 模型显示名
   charsPointsPrice: number; // 价格配置
+  avatar: string; // 模型图标
+  sort: number; // 排序字段，数字越小越靠前
+  requestUrl?: string; // 请求地址（可选）
+  requestHeader?: Record<string, any>; // 请求头（可选）
+  defaultConfig?: Record<string, any>; // 默认配置（可选）
   voices: Array<{
     label: string;
     value: string;
@@ -133,6 +138,11 @@ export interface CreateTTSModelParams {
   model: string;
   name: string;
   charsPointsPrice?: number;
+  avatar?: string;
+  sort?: number;
+  requestUrl?: string;
+  requestHeader?: Record<string, any>;
+  defaultConfig?: Record<string, any>;
   voices: Array<{
     label: string;
     value: string;

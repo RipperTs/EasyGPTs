@@ -112,10 +112,8 @@ export async function initSystemConfig() {
       dbModelConfig?.reRankModels && dbModelConfig.reRankModels.length > 0
         ? dbModelConfig.reRankModels
         : fileRes.reRankModels || [],
-    audioSpeechModels:
-      dbModelConfig?.audioSpeechModels && dbModelConfig.audioSpeechModels.length > 0
-        ? dbModelConfig.audioSpeechModels
-        : fileRes.audioSpeechModels || [],
+    // TTS 模型仅使用数据库结果，不再回退本地配置
+    audioSpeechModels: dbModelConfig?.audioSpeechModels || [],
     // 仅使用数据库中的 Whisper 配置
     whisperModel: dbModelConfig?.whisperModel,
     // 仅使用数据库中的 OCR 配置

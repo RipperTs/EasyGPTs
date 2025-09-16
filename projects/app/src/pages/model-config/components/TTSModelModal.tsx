@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -17,13 +17,16 @@ import {
   Text,
   Box,
   IconButton,
-  Flex
+  Flex,
+  Select,
+  Avatar
 } from '@chakra-ui/react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { TTSModelSchema, CreateTTSModelParams } from '@fastgpt/global/core/model/type.d';
+import { MODEL_ICONS } from '@/constants/modelIcons';
 
 interface Props {
   model?: TTSModelSchema;
@@ -39,6 +42,7 @@ const TTSModelModal = ({ model, onClose, onSuccess }: Props) => {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors }
   } = useForm<CreateTTSModelParams>({
     defaultValues: model
@@ -46,10 +50,14 @@ const TTSModelModal = ({ model, onClose, onSuccess }: Props) => {
           model: model.model,
           name: model.name,
           charsPointsPrice: model.charsPointsPrice,
+          avatar: model.avatar || '/imgs/model/tts.svg',
+          sort: model.sort ?? 100,
           voices: model.voices || []
         }
       : {
           charsPointsPrice: 0,
+          avatar: '/imgs/model/tts.svg',
+          sort: 100,
           voices: []
         }
   });
@@ -83,7 +91,15 @@ const TTSModelModal = ({ model, onClose, onSuccess }: Props) => {
   );
 
   const onSubmit = handleSubmit(async (data) => {
-    await submitData(data);
+    const payload: CreateTTSModelParams = {
+      model: data.model,
+      name: data.name,
+      charsPointsPrice: Number(data.charsPointsPrice || 0),
+      avatar: data.avatar,
+      sort: Number(data.sort ?? 100),
+      voices: data.voices || []
+    };
+    await submitData(payload);
   });
 
   const addVoice = () => {
@@ -126,9 +142,36 @@ const TTSModelModal = ({ model, onClose, onSuccess }: Props) => {
 
               <FormControl>
                 <FormLabel>价格(积分/1k字符)</FormLabel>
-                <NumberInput>
+                <NumberInput min={0}>
                   <NumberInputField {...register('charsPointsPrice', { valueAsNumber: true })} />
                 </NumberInput>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>模型图标</FormLabel>
+                <Flex align="center" gap={3}>
+                  <Avatar src={watch('avatar') || '/imgs/model/tts.svg'} size="sm" bg="gray.100" />
+                  <Select {...register('avatar')} placeholder="选择模型图标">
+                    {MODEL_ICONS.map((icon) => (
+                      <option key={icon} value={`/imgs/model/${icon}`}>
+                        {icon.replace('.svg', '')}
+                      </option>
+                    ))}
+                  </Select>
+                </Flex>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>排序值</FormLabel>
+                <NumberInput min={0}>
+                  <NumberInputField
+                    {...register('sort', { valueAsNumber: true })}
+                    placeholder="100"
+                  />
+                </NumberInput>
+                <Text fontSize="sm" color="gray.500">
+                  数字越小越靠前，默认100
+                </Text>
               </FormControl>
 
               {/* 语音配置 */}
@@ -178,12 +221,7 @@ const TTSModelModal = ({ model, onClose, onSuccess }: Props) => {
                 </Box>
               ))}
 
-              <Button
-                leftIcon={<MyIcon name="common/add" w="14px" />}
-                onClick={addVoice}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={addVoice} variant="outline" size="sm">
                 添加语音
               </Button>
 
