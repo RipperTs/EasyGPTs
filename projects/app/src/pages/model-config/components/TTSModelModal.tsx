@@ -28,8 +28,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { TTSModelSchema, CreateTTSModelParams } from '@fastgpt/global/core/model/type.d';
 import { MODEL_ICONS } from '@/constants/modelIcons';
 
+// 编辑时需要使用到 _id，扩展类型以匹配后端返回
+interface TTSModelWithId extends TTSModelSchema {
+  _id: string;
+}
+
 interface Props {
-  model?: TTSModelSchema;
+  model?: TTSModelWithId;
   onClose: () => void;
   onSuccess: () => void;
 }

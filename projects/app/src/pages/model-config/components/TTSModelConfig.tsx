@@ -28,6 +28,11 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import TTSModelModal from './TTSModelModal';
 import type { TTSModelSchema } from '@fastgpt/global/core/model/type.d';
 
+// 列表返回的数据包含 _id，扩展类型以满足使用场景
+interface TTSModelWithId extends TTSModelSchema {
+  _id: string;
+}
+
 // API 函数
 const getTTSModelList = async ({
   pageNum,
@@ -58,7 +63,7 @@ const getTTSModelList = async ({
 const TTSModelConfig = () => {
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editModel, setEditModel] = useState<TTSModelSchema | undefined>();
+  const [editModel, setEditModel] = useState<TTSModelWithId | undefined>();
   const [search, setSearch] = useState('');
 
   const {
@@ -69,7 +74,7 @@ const TTSModelConfig = () => {
     pageSize,
     Pagination,
     getData
-  } = usePagination<TTSModelSchema>({
+  } = usePagination<TTSModelWithId>({
     api: getTTSModelList,
     pageSize: 20,
     params: {
@@ -111,7 +116,7 @@ const TTSModelConfig = () => {
   );
 
   const handleEdit = useCallback(
-    (model: TTSModelSchema) => {
+    (model: TTSModelWithId) => {
       setEditModel(model);
       onOpen();
     },
@@ -129,7 +134,7 @@ const TTSModelConfig = () => {
   }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(
-    (model: TTSModelSchema) => {
+    (model: TTSModelWithId) => {
       updateStatus({ id: model._id, isActive: !model.isActive });
     },
     [updateStatus]
