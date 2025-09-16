@@ -1,205 +1,138 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Switch,
-  useDisclosure,
   Flex,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  HStack,
-  Avatar,
+  Grid,
+  GridItem,
   Text,
-  Tooltip
+  FormControl,
+  FormLabel,
+  Input,
+  NumberInput,
+  NumberInputField,
+  VStack
 } from '@chakra-ui/react';
+import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import type { WhisperModelSchema } from '@fastgpt/global/core/model/type.d';
 
-// API 函数
-const getWhisperModelList = async ({
-  pageNum,
-  pageSize,
-  search
-}: {
-  pageNum: number;
-  pageSize: number;
-  search?: string;
-}) => {
-  const params = new URLSearchParams({
-    page: pageNum.toString(),
-    pageSize: pageSize.toString()
-  });
+type WhisperForm = {
+  model: string;
+  name: string;
+  charsPointsPrice: number;
+};
 
-  if (search) {
-    params.append('search', search);
-  }
-
-  const response = await fetch(`/api/model-config/whisper/list?${params}`);
-  if (!response.ok) {
-    throw new Error('获取模型列表失败');
-  }
-
-  return response.json();
+// 读取当前激活的 Whisper 模型（来自数据库）
+const fetchWhisperModel = async (): Promise<WhisperForm | null> => {
+  const res = await fetch('/api/model-config/whisper/active');
+  if (!res.ok) return null;
+  const data = await res.json();
+  return (data || null) as WhisperForm | null;
 };
 
 const WhisperModelConfig = () => {
   const { toast } = useToast();
-  const [search, setSearch] = useState('');
 
   const {
-    data: models = [],
-    loading,
-    total,
-    pageNum,
-    current,
-    pageSize,
-    Pagination,
-    getData
-  } = usePagination<WhisperModelSchema>({
-    api: getWhisperModelList,
-    pageSize: 20,
-    params: {
-      search
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting }
+  } = useForm<WhisperForm>({
+    defaultValues: {
+      model: '',
+      name: '',
+      charsPointsPrice: 0
     }
   });
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: '确认删除该模型配置？'
+  const { runAsync: initData, loading: loadingInit } = useRequest2(async () => {
+    const model = await fetchWhisperModel();
+    if (model) {
+      reset(model);
+    }
   });
 
-  const { runAsync: deleteModel } = useRequest2(
-    (id: string) => fetch(`/api/model-config/whisper/${id}`, { method: 'DELETE' }),
-    {
-      onSuccess() {
-        toast({
-          title: '删除成功',
-          status: 'success'
-        });
-        getData(current);
-      },
-      errorToast: '删除失败'
-    }
-  );
+  useEffect(() => {
+    initData();
+  }, [initData]);
 
-  const { runAsync: updateStatus } = useRequest2(
-    ({ id, isActive }: { id: string; isActive: boolean }) =>
-      fetch(`/api/model-config/whisper/${id}`, {
+  const { runAsync: saveConfig, loading } = useRequest2(
+    async (data: WhisperForm) => {
+      const res = await fetch('/api/model-config/whisper/save', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive })
-      }),
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || '保存失败');
+      }
+      return res.json();
+    },
     {
       onSuccess() {
-        getData(current);
+        toast({ title: '保存成功', status: 'success' });
       },
-      errorToast: '状态更新失败'
+      errorToast: '保存失败'
     }
   );
 
-  const handleToggleStatus = useCallback(
-    (model: WhisperModelSchema) => {
-      updateStatus({ id: model._id, isActive: !model.isActive });
-    },
-    [updateStatus]
-  );
+  const onSubmit = handleSubmit(async (data) => {
+    const formatted: WhisperForm = {
+      ...data,
+      charsPointsPrice: Number(data.charsPointsPrice || 0)
+    };
+    await saveConfig(formatted);
+  });
 
   return (
     <Box p={6}>
-      {/* 头部操作区 */}
       <Flex justify="space-between" align="center" mb={6}>
         <Text fontSize="xl" fontWeight="semibold">
           语音识别模型配置
         </Text>
       </Flex>
 
-      {/* 搜索框 */}
-      <Box mb={4}>
-        <InputGroup maxW="300px">
-          <InputLeftElement>
-            <MyIcon name="common/search" w="14px" color="myGray.500" />
-          </InputLeftElement>
-          <Input
-            placeholder="搜索模型名称..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                getData(1);
-              }
-            }}
-          />
-        </InputGroup>
-      </Box>
+      <form onSubmit={onSubmit}>
+        <VStack spacing={6} align="stretch">
+          <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+            <GridItem>
+              <FormControl isRequired>
+                <FormLabel>模型名称</FormLabel>
+                <Input {...register('model', { required: true })} placeholder="如: whisper-1" />
+              </FormControl>
+            </GridItem>
+            <GridItem>
+              <FormControl isRequired>
+                <FormLabel>显示名称</FormLabel>
+                <Input {...register('name', { required: true })} placeholder="如: Whisper1" />
+              </FormControl>
+            </GridItem>
+            <GridItem>
+              <FormControl>
+                <FormLabel>价格(积分/千字符)</FormLabel>
+                <NumberInput min={0}>
+                  <NumberInputField
+                    {...register('charsPointsPrice', { valueAsNumber: true, min: 0 })}
+                    placeholder="0"
+                  />
+                </NumberInput>
+              </FormControl>
+            </GridItem>
+          </Grid>
 
-      {/* 模型列表表格 */}
-      <Table variant="simple">
-        <Thead>
-          <Tr>
-            <Th>模型信息</Th>
-            <Th>定价</Th>
-            <Th>状态</Th>
-            <Th>操作</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {models.map((model) => (
-            <Tr key={model._id}>
-              <Td>
-                <Flex align="center">
-                  <Box>
-                    <Text fontWeight="semibold">{model.name}</Text>
-                    <Text fontSize="sm" color="gray.500">
-                      {model.model}
-                    </Text>
-                  </Box>
-                </Flex>
-              </Td>
-              <Td>
-                <Text fontSize="sm">{model.charsPointsPrice} 点/千字符</Text>
-              </Td>
-              <Td>
-                <Switch
-                  isChecked={model.isActive}
-                  onChange={() => handleToggleStatus(model)}
-                  colorScheme="blue"
-                />
-              </Td>
-              <Td>
-                <HStack spacing={2}>
-                  <Tooltip label="删除">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => openConfirm(() => deleteModel(model._id))()}
-                    >
-                      <MyIcon name="common/trash" w="14px" />
-                    </Button>
-                  </Tooltip>
-                </HStack>
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-
-      {/* 分页 */}
-      <Box mt={4}>
-        <Pagination />
-      </Box>
-
-      <ConfirmModal />
+          <Flex justify="flex-end" gap={3}>
+            <Button onClick={() => initData()} variant="ghost" isLoading={loadingInit}>
+              重置
+            </Button>
+            <Button type="submit" colorScheme="blue" isLoading={isSubmitting || loading}>
+              保存
+            </Button>
+          </Flex>
+        </VStack>
+      </form>
     </Box>
   );
 };

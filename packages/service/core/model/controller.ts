@@ -473,20 +473,10 @@ export const initTTSModels = async () => {
 };
 
 // 初始化Whisper模型配置（系统级）
+// 初始化Whisper模型配置（系统级）
+// 说明：已取消从本地文件导入 Whisper 配置，改为仅使用数据库中的配置。
 export const initWhisperModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.whisperModel) return;
-
-  const existingModel = await MongoWhisperModel.findOne({
-    model: config.whisperModel.model
-  });
-
-  if (!existingModel) {
-    await MongoWhisperModel.create({
-      ...config.whisperModel,
-      isActive: true
-    });
-  }
+  return;
 };
 
 // 初始化OCR模型配置（系统级）
