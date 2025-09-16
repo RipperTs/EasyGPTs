@@ -117,7 +117,8 @@ export async function initSystemConfig() {
         ? dbModelConfig.audioSpeechModels
         : fileRes.audioSpeechModels || [],
     whisperModel: dbModelConfig?.whisperModel || fileRes.whisperModel,
-    ocrModel: dbModelConfig?.ocrModel || fileRes.ocrModel
+    // 仅使用数据库中的 OCR 配置
+    ocrModel: dbModelConfig?.ocrModel
   };
 
   // set config

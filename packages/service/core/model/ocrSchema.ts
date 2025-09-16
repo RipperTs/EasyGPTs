@@ -37,6 +37,11 @@ const OCRModelSchema = new Schema({
     default: {},
     comment: '请求头'
   },
+  requestAuth: {
+    type: String,
+    default: '',
+    comment: '鉴权密钥（兼容旧字段）'
+  },
   defaultConfig: {
     type: Object,
     default: {},

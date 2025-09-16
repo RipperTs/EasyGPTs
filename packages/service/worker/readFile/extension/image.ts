@@ -1,20 +1,41 @@
 import { ReadRawTextByBuffer, ReadFileResponse } from '../type.d';
-import { readConfigData } from '../../../../../projects/app/src/service/common/system';
-import json5 from 'json5';
 
 export const readImageRawText = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const base64Image = buffer.toString('base64');
 
-  // 读取配置文件获取配置
-  const configContent = readConfigData('config.json');
-  const config = json5.parse(configContent);
-  const ocrModel = config?.ocrModel?.model || 'qwen/qwen-vl-plus:free';
+  // 通过本地 HTTP 接口获取 OCR 配置（避免在 worker 中直接依赖数据库）
+  const port = process.env.PORT || '3000';
+  const base = `http://127.0.0.1:${port}`;
+  let ocrModel = '';
+  let baseUrl = '';
+  let apiKey = '';
 
-  // 从配置文件中获取 API URL 和 Key
-  const baseUrl = config?.ocrModel?.requestUrl || 'http://10.6.80.35:3800/v1';
-  const apiKey = config?.ocrModel?.requestAuth || '';
+  try {
+    const headers: Record<string, string> = {};
+    if (process.env.ROOT_KEY) headers['rootkey'] = process.env.ROOT_KEY as string;
+    const confRes = await fetch(`${base}/api/model-config/ocr/active`, {
+      method: 'GET',
+      headers
+    });
+    if (confRes.ok) {
+      const conf = (await confRes.json()) as {
+        model?: string;
+        requestUrl?: string;
+        requestAuth?: string;
+      } | null;
+      if (conf) {
+        ocrModel = conf.model || '';
+        baseUrl = conf.requestUrl || '';
+        apiKey = conf.requestAuth || '';
+      }
+    }
+  } catch (e) {}
+
+  if (!ocrModel || !baseUrl || !apiKey) {
+    throw new Error('OCR 模型未配置');
+  }
 
   if (!baseUrl || !apiKey) {
     throw new Error('API URL or Key is not set');

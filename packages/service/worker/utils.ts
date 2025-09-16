@@ -13,7 +13,10 @@ export const getSafeEnv = () => {
   return {
     LOG_LEVEL: process.env.LOG_LEVEL,
     STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
-    NODE_ENV: process.env.NODE_ENV
+    NODE_ENV: process.env.NODE_ENV,
+    // 为本地 Worker 访问受限接口传递必要环境变量
+    ROOT_KEY: process.env.ROOT_KEY,
+    PORT: process.env.PORT
   };
 };
 

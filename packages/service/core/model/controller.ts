@@ -490,18 +490,9 @@ export const initWhisperModels = async () => {
 };
 
 // 初始化OCR模型配置（系统级）
+// 说明：已取消从本地文件导入 OCR 配置，此处保留空实现以兼容调用。
 export const initOCRModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.ocrModel) return;
-
-  const existingModel = await MongoOCRModel.findOne({ model: config.ocrModel.model });
-
-  if (!existingModel) {
-    await MongoOCRModel.create({
-      ...config.ocrModel,
-      isActive: true
-    });
-  }
+  return;
 };
 
 // 初始化系统配置（系统级）
