@@ -14,7 +14,6 @@ const ReRankModelConfig = dynamic(() => import('./components/ReRankModelConfig')
 const TTSModelConfig = dynamic(() => import('./components/TTSModelConfig'));
 const WhisperModelConfig = dynamic(() => import('./components/WhisperModelConfig'));
 const OCRModelConfig = dynamic(() => import('./components/OCRModelConfig'));
-const SystemConfig = dynamic(() => import('./components/SystemConfig'));
 
 enum TabEnum {
   llm = 'llm',
@@ -22,11 +21,10 @@ enum TabEnum {
   rerank = 'rerank',
   tts = 'tts',
   whisper = 'whisper',
-  ocr = 'ocr',
-  system = 'system'
+  ocr = 'ocr'
 }
 
-const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
+const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
   const { isPc } = useSystem();
   const router = useRouter();
   const theme = useTheme();
@@ -61,11 +59,6 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
       icon: '',
       label: 'OCR模型',
       value: TabEnum.ocr
-    },
-    {
-      icon: '',
-      label: '其他配置',
-      value: TabEnum.system
     }
   ];
 
@@ -79,6 +72,9 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
     },
     [router]
   );
+
+  const safeCurrentTab = (tabList.find((t) => t.value === (currentTab as any))?.value ||
+    TabEnum.llm) as TabEnum;
 
   return (
     <PageContainer>
@@ -97,7 +93,7 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
               mt={2}
               w={'100%'}
               list={tabList}
-              value={currentTab}
+              value={safeCurrentTab}
               onChange={setCurrentTab}
             />
           </Flex>
@@ -110,20 +106,19 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum }) => {
                 value: item.value,
                 label: item.label
               }))}
-              value={currentTab}
+              value={safeCurrentTab}
               onChange={setCurrentTab}
             />
           </Box>
         )}
 
         <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
-          {currentTab === TabEnum.llm && <LLMModelConfig />}
-          {currentTab === TabEnum.embedding && <EmbeddingModelConfig />}
-          {currentTab === TabEnum.rerank && <ReRankModelConfig />}
-          {currentTab === TabEnum.tts && <TTSModelConfig />}
-          {currentTab === TabEnum.whisper && <WhisperModelConfig />}
-          {currentTab === TabEnum.ocr && <OCRModelConfig />}
-          {currentTab === TabEnum.system && <SystemConfig />}
+          {safeCurrentTab === TabEnum.llm && <LLMModelConfig />}
+          {safeCurrentTab === TabEnum.embedding && <EmbeddingModelConfig />}
+          {safeCurrentTab === TabEnum.rerank && <ReRankModelConfig />}
+          {safeCurrentTab === TabEnum.tts && <TTSModelConfig />}
+          {safeCurrentTab === TabEnum.whisper && <WhisperModelConfig />}
+          {safeCurrentTab === TabEnum.ocr && <OCRModelConfig />}
         </Box>
       </Flex>
     </PageContainer>

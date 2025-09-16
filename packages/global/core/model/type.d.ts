@@ -84,12 +84,7 @@ export interface EmbeddingModelSchema extends MongoSchema {
   sort: number; // 排序字段，数字越小越靠前
 }
 
-export interface SystemConfigSchema extends MongoSchema {
-  configKey: string; // 配置键名
-  configValue: Record<string, any>; // 配置值
-  description: string; // 配置描述
-  isActive: boolean; // 是否启用
-}
+// 已移除数据库系统配置，统一从本地配置文件读取
 
 // API请求和响应类型
 export interface CreateLLMModelParams {
@@ -194,15 +189,7 @@ export interface UpdateEmbeddingModelParams extends Partial<CreateEmbeddingModel
   id: string;
 }
 
-export interface CreateSystemConfigParams {
-  configKey: string;
-  configValue: Record<string, any>;
-  description?: string;
-}
-
-export interface UpdateSystemConfigParams extends Partial<CreateSystemConfigParams> {
-  id: string;
-}
+// 已移除：CreateSystemConfigParams / UpdateSystemConfigParams
 
 export interface ModelListQuery {
   page?: number;

@@ -7,15 +7,13 @@ import { MongoReRankModel } from './rerankSchema';
 import { MongoTTSModel } from './ttsSchema';
 import { MongoWhisperModel } from './whisperSchema';
 import { MongoOCRModel } from './ocrSchema';
-import { MongoSystemConfig } from './systemConfigSchema';
 import type {
   LLMModelSchema,
   EmbeddingModelSchema,
   ReRankModelSchema,
   TTSModelSchema,
   WhisperModelSchema,
-  OCRModelSchema,
-  SystemConfigSchema
+  OCRModelSchema
 } from '@fastgpt/global/core/model/type.d';
 
 // 配置文件路径
@@ -313,51 +311,7 @@ export async function getOCRModel(): Promise<OCRModelSchema | null> {
   }
 }
 
-// 获取系统配置（系统级）
-export async function getSystemConfig(configKey: string): Promise<any> {
-  try {
-    if (isCacheValid() && modelCache?.systemConfigs && modelCache.systemConfigs[configKey]) {
-      return modelCache.systemConfigs[configKey];
-    }
-
-    const config = await MongoSystemConfig.findOne({ configKey, isActive: true }).lean();
-
-    if (!modelCache) {
-      modelCache = {
-        llmModels: [],
-        embeddingModels: [],
-        reRankModels: [],
-        ttsModels: [],
-        whisperModels: [],
-        ocrModels: [],
-        systemConfigs: {},
-        lastUpdated: new Date()
-      };
-    }
-
-    if (config) {
-      // @ts-ignore
-      modelCache.systemConfigs[configKey] = config.configValue;
-    }
-    modelCache.lastUpdated = new Date();
-
-    // @ts-ignore
-    return config?.configValue || null;
-  } catch (error) {
-    console.error(`获取系统配置 ${configKey} 失败:`, error);
-    return null;
-  }
-}
-
-// 获取前端配置（系统级）
-export async function getFeConfigs(): Promise<any> {
-  return getSystemConfig('feConfigs');
-}
-
-// 获取系统环境配置（系统级）
-export async function getSystemEnv(): Promise<any> {
-  return getSystemConfig('systemEnv');
-}
+// 已移除数据库系统配置读取，统一使用本地配置文件
 
 // 获取向量模型配置（系统级）
 export async function getVectorModels(): Promise<any[]> {
@@ -475,36 +429,7 @@ export const initOCRModels = async () => {
 };
 
 // 初始化系统配置（系统级）
-export const initSystemConfigs = async () => {
-  const config = loadConfigFile();
-  if (!config) return;
-
-  // 初始化系统环境配置
-  if (config.systemEnv) {
-    const existingConfig = await MongoSystemConfig.findOne({ configKey: 'systemEnv' });
-    if (!existingConfig) {
-      await MongoSystemConfig.create({
-        configKey: 'systemEnv',
-        configValue: config.systemEnv,
-        description: '系统环境配置',
-        isActive: true
-      });
-    }
-  }
-
-  // 初始化前端配置
-  if (config.feConfigs) {
-    const existingConfig = await MongoSystemConfig.findOne({ configKey: 'feConfigs' });
-    if (!existingConfig) {
-      await MongoSystemConfig.create({
-        configKey: 'feConfigs',
-        configValue: config.feConfigs,
-        description: '前端配置',
-        isActive: true
-      });
-    }
-  }
-};
+// 删除 initSystemConfigs（不再将本地配置同步到数据库）
 
 // 初始化所有配置（系统级）
 export const initAllConfigs = async () => {
@@ -514,8 +439,7 @@ export const initAllConfigs = async () => {
     initReRankModels(),
     initTTSModels(),
     initWhisperModels(),
-    initOCRModels(),
-    initSystemConfigs()
+    initOCRModels()
   ]);
 };
 
@@ -554,25 +478,19 @@ export const getActiveOCRModel = async (): Promise<OCRModelSchema | null> => {
 // 获取兼容的旧格式配置（用于过渡期间，系统级）
 export async function getLegacyConfig(): Promise<any> {
   try {
-    const [
-      llmModels,
-      embeddingModels,
-      reRankModels,
-      ttsModels,
-      whisperModel,
-      ocrModel,
-      feConfigs,
-      systemEnv
-    ] = await Promise.all([
-      getAllLLMModels(),
-      getAllEmbeddingModels(),
-      getAllReRankModels(),
-      getAllTTSModels(),
-      getWhisperModel(),
-      getOCRModel(),
-      getFeConfigs(),
-      getSystemEnv()
-    ]);
+    const [llmModels, embeddingModels, reRankModels, ttsModels, whisperModel, ocrModel] =
+      await Promise.all([
+        getAllLLMModels(),
+        getAllEmbeddingModels(),
+        getAllReRankModels(),
+        getAllTTSModels(),
+        getWhisperModel(),
+        getOCRModel()
+      ]);
+
+    const fileConfig = loadConfigFile() || {};
+    const feConfigs = fileConfig?.feConfigs || {};
+    const systemEnv = fileConfig?.systemEnv || {};
 
     return {
       llmModels: llmModels.map((model) => ({
@@ -628,8 +546,8 @@ export async function getLegacyConfig(): Promise<any> {
             requestAuth: ocrModel.requestAuth
           }
         : null,
-      feConfigs: feConfigs || {},
-      systemEnv: systemEnv || {},
+      feConfigs,
+      systemEnv,
       vectorModels: embeddingModels.map((model) => ({
         model: model.model,
         name: model.name,
