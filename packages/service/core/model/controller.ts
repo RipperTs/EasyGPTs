@@ -354,58 +354,22 @@ export const loadConfigFile = () => {
   }
 };
 
-// 初始化LLM模型配置（系统级）
+// 初始化LLM模型配置（系统级）- 不再从本地文件导入
 export const initLLMModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.llmModels) return;
-
-  const existingModels = await MongoLLMModel.find({});
-  const existingModelKeys = new Set(existingModels.map((m) => m.model));
-
-  for (const modelConfig of config.llmModels) {
-    if (!existingModelKeys.has(modelConfig.model)) {
-      await MongoLLMModel.create({
-        ...modelConfig,
-        isActive: true
-      });
-    }
-  }
+  // 不再从本地文件导入，完全由数据库管理
+  return;
 };
 
-// 初始化ReRank模型配置（系统级）
+// 初始化ReRank模型配置（系统级）- 不再从本地文件导入
 export const initReRankModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.reRankModels) return;
-
-  const existingModels = await MongoReRankModel.find({});
-  const existingModelKeys = new Set(existingModels.map((m) => m.model));
-
-  for (const modelConfig of config.reRankModels) {
-    if (!existingModelKeys.has(modelConfig.model)) {
-      await MongoReRankModel.create({
-        ...modelConfig,
-        isActive: true
-      });
-    }
-  }
+  // 不再从本地文件导入，完全由数据库管理
+  return;
 };
 
-// 初始化向量模型配置（系统级）
+// 初始化向量模型配置（系统级）- 不再从本地文件导入
 export const initEmbeddingModels = async () => {
-  const config = loadConfigFile();
-  if (!config?.vectorModels) return;
-
-  const existingModels = await MongoEmbeddingModel.find({});
-  const existingModelKeys = new Set(existingModels.map((m) => m.model));
-
-  for (const modelConfig of config.vectorModels) {
-    if (!existingModelKeys.has(modelConfig.model)) {
-      await MongoEmbeddingModel.create({
-        ...modelConfig,
-        isActive: true
-      });
-    }
-  }
+  // 不再从本地文件导入，完全由数据库管理
+  return;
 };
 
 // 初始化TTS模型配置（系统级）

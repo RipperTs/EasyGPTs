@@ -20,6 +20,7 @@ import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { OcrModelTyoe } from '@fastgpt/global/core/ai/model.d';
+import { clientInitData } from '@/web/common/system/staticData';
 
 // 读取当前激活的 OCR 模型（来自数据库）
 const fetchOCRModel = async (): Promise<OcrModelTyoe | null> => {
@@ -73,8 +74,10 @@ const OCRModelConfig = () => {
       return res.json();
     },
     {
-      onSuccess() {
+      async onSuccess() {
         toast({ title: '保存成功', status: 'success' });
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '保存失败'
     }

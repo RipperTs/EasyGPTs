@@ -16,6 +16,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { clientInitData } from '@/web/common/system/staticData';
 
 type WhisperForm = {
   model: string;
@@ -72,8 +73,10 @@ const WhisperModelConfig = () => {
       return res.json();
     },
     {
-      onSuccess() {
+      async onSuccess() {
         toast({ title: '保存成功', status: 'success' });
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '保存失败'
     }

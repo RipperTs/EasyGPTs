@@ -78,46 +78,32 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 };
 
 export async function initSystemConfig() {
-  // load config
+  // load config - 仅加载非模型相关的配置
   const [dbModelConfig, fileConfig] = await Promise.all([
-    // 使用getLegacyConfig从MongoLLMModel等表中读取模型配置
+    // 从数据库获取所有模型配置
     getLegacyConfig(),
     readConfigData('config.json')
   ]);
   const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 
-  // 优先使用数据库配置，如果没有则使用文件配置
+  // 完全使用数据库配置，不再回退到本地文件
   const config: FastGPTConfigFileType = {
     feConfigs: {
-      ...fileRes?.feConfigs,
       ...defaultFeConfigs,
-      ...(dbModelConfig?.feConfigs || {}),
+      ...fileRes?.feConfigs, // 仅保留前端配置使用文件
       isPlus: !!FastGPTProUrl
     },
     systemEnv: {
-      ...fileRes.systemEnv,
-      ...(dbModelConfig?.systemEnv || {})
+      ...fileRes.systemEnv // 系统环境变量仍使用文件
     },
-    subPlans: dbModelConfig?.subPlans || fileRes.subPlans,
-    // 如果数据库有模型配置则使用数据库的，否则使用文件的
-    llmModels:
-      dbModelConfig?.llmModels && dbModelConfig.llmModels.length > 0
-        ? dbModelConfig.llmModels
-        : fileRes.llmModels || [],
-    vectorModels:
-      dbModelConfig?.vectorModels && dbModelConfig.vectorModels.length > 0
-        ? dbModelConfig.vectorModels
-        : fileRes.vectorModels || [],
-    reRankModels:
-      dbModelConfig?.reRankModels && dbModelConfig.reRankModels.length > 0
-        ? dbModelConfig.reRankModels
-        : fileRes.reRankModels || [],
-    // TTS 模型仅使用数据库结果，不再回退本地配置
+    subPlans: fileRes.subPlans, // 订阅计划仍使用文件
+    // 所有模型配置完全从数据库读取，不再使用本地文件
+    llmModels: dbModelConfig?.llmModels || [],
+    vectorModels: dbModelConfig?.vectorModels || [],
+    reRankModels: dbModelConfig?.reRankModels || [],
     audioSpeechModels: dbModelConfig?.audioSpeechModels || [],
-    // 仅使用数据库中的 Whisper 配置
-    whisperModel: dbModelConfig?.whisperModel,
-    // 仅使用数据库中的 OCR 配置
-    ocrModel: dbModelConfig?.ocrModel
+    whisperModel: dbModelConfig?.whisperModel || null,
+    ocrModel: dbModelConfig?.ocrModel || null
   };
 
   // set config

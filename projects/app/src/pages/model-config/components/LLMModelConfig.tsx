@@ -27,6 +27,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import LLMModelModal from './LLMModelModal';
 import type { LLMModelSchema } from '@fastgpt/global/core/model/type.d';
+import { clientInitData } from '@/web/common/system/staticData';
 
 interface LLMModelWithId extends LLMModelSchema {
   _id: string;
@@ -96,12 +97,14 @@ const LLMModelConfig: React.FC = () => {
   const { runAsync: deleteModel } = useRequest2(
     (id: string) => fetch(`/api/model-config/llm/${id}`, { method: 'DELETE' }),
     {
-      onSuccess() {
+      async onSuccess() {
         toast({
           title: '删除成功',
           status: 'success'
         });
         getData(pageNum);
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '删除失败'
     }
@@ -115,8 +118,10 @@ const LLMModelConfig: React.FC = () => {
         body: JSON.stringify({ isActive })
       }),
     {
-      onSuccess() {
+      async onSuccess() {
         getData(pageNum);
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '状态更新失败'
     }
@@ -135,9 +140,11 @@ const LLMModelConfig: React.FC = () => {
     onOpen();
   }, [onOpen]);
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback(async () => {
     onClose();
     getData(pageNum);
+    // 刷新全局模型配置
+    await clientInitData();
   }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(

@@ -26,6 +26,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import ReRankModelModal from './ReRankModelModal';
 import type { ReRankModelSchema } from '@fastgpt/global/core/model/type.d';
+import { clientInitData } from '@/web/common/system/staticData';
 
 interface ReRankModelWithId extends ReRankModelSchema {
   _id: string;
@@ -95,12 +96,14 @@ const RerankModelConfig = () => {
   const { runAsync: deleteModel } = useRequest2(
     (id: string) => fetch(`/api/model-config/rerank/${id}`, { method: 'DELETE' }),
     {
-      onSuccess() {
+      async onSuccess() {
         toast({
           title: '删除成功',
           status: 'success'
         });
         getData(pageNum);
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '删除失败'
     }
@@ -114,8 +117,10 @@ const RerankModelConfig = () => {
         body: JSON.stringify({ isActive })
       }),
     {
-      onSuccess() {
+      async onSuccess() {
         getData(pageNum);
+        // 刷新全局模型配置
+        await clientInitData();
       },
       errorToast: '状态更新失败'
     }
@@ -134,9 +139,11 @@ const RerankModelConfig = () => {
     onOpen();
   }, [onOpen]);
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback(async () => {
     onClose();
     getData(pageNum);
+    // 刷新全局模型配置
+    await clientInitData();
   }, [onClose, getData, pageNum]);
 
   const handleToggleStatus = useCallback(
