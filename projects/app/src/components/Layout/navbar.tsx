@@ -9,20 +9,11 @@ import Badge from '../Badge';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getDocPath } from '@/web/common/system/doc';
-
-export enum NavbarTypeEnum {
-  normal = 'normal',
-  small = 'small'
-}
 
 const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
-  const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(() => {
     const list = [
