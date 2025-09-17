@@ -1,3 +1,10 @@
+/**
+ * 简单版迁移脚本：将 projects/app/data/config.local.json 中的模型配置
+ * 迁移到 MongoDB 的各个模型集合中，按模型 key 做
+ * node scripts/migrate-config-simple.js
+ * @type {path.PlatformPath | path}
+ */
+
 const path = require('path');
 const fs = require('fs');
 
@@ -19,7 +26,7 @@ try {
 }
 
 // 数据库连接配置
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fastgpt';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://myusername:mypassword@10.6.80.164:27017/fastgpt?authSource=admin&directConnection=true';
 const CONFIG_PATH = path.join(__dirname, '../projects/app/data/config.local.json');
 
 // 工具函数：按模型 key 做幂等 upsert
