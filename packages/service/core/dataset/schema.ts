@@ -69,6 +69,10 @@ const DatasetSchema = new Schema({
     required: true,
     default: 'gpt-4o-mini'
   },
+  ocrModel: {
+    type: String,
+    default: ''
+  },
   intro: {
     type: String,
     default: ''

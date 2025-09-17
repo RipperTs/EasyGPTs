@@ -16,6 +16,7 @@ export type readRawTextByLocalFileParams = {
   teamId: string;
   path: string;
   metadata?: Record<string, any>;
+  ocrModel?: string;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
   const { path } = params;
@@ -31,7 +32,8 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     teamId: params.teamId,
     encoding: encoding,
     buffer,
-    metadata: params.metadata
+    metadata: params.metadata,
+    ocrModel: params.ocrModel
   });
 
   return {
@@ -45,7 +47,8 @@ export const readRawContentByFileBuffer = async ({
   teamId,
   buffer,
   encoding,
-  metadata
+  metadata,
+  ocrModel
 }: {
   isQAImport?: boolean;
   extension: string;
@@ -53,6 +56,7 @@ export const readRawContentByFileBuffer = async ({
   buffer: Buffer;
   encoding: string;
   metadata?: Record<string, any>;
+  ocrModel?: string;
 }) => {
   // Custom read file service
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
@@ -142,7 +146,8 @@ export const readRawContentByFileBuffer = async ({
       extension,
       encoding,
       buffer,
-      teamId
+      teamId,
+      ocrModel
     }));
 
   // markdown data format

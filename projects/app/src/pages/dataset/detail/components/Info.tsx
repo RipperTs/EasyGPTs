@@ -57,9 +57,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
+  const ocrModel = watch('ocrModel');
   const defaultPermission = watch('defaultPermission');
 
-  const { datasetModelList, vectorModelList } = useSystemStore();
+  const { datasetModelList, vectorModelList, ocrModelList } = useSystemStore();
   const { openConfirm: onOpenConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -92,6 +93,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       return updateDataset({
         id: datasetId,
         agentModel: data.agentModel,
+        ...(data.ocrModel?.model ? { ocrModel: { model: data.ocrModel.model } } : {}),
         externalReadUrl: data.externalReadUrl,
         defaultPermission: data.defaultPermission
       });
@@ -247,6 +249,26 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   setValue('vectorModel', vectorModel);
                   return onRebuilding(vectorModel);
                 })();
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Box pt={5}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            OCR 模型
+          </FormLabel>
+          <Box pt={2}>
+            <AIModelSelector
+              w={'100%'}
+              value={ocrModel?.model || ''}
+              list={ocrModelList.map((item) => ({ label: item.name, value: item.model }))}
+              fontSize={'mini'}
+              onchange={(e) => {
+                const cur = ocrModelList.find((item) => item.model === e);
+                if (!cur) return;
+                setValue('ocrModel', cur);
+                return handleSubmit((data) => onSave({ ...data, ocrModel: cur }))();
               }}
             />
           </Box>

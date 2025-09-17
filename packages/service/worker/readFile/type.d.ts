@@ -2,6 +2,7 @@ export type ReadRawTextProps<T> = {
   extension: string;
   buffer: T;
   encoding: string;
+  ocrModel?: string;
 };
 
 export type ReadRawTextByBuffer = {
@@ -9,6 +10,7 @@ export type ReadRawTextByBuffer = {
   extension: string;
   encoding: string;
   teamId?: string;
+  ocrModel?: string;
 };
 
 export type ImageType = {

@@ -41,6 +41,7 @@ type State = {
   audioSpeechModelList: AudioSpeechModelType[];
   reRankModelList: ReRankModelItemType[];
   whisperModel?: WhisperModelType;
+  ocrModelList: { model: string; name: string; charsPointsPrice: number }[];
   initStaticData: (e: InitDateResponse) => void;
 };
 
@@ -102,6 +103,7 @@ export const useSystemStore = create<State>()(
         audioSpeechModelList: [],
         reRankModelList: [],
         whisperModel: undefined,
+        ocrModelList: [],
         initStaticData(res) {
           set((state) => {
             state.feConfigs = res.feConfigs || {};
@@ -114,6 +116,7 @@ export const useSystemStore = create<State>()(
             state.audioSpeechModelList = res.audioSpeechModels ?? state.audioSpeechModelList;
             state.reRankModelList = res.reRankModels ?? state.reRankModelList;
             state.whisperModel = res.whisperModel;
+            state.ocrModelList = res.ocrModels ?? state.ocrModelList;
           });
         }
       })),

@@ -16,7 +16,11 @@ export const getSafeEnv = () => {
     NODE_ENV: process.env.NODE_ENV,
     // 为本地 Worker 访问受限接口传递必要环境变量
     ROOT_KEY: process.env.ROOT_KEY,
-    PORT: process.env.PORT
+    PORT: process.env.PORT,
+    // AI 接口环境变量，保证 worker 中可用
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+    ONEAPI_URL: process.env.ONEAPI_URL,
+    CHAT_API_KEY: process.env.CHAT_API_KEY
   };
 };
 

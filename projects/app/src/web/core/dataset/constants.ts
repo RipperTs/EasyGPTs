@@ -26,6 +26,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],
+  ocrModel: undefined,
   defaultPermission: DatasetDefaultPermissionVal,
   inheritPermission: true
 };
@@ -48,6 +49,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     status: 'active',
     vectorModel: defaultVectorModels[0].model,
     agentModel: defaultQAModels[0].model,
+    ocrModel: '',
     defaultPermission: DatasetDefaultPermissionVal,
     inheritPermission: true
   },

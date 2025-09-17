@@ -25,6 +25,7 @@ export type DatasetSchemaType = {
   name: string;
   vectorModel: string;
   agentModel: string;
+  ocrModel?: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
   status: `${DatasetStatusEnum}`;
@@ -151,9 +152,10 @@ export type DatasetListItemType = {
   vectorModel: VectorModelItemType;
 } & PermissionSchemaType;
 
-export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
+export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'ocrModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
+  ocrModel?: { model: string; name: string; charsPointsPrice: number };
   permission: DatasetPermission;
 };
 

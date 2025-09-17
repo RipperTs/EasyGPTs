@@ -63,9 +63,10 @@ export interface WhisperModelSchema extends MongoSchema {
 export interface OCRModelSchema extends MongoSchema {
   model: string; // 模型名
   name: string; // 模型显示名
+  avatar: string; // 模型图标
   charsPointsPrice: number; // 价格配置
-  requestUrl: string; // 请求地址
-  requestAuth: string; // 请求认证
+  requestUrl?: string; // 请求地址（兼容旧字段，可选）
+  requestAuth?: string; // 请求认证（兼容旧字段，可选）
   isActive: boolean; // 是否启用
 }
 
@@ -163,8 +164,7 @@ export interface CreateOCRModelParams {
   model: string;
   name: string;
   charsPointsPrice?: number;
-  requestUrl: string;
-  requestAuth: string;
+  avatar?: string;
 }
 
 export interface UpdateOCRModelParams extends Partial<CreateOCRModelParams> {

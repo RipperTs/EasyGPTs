@@ -69,6 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     const { rawText } = await readRawTextByLocalFile({
       teamId,
       path: file.path,
+      ocrModel: dataset.ocrModel,
       metadata: {
         ...fileMetadata,
         relatedId: relatedImgId

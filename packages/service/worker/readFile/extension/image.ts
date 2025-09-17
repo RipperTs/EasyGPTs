@@ -1,44 +1,21 @@
 import { ReadRawTextByBuffer, ReadFileResponse } from '../type.d';
+import { getAxiosConfig } from '../../../core/ai/config';
 
 export const readImageRawText = async ({
-  buffer
+  buffer,
+  ocrModel
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const base64Image = buffer.toString('base64');
 
-  // 通过本地 HTTP 接口获取 OCR 配置（避免在 worker 中直接依赖数据库）
-  const port = process.env.PORT || '3000';
-  const base = `http://127.0.0.1:${port}`;
-  let ocrModel = '';
-  let baseUrl = '';
-  let apiKey = '';
-
-  try {
-    const headers: Record<string, string> = {};
-    if (process.env.ROOT_KEY) headers['rootkey'] = process.env.ROOT_KEY as string;
-    const confRes = await fetch(`${base}/api/model-config/ocr/active`, {
-      method: 'GET',
-      headers
-    });
-    if (confRes.ok) {
-      const conf = (await confRes.json()) as {
-        model?: string;
-        requestUrl?: string;
-        requestAuth?: string;
-      } | null;
-      if (conf) {
-        ocrModel = conf.model || '';
-        baseUrl = conf.requestUrl || '';
-        apiKey = conf.requestAuth || '';
-      }
-    }
-  } catch (e) {}
-
-  if (!ocrModel || !baseUrl || !apiKey) {
+  // 必须传入 ocrModel（来自知识库选择）
+  if (!ocrModel) {
     throw new Error('OCR 模型未配置');
   }
 
-  if (!baseUrl || !apiKey) {
-    throw new Error('API URL or Key is not set');
+  // 统一使用系统配置的 OPENAI_BASE_URL / CHAT_API_KEY
+  const { baseUrl, authorization } = getAxiosConfig();
+  if (!baseUrl || !authorization) {
+    throw new Error('环境变量 OPENAI_BASE_URL 或 CHAT_API_KEY 未设置');
   }
 
   const prompt = `请识别图片中的内容，注意以下要求：
@@ -75,7 +52,7 @@ export const readImageRawText = async ({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        Authorization: authorization
       },
       body: JSON.stringify({
         model: ocrModel,

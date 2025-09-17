@@ -19,40 +19,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const model = String(body.model || '').trim();
     const name = String(body.name || '').trim();
     const charsPointsPrice = Number(body.charsPointsPrice || 0);
-    const requestUrl = String(body.requestUrl || '').trim();
-    const requestAuth = String(body.requestAuth || '').trim();
-
-    if (!model || !name || !requestUrl) {
-      return res.status(400).json({ error: '模型名、显示名、请求地址为必填' });
+    if (!model || !name) {
+      return res.status(400).json({ error: '模型名、显示名为必填' });
     }
 
-    // 查找当前活跃的 OCR 配置
-    const exist = await MongoOCRModel.findOne({ isActive: true });
-
-    let saved;
-    if (exist) {
-      saved = await MongoOCRModel.findByIdAndUpdate(
-        exist._id,
-        {
-          model,
-          name,
-          charsPointsPrice,
-          requestUrl,
-          requestAuth,
-          updateTime: new Date()
-        },
-        { new: true }
-      );
-    } else {
-      saved = await MongoOCRModel.create({
+    // 按模型名进行 upsert，允许维护多个 OCR 配置
+    const saved = await MongoOCRModel.findOneAndUpdate(
+      { model },
+      {
         model,
         name,
         charsPointsPrice,
-        requestUrl,
-        requestAuth,
-        isActive: true
-      });
-    }
+        isActive: true,
+        updateTime: new Date()
+      },
+      { new: true, upsert: true }
+    );
 
     // 刷新服务端全局模型配置缓存
     await refreshModelConfig();

@@ -100,7 +100,7 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, ocrModelList } = useSystemStore();
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -113,10 +113,22 @@ export const DatasetPageContextProvider = ({
     await putDatasetById(data);
 
     if (datasetId === data.id) {
-      setDatasetDetail((state) => ({
-        ...state,
-        ...data
-      }));
+      setDatasetDetail((state) => {
+        const next = { ...state, ...data } as DatasetItemType;
+        if (data.ocrModel && 'model' in data.ocrModel) {
+          const found = ocrModelList.find((m) => m.model === data.ocrModel!.model);
+          next.ocrModel = found
+            ? found
+            : state.ocrModel
+              ? {
+                  model: data.ocrModel.model,
+                  name: state.ocrModel.name,
+                  charsPointsPrice: state.ocrModel.charsPointsPrice
+                }
+              : { model: data.ocrModel.model, name: data.ocrModel.model, charsPointsPrice: 0 };
+        }
+        return next;
+      });
     }
   };
 

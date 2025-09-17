@@ -69,6 +69,4 @@ export type OcrModelTyoe = {
   model: string;
   name: string;
   charsPointsPrice: number;
-  requestUrl: string;
-  requestAuth: string;
 };

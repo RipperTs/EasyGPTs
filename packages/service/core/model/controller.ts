@@ -505,9 +505,7 @@ export async function getLegacyConfig(): Promise<any> {
         ? {
             model: ocrModel.model,
             name: ocrModel.name,
-            charsPointsPrice: ocrModel.charsPointsPrice,
-            requestUrl: ocrModel.requestUrl,
-            requestAuth: ocrModel.requestAuth
+            charsPointsPrice: ocrModel.charsPointsPrice
           }
         : null,
       feConfigs,

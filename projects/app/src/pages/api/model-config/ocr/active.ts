@@ -17,13 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!model) return res.json(null);
 
-    // 仅返回前端所需字段
+    // 仅返回必要字段（不包含地址与秘钥）
     return res.json({
       model: model.model,
       name: model.name,
-      charsPointsPrice: model.charsPointsPrice || 0,
-      requestUrl: model.requestUrl || '',
-      requestAuth: (model as any).requestAuth || ''
+      charsPointsPrice: model.charsPointsPrice || 0
     });
   } catch (err: any) {
     console.error('获取 OCR 配置失败:', err);

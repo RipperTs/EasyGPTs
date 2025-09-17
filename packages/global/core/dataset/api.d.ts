@@ -11,6 +11,7 @@ export type DatasetUpdateBody = {
   avatar?: string;
   intro?: string;
   agentModel?: LLMModelItemType;
+  ocrModel?: { model: string } | { model: string; name?: string; charsPointsPrice?: number };
   status?: DatasetSchemaType['status'];
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];
