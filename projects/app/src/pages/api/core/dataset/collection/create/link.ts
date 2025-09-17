@@ -65,8 +65,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       tmbId,
       appName: 'core.dataset.collection.Sync Collection',
       billSource: UsageSourceEnum.training,
-      vectorModel: getVectorModel(dataset.vectorModel).name,
-      agentModel: getLLMModel(dataset.agentModel).name,
+      vectorModel: getVectorModel(dataset.vectorModel)?.name || '',
+      agentModel: getLLMModel(dataset.agentModel)?.name || '',
       session
     });
 

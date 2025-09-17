@@ -73,6 +73,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   } = props;
 
   const toolModel = getLLMModel(model);
+
+  if (!toolModel) {
+    return Promise.reject('LLM model not found');
+  }
+
   const chatHistories = getHistories(history, histories);
 
   /* get tool params */

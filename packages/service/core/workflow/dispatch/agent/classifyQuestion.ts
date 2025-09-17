@@ -45,6 +45,10 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const cqModel = getLLMModel(model);
 
+  if (!cqModel) {
+    return Promise.reject('LLM model not found');
+  }
+
   const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await completions({

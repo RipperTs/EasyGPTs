@@ -96,7 +96,10 @@ export async function generateQA(): Promise<any> {
   addLog.info(`[QA Queue] Start`);
 
   try {
-    const model = getLLMModel(data.model)?.model;
+    const model = getLLMModel(data.model)?.model || '';
+    if (!model) {
+      throw new Error('Model not found');
+    }
     const prompt = `${data.prompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 

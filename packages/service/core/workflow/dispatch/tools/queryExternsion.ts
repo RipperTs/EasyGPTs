@@ -29,6 +29,11 @@ export const dispatchQueryExtension = async ({
   }
 
   const queryExtensionModel = getLLMModel(model);
+
+  if (!queryExtensionModel) {
+    return Promise.reject('Query extension model not found');
+  }
+
   const chatHistories = getHistories(history, histories);
 
   const { extensionQueries, tokens } = await queryExtension({

@@ -77,8 +77,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       tmbId,
       appName: name,
       billSource: UsageSourceEnum.training,
-      vectorModel: getVectorModel(dataset.vectorModel)?.name,
-      agentModel: getLLMModel(dataset.agentModel)?.name,
+      vectorModel: getVectorModel(dataset.vectorModel)?.name || '',
+      agentModel: getLLMModel(dataset.agentModel)?.name || '',
       session
     });
 

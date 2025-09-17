@@ -8,7 +8,7 @@ export type ReadRawTextByBuffer = {
   buffer: Buffer;
   extension: string;
   encoding: string;
-  teamId: string;
+  teamId?: string;
 };
 
 export type ImageType = {

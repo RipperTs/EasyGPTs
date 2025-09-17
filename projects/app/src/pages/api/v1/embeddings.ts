@@ -37,9 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await checkTeamAIPoints(teamId);
 
+    const vectorModel = getVectorModel(model);
+    if (!vectorModel) {
+      throw new Error('Vector model not found');
+    }
+
     const { tokens, vectors } = await getVectorsByText({
       input: query,
-      model: getVectorModel(model),
+      model: vectorModel,
       type
     });
 

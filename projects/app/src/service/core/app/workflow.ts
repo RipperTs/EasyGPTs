@@ -21,7 +21,7 @@ export const getChatModelNameListByModules = async (
     .lean();
 
   // 创建模型映射
-  const modelMap = new Map(models.map((m) => [m.model, m.name]));
+  const modelMap = new Map(models.map((m: any) => [m.model, m.name]));
 
   // 返回模型名称列表
   return modelIds.map((modelId) => modelMap.get(modelId) || '').filter(Boolean);

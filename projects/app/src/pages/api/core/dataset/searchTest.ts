@@ -69,7 +69,7 @@ async function handler(req: NextApiRequest) {
   const extensionStart = Date.now();
   const extensionModel =
     datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
-      ? getLLMModel(datasetSearchExtensionModel)
+      ? getLLMModel(datasetSearchExtensionModel) || undefined
       : undefined;
   console.log(
     `[SearchTest] 扩展模型获取完成 - 耗时: ${Date.now() - extensionStart}ms, 模型: ${extensionModel?.name || '无'}`

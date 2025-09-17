@@ -8,6 +8,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export type QuestionGuideUsageProps = {
   model?: string;
@@ -41,16 +42,21 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   // 如果没有指定模型，从数据库获取第一个激活的模型（系统级共享）
   let qgModel = questionGuide?.model;
   if (!qgModel) {
-    const firstModel = await MongoLLMModel.findOne({
+    const firstModel = (await MongoLLMModel.findOne({
       isActive: true
     })
       .sort({ sort: 1, createTime: -1 })
-      .lean();
+      .lean()) as LLMModelItemType | null;
 
     if (!firstModel) {
       throw new Error('No active LLM model found');
     }
     qgModel = firstModel.model;
+  }
+
+  // 确保 qgModel 不为 undefined
+  if (!qgModel) {
+    throw new Error('Model not found');
   }
 
   const { result, tokens } = await createQuestionGuide({

@@ -27,6 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { teamId, tmbId, authType } = await authChatCert({ req, authToken: true });
 
     const ttsModel = getAudioSpeechModel(ttsConfig.model);
+
+    if (!ttsModel) {
+      throw new Error('TTS model not found');
+    }
+
     const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {

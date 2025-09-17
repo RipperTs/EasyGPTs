@@ -6,6 +6,7 @@ import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoLLMModel } from '@fastgpt/service/core/model/llmSchema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,11 +19,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 从数据库获取第一个激活的模型（系统级共享）
-    const qgModel = await MongoLLMModel.findOne({
+    const qgModel = (await MongoLLMModel.findOne({
       isActive: true
     })
       .sort({ sort: 1, createTime: -1 })
-      .lean();
+      .lean()) as LLMModelItemType | null;
 
     if (!qgModel) {
       throw new Error('No active LLM model found');

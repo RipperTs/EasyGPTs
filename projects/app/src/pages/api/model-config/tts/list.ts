@@ -9,7 +9,12 @@ export type TTSModelListQuery = PaginationProps<{
   isActive?: boolean;
 }>;
 
-export type TTSModelListResponse = PaginationResponse<TTSModelSchema>;
+export type TTSModelListResponse = {
+  data: TTSModelSchema[];
+  total: number;
+  pageNum: number;
+  pageSize: number;
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,7 +22,17 @@ export default async function handler(
 ) {
   try {
     await connectToDatabase();
-    const { page = 1, pageSize = 20, search, isActive } = req.query as TTSModelListQuery;
+    const {
+      current = 1,
+      pageSize = 20,
+      search,
+      isActive
+    } = {
+      current: Number(req.query.current || req.query.page || 1),
+      pageSize: Number(req.query.pageSize || 20),
+      search: req.query.search as string | undefined,
+      isActive: req.query.isActive as string | undefined
+    };
 
     const filter: any = {};
 
@@ -29,23 +44,23 @@ export default async function handler(
     }
 
     if (isActive !== undefined) {
-      filter.isActive = isActive === true || isActive === 'true';
+      filter.isActive = isActive === 'true';
     }
 
     const [total, data] = await Promise.all([
       MongoTTSModel.countDocuments(filter),
       MongoTTSModel.find(filter)
         .sort({ sort: 1, createTime: -1 })
-        .skip((page - 1) * pageSize)
+        .skip((current - 1) * pageSize)
         .limit(pageSize)
         .lean()
     ]);
 
     res.json({
-      data,
+      data: data as unknown as TTSModelSchema[],
       total,
-      pageNum: Number(page),
-      pageSize: Number(pageSize)
+      pageNum: current,
+      pageSize: pageSize
     });
   } catch (err) {
     console.error(err);

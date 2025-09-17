@@ -19,10 +19,14 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const totalPoints = (modelData.charsPointsPrice || 0) * (tokens / multiple);
+  // 类型守卫：确保 modelData 有正确的属性
+  const charsPointsPrice = 'charsPointsPrice' in modelData ? modelData.charsPointsPrice : 0;
+  const modelName = 'name' in modelData ? modelData.name : '';
+
+  const totalPoints = (charsPointsPrice || 0) * (tokens / multiple);
 
   return {
-    modelName: modelData.name,
+    modelName,
     totalPoints
   };
 };

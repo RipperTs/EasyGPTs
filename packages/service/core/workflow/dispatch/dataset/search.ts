@@ -74,7 +74,7 @@ export async function dispatchDatasetSearch(
 
   const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
     query: userChatInput,
-    extensionModel,
+    extensionModel: extensionModel || undefined,
     extensionBg: datasetSearchExtensionBg,
     histories: getHistories(6, histories)
   });
@@ -82,9 +82,14 @@ export async function dispatchDatasetSearch(
   // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
-  const vectorModel = getVectorModel(
-    (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
-  );
+  const datasetVectorModel = (
+    await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean()
+  )?.vectorModel;
+  const vectorModel = getVectorModel(datasetVectorModel);
+
+  if (!vectorModel) {
+    return Promise.reject('Vector model not found');
+  }
 
   // start search
   const {

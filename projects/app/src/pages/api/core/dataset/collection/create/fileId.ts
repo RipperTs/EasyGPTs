@@ -95,8 +95,8 @@ async function handler(
       tmbId,
       appName: filename,
       billSource: UsageSourceEnum.training,
-      vectorModel: getVectorModel(dataset.vectorModel)?.name,
-      agentModel: getLLMModel(dataset.agentModel)?.name,
+      vectorModel: getVectorModel(dataset.vectorModel)?.name || '',
+      agentModel: getLLMModel(dataset.agentModel)?.name || '',
       session
     });
 

@@ -9,6 +9,7 @@ import {
   getWhisperModel as getWhisperModelFromDB,
   getOCRModel as getOCRModelFromDB
 } from '../model/controller';
+import { DEFAULT_LLM_MODEL, DEFAULT_VECTOR_MODEL } from './modelDefaults';
 
 // 获取LLM模型（异步版本 - 从数据库）
 export const getLLMModelAsync = async (model?: string) => {
@@ -28,6 +29,11 @@ export const getLLMModel = (model?: string) => {
   // 如果全局变量不存在，返回null或抛出错误
   console.warn('getLLMModel: 全局变量不存在，请使用 getLLMModelAsync');
   return null;
+};
+
+// 获取LLM模型，带默认值
+export const getLLMModelWithDefault = (model?: string) => {
+  return getLLMModel(model) || DEFAULT_LLM_MODEL;
 };
 
 // 获取数据集处理模型（异步版本 - 从数据库）
@@ -100,6 +106,11 @@ export const getVectorModel = (model?: string) => {
   }
   console.warn('getVectorModel: 全局变量不存在，请使用 getVectorModelAsync');
   return null;
+};
+
+// 获取向量模型，带默认值
+export const getVectorModelWithDefault = (model?: string) => {
+  return getVectorModel(model) || DEFAULT_VECTOR_MODEL;
 };
 
 // 兼容的同步版本，从全局变量获取，用于过渡期间（将被弃用）

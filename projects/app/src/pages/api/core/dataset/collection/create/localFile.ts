@@ -125,8 +125,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
         tmbId,
         appName: collectionName,
         billSource: UsageSourceEnum.training,
-        vectorModel: getVectorModel(dataset.vectorModel)?.name,
-        agentModel: getDatasetModel(dataset.agentModel)?.name
+        vectorModel: getVectorModel(dataset.vectorModel)?.name || '',
+        agentModel: getDatasetModel(dataset.agentModel)?.name || ''
       });
 
       // 7. push chunks to training queue

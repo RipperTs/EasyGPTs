@@ -2,7 +2,7 @@ import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getVectorModel, getVectorModelWithDefault } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import {
@@ -126,7 +126,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       intro: item.intro,
       type: item.type,
       permission: item.permission,
-      vectorModel: getVectorModel(item.vectorModel),
+      vectorModel: getVectorModelWithDefault(item.vectorModel),
       defaultPermission: item.defaultPermission ?? DatasetDefaultPermissionVal,
       inheritPermission: item.inheritPermission,
       tmbId: item.tmbId,

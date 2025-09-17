@@ -21,7 +21,7 @@ export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
         const chatModel = getLLMModel(model);
-        const quoteMaxToken = chatModel.quoteMaxToken || 16000;
+        const quoteMaxToken = chatModel?.quoteMaxToken || 16000;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }

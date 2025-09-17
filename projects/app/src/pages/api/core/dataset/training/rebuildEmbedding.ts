@@ -49,8 +49,8 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
-    vectorModel: getVectorModel(dataset.vectorModel)?.name,
-    agentModel: getLLMModel(dataset.agentModel)?.name
+    vectorModel: getVectorModel(dataset.vectorModel)?.name || '',
+    agentModel: getLLMModel(dataset.agentModel)?.name || ''
   });
 
   // update vector model and dataset.data rebuild field

@@ -61,6 +61,10 @@ async function handler(req: NextApiRequest) {
   const token = await countPromptTokens(formatQ + formatA, '');
   const vectorModelData = getVectorModel(vectorModel);
 
+  if (!vectorModelData) {
+    return Promise.reject('Vector model not found');
+  }
+
   if (token > vectorModelData.maxToken) {
     return Promise.reject('Q Over Tokens');
   }

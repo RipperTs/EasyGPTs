@@ -36,8 +36,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const fileName = pathParts[pathParts.length - 1];
 
       try {
-        // 动态导入对应的处理函数
-        const handlerModule = await import(`../core/dataset/collaborator/${fileName}`);
+        // 动态导入对应的处理函数 - 使用显式路径映射避免webpack扫描整个目录
+        let handlerModule;
+        switch (fileName) {
+          case 'list':
+            handlerModule = await import('../core/dataset/collaborator/list');
+            break;
+          case 'update':
+            handlerModule = await import('../core/dataset/collaborator/update');
+            break;
+          case 'delete':
+            handlerModule = await import('../core/dataset/collaborator/delete');
+            break;
+          default:
+            throw new Error(`Unknown collaborator handler: ${fileName}`);
+        }
         const handler = handlerModule.default;
 
         if (typeof handler !== 'function') {
@@ -60,8 +73,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await withNextCors(req, res);
 
       try {
-        // 动态导入对应的处理函数
-        const handlerModule = await import(`../${pathStr}`);
+        // 动态导入对应的处理函数 - 使用显式路径映射
+        let handlerModule;
+        if (pathStr === 'support/user/team/member/list') {
+          handlerModule = await import('../support/user/team/member/list');
+        } else if (pathStr === 'support/user/team/member/create') {
+          handlerModule = await import('../support/user/team/member/create');
+        } else {
+          throw new Error(`Unknown team member handler: ${pathStr}`);
+        }
         const handler = handlerModule.default;
 
         if (typeof handler !== 'function') {
@@ -84,8 +104,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await withNextCors(req, res);
 
       try {
-        // 动态导入对应的处理函数
-        const handlerModule = await import(`../${pathStr}`);
+        // 动态导入对应的处理函数 - 使用显式路径映射
+        let handlerModule;
+        if (pathStr === 'support/user/search') {
+          handlerModule = await import('../support/user/search');
+        } else {
+          throw new Error(`Unknown user search handler: ${pathStr}`);
+        }
         const handler = handlerModule.default;
 
         if (typeof handler !== 'function') {

@@ -18,13 +18,24 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
+  const vectorModelData = getVectorModel(dataset.vectorModel);
+  const agentModelData = getLLMModel(dataset.agentModel);
+
+  if (!vectorModelData) {
+    return Promise.reject('Vector model not found');
+  }
+
+  if (!agentModelData) {
+    return Promise.reject('Agent model not found');
+  }
+
   const { billId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: name,
     billSource: UsageSourceEnum.training,
-    vectorModel: getVectorModel(dataset.vectorModel).name,
-    agentModel: getLLMModel(dataset.agentModel).name
+    vectorModel: vectorModelData.name,
+    agentModel: agentModelData.name
   });
 
   return billId;

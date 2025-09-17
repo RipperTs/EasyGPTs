@@ -11,7 +11,7 @@ import {
   deleteDatasetDataVector,
   insertDatasetDataVector
 } from '@fastgpt/service/common/vectorStore/controller';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getVectorModel, getVectorModelWithDefault } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { Document } from '@fastgpt/service/common/mongo';
@@ -205,7 +205,7 @@ const rebuildData = async ({
     mongoData.indexes.map(async (index, i) => {
       const result = await insertDatasetDataVector({
         query: index.text,
-        model: getVectorModel(trainingData.model),
+        model: getVectorModelWithDefault(trainingData.model),
         teamId: mongoData.teamId,
         datasetId: mongoData.datasetId,
         collectionId: mongoData.collectionId

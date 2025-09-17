@@ -22,8 +22,8 @@ async function handler(
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = global.vectorModels[0].model,
-    agentModel = getDatasetModel().model
+    vectorModel = global.vectorModels?.[0]?.model || '',
+    agentModel = getDatasetModel()?.model || ''
   } = req.body;
 
   // auth

@@ -56,6 +56,11 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   const extractModel = getLLMModel(model);
+
+  if (!extractModel) {
+    return Promise.reject('LLM model not found');
+  }
+
   const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await (async () => {

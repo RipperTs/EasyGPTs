@@ -57,8 +57,8 @@ async function handler(req: NextApiRequest) {
       tmbId,
       appName: 'core.dataset.collection.Sync Collection',
       billSource: UsageSourceEnum.training,
-      vectorModel: vectorModelData.name,
-      agentModel: agentModelData.name,
+      vectorModel: vectorModelData?.name || '',
+      agentModel: agentModelData?.name || '',
       session
     });
 

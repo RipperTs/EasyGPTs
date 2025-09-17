@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('使用默认配置，无团队限制');
     }
 
-    const config = await getLegacyConfig(teamId);
+    const config = await getLegacyConfig();
 
     res.json(config);
   } catch (err) {

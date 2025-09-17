@@ -274,8 +274,13 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     console.log(`[SearchDatasetData-EmbRecall] 开始获取文本向量 - 时间戳: ${Date.now()}`);
     const vectorStart = Date.now();
+    const vectorModel = getVectorModel(model);
+    if (!vectorModel) {
+      throw new Error('Vector model not found');
+    }
+
     const { vectors, tokens } = await getVectorsByText({
-      model: getVectorModel(model),
+      model: vectorModel,
       input: query,
       type: 'query'
     });
