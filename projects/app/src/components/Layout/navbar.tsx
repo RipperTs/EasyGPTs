@@ -24,8 +24,8 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId, lastChatId } = useChatStore();
-  const navbarList = useMemo(
-    () => [
+  const navbarList = useMemo(() => {
+    const list = [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
@@ -68,9 +68,10 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: '/account',
         activeLink: ['/account']
       }
-    ],
-    [lastChatAppId, lastChatId, t]
-  );
+    ];
+    // 仅 root 用户可见“模型”菜单
+    return userInfo?.username === 'root' ? list : list.filter((i) => i.link !== '/model-config');
+  }, [lastChatAppId, lastChatId, t, userInfo?.username]);
 
   const itemStyles: BoxProps & LinkProps = {
     my: 3,

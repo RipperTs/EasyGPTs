@@ -7,6 +7,7 @@ import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const LLMModelConfig = dynamic(() => import('./components/LLMModelConfig'));
 const EmbeddingModelConfig = dynamic(() => import('./components/EmbeddingModelConfig'));
@@ -28,6 +29,7 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
   const { isPc } = useSystem();
   const router = useRouter();
   const theme = useTheme();
+  const { userInfo } = useUserStore();
 
   const tabList = [
     {
@@ -75,6 +77,17 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
 
   const safeCurrentTab = (tabList.find((t) => t.value === (currentTab as any))?.value ||
     TabEnum.llm) as TabEnum;
+
+  // 非 root 用户不可访问
+  if (userInfo && userInfo.username !== 'root') {
+    return (
+      <PageContainer>
+        <Flex alignItems={'center'} justifyContent={'center'} h={'100%'} color={'myGray.600'}>
+          无权限访问
+        </Flex>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
