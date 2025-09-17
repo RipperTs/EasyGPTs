@@ -21,18 +21,29 @@ try {
 // 数据库连接配置
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fastgpt';
 const CONFIG_PATH = path.join(__dirname, '../projects/app/data/config.local.json');
-const DEFAULT_TEAM_ID = process.env.DEFAULT_TEAM_ID;
-const DEFAULT_TMB_ID = process.env.DEFAULT_TMB_ID;
+
+// 工具函数：按模型 key 做幂等 upsert
+async function upsertOne(collection, query, data) {
+  const now = new Date();
+  await collection.updateOne(
+    query,
+    {
+      $set: {
+        ...data,
+        updateTime: now
+      },
+      $setOnInsert: {
+        createTime: now,
+        isActive: true
+      }
+    },
+    { upsert: true }
+  );
+}
 
 async function migrateConfig() {
   try {
     console.log('开始迁移模型配置...');
-
-    // 检查环境变量
-    if (!DEFAULT_TEAM_ID || !DEFAULT_TMB_ID) {
-      console.error('请设置环境变量 DEFAULT_TEAM_ID 和 DEFAULT_TMB_ID');
-      process.exit(1);
-    }
 
     // 连接数据库
     await mongoose.connect(MONGODB_URI);
@@ -48,243 +59,191 @@ async function migrateConfig() {
     const config = JSON5.parse(configContent);
     console.log('配置文件读取成功');
 
-    // 获取原生MongoDB连接以便直接插入数据
+    // 获取原生MongoDB连接
     const db = mongoose.connection.db;
 
-    // 迁移LLM模型
-    if (config.llmModels && config.llmModels.length > 0) {
-      console.log(`开始迁移 ${config.llmModels.length} 个LLM模型...`);
+    // 1) 迁移 LLM 模型（带排序，按 JSON 顺序，sort 从 100 起）
+    if (Array.isArray(config.llmModels) && config.llmModels.length > 0) {
+      console.log(`开始迁移 ${config.llmModels.length} 个 LLM 模型...`);
       const llmCollection = db.collection('llm_models');
-
-      let count = 50;
-      for (const model of config.llmModels) {
+      for (let i = 0; i < config.llmModels.length; i++) {
+        const m = config.llmModels[i];
+        const sort = 100 + i;
         try {
-          const existing = await llmCollection.findOne({
-            model: model.model
-          });
-
-          if (existing) {
-            console.log(`LLM模型 ${model.model} 已存在，跳过`);
-            continue;
-          }
-
-          await llmCollection.insertOne({
-            model: model.model,
-            name: model.name,
-            avatar: model.avatar || '/imgs/model/openai.svg',
-            maxContext: model.maxContext,
-            maxResponse: model.maxResponse,
-            quoteMaxToken: model.quoteMaxToken,
-            maxTemperature: model.maxTemperature,
-            charsPointsPrice: model.charsPointsPrice || 0,
-            censor: model.censor || false,
-            vision: model.vision || false,
-            reasoning: model.reasoning || false,
-            datasetProcess: model.datasetProcess || false,
-            usedInClassify: model.usedInClassify || false,
-            usedInExtractFields: model.usedInExtractFields || false,
-            usedInToolCall: model.usedInToolCall || false,
-            usedInQueryExtension: model.usedInQueryExtension || false,
-            toolChoice: model.toolChoice || false,
-            functionCall: model.functionCall || false,
-            customCQPrompt: model.customCQPrompt || '',
-            customExtractPrompt: model.customExtractPrompt || '',
-            defaultSystemChatPrompt: model.defaultSystemChatPrompt || '',
-            defaultConfig: model.defaultConfig || {},
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date(),
-            sort: count
-          });
-
-          console.log(`LLM模型 ${model.model} 迁移成功`);
+          await upsertOne(
+            llmCollection,
+            { model: m.model },
+            {
+              model: m.model,
+              name: m.name,
+              avatar: m.avatar || '/imgs/model/openai.svg',
+              maxContext: m.maxContext,
+              maxResponse: m.maxResponse,
+              quoteMaxToken: m.quoteMaxToken,
+              maxTemperature: m.maxTemperature,
+              charsPointsPrice: m.charsPointsPrice || 0,
+              censor: !!m.censor,
+              vision: !!m.vision,
+              reasoning: !!m.reasoning,
+              datasetProcess: !!m.datasetProcess,
+              usedInClassify: !!m.usedInClassify,
+              usedInExtractFields: !!m.usedInExtractFields,
+              usedInToolCall: !!m.usedInToolCall,
+              usedInQueryExtension: !!m.usedInQueryExtension,
+              toolChoice: !!m.toolChoice,
+              functionCall: !!m.functionCall,
+              customCQPrompt: m.customCQPrompt || '',
+              customExtractPrompt: m.customExtractPrompt || '',
+              defaultSystemChatPrompt: m.defaultSystemChatPrompt || '',
+              defaultConfig: m.defaultConfig || {},
+              sort
+            }
+          );
+          console.log(`LLM模型 ${m.model} 已同步（sort=${sort}）`);
         } catch (error) {
-          console.error(`LLM模型 ${model.model} 迁移失败:`, error.message);
-        } finally {
-          count ++;
+          console.error(`LLM模型 ${m.model} 迁移失败:`, error.message);
         }
       }
     }
 
-    // 迁移重排模型
-    if (config.reRankModels && config.reRankModels.length > 0) {
+    // 2) 迁移向量（Embedding）模型（带排序）
+    if (Array.isArray(config.vectorModels) && config.vectorModels.length > 0) {
+      console.log(`开始迁移 ${config.vectorModels.length} 个向量模型...`);
+      const embeddingCollection = db.collection('embedding_models');
+      for (let i = 0; i < config.vectorModels.length; i++) {
+        const m = config.vectorModels[i];
+        const sort = 100 + i;
+        try {
+          await upsertOne(
+            embeddingCollection,
+            { model: m.model },
+            {
+              model: m.model,
+              name: m.name,
+              avatar: m.avatar || '/imgs/model/huggingface.svg',
+              charsPointsPrice: m.charsPointsPrice || 0,
+              defaultToken: m.defaultToken,
+              maxToken: m.maxToken,
+              weight: m.weight ?? 100,
+              defaultConfig: m.defaultConfig || {},
+              dbConfig: m.dbConfig || {},
+              queryConfig: m.queryConfig || {},
+              sort
+            }
+          );
+          console.log(`向量模型 ${m.model} 已同步（sort=${sort}）`);
+        } catch (error) {
+          console.error(`向量模型 ${m.model} 迁移失败:`, error.message);
+        }
+      }
+    }
+
+    // 3) 迁移重排模型（无排序��段）
+    if (Array.isArray(config.reRankModels) && config.reRankModels.length > 0) {
       console.log(`开始迁移 ${config.reRankModels.length} 个重排模型...`);
       const reRankCollection = db.collection('rerank_models');
-
-      for (const model of config.reRankModels) {
+      for (const m of config.reRankModels) {
         try {
-          const existing = await reRankCollection.findOne({
-            model: model.model
-          });
-
-          if (existing) {
-            console.log(`重排模型 ${model.model} 已存在，跳过`);
-            continue;
-          }
-
-          await reRankCollection.insertOne({
-            model: model.model,
-            name: model.name,
-            charsPointsPrice: model.charsPointsPrice || 0,
-            requestUrl: model.requestUrl,
-            apiKey: model.requestAuth,
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date()
-          });
-
-          console.log(`重排模型 ${model.model} 迁移成功`);
+          await upsertOne(
+            reRankCollection,
+            { model: m.model },
+            {
+              model: m.model,
+              name: m.name,
+              charsPointsPrice: m.charsPointsPrice || 0,
+              requestUrl: m.requestUrl,
+              apiKey: m.apiKey || m.requestAuth // 兼容文件中的 requestAuth 字段
+            }
+          );
+          console.log(`重排模型 ${m.model} 已同步`);
         } catch (error) {
-          console.error(`重排模型 ${model.model} 迁移失败:`, error.message);
+          console.error(`重排模型 ${m.model} 迁移失败:`, error.message);
         }
       }
     }
 
-    // 迁移TTS模型
-    if (config.audioSpeechModels && config.audioSpeechModels.length > 0) {
-      console.log(`开始迁移 ${config.audioSpeechModels.length} 个TTS模型...`);
+    // 4) 迁移 TTS 模型（带排序）
+    if (Array.isArray(config.audioSpeechModels) && config.audioSpeechModels.length > 0) {
+      console.log(`开始迁移 ${config.audioSpeechModels.length} 个 TTS 模型...`);
       const ttsCollection = db.collection('tts_models');
-
-      for (const model of config.audioSpeechModels) {
+      for (let i = 0; i < config.audioSpeechModels.length; i++) {
+        const m = config.audioSpeechModels[i];
+        const sort = 100 + i;
         try {
-          const existing = await ttsCollection.findOne({
-            model: model.model
-          });
-
-          if (existing) {
-            console.log(`TTS模型 ${model.model} 已存在，跳过`);
-            continue;
-          }
-
-          await ttsCollection.insertOne({
-            model: model.model,
-            name: model.name,
-            avatar: model.avatar || '/imgs/model/tts.svg',
-            charsPointsPrice: model.charsPointsPrice || 0,
-            requestUrl: model.requestUrl,
-            requestHeader: model.requestHeader || {},
-            voices: model.voices || [],
-            defaultConfig: model.defaultConfig || {},
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date()
-          });
-
-          console.log(`TTS模型 ${model.model} 迁移成功`);
+          await upsertOne(
+            ttsCollection,
+            { model: m.model },
+            {
+              model: m.model,
+              name: m.name,
+              avatar: m.avatar || '/imgs/model/tts.svg',
+              charsPointsPrice: m.charsPointsPrice || 0,
+              requestUrl: m.requestUrl,
+              requestHeader: m.requestHeader || {},
+              voices: Array.isArray(m.voices) ? m.voices : [],
+              defaultConfig: m.defaultConfig || {},
+              sort
+            }
+          );
+          console.log(`TTS模型 ${m.model} 已同步（sort=${sort}）`);
         } catch (error) {
-          console.error(`TTS模型 ${model.model} 迁移失败:`, error.message);
+          console.error(`TTS模型 ${m.model} 迁移失败:`, error.message);
         }
       }
     }
 
-    // 迁移语音识别模型
-    if (config.whisperModel) {
+    // 5) 迁移 Whisper 模型（单条）
+    if (config.whisperModel && config.whisperModel.model) {
       console.log('开始迁移语音识别模型...');
       const whisperCollection = db.collection('whisper_models');
-
+      const m = config.whisperModel;
       try {
-        const existing = await whisperCollection.findOne({
-          model: config.whisperModel.model
-        });
-
-        if (!existing) {
-          await whisperCollection.insertOne({
-            model: config.whisperModel.model,
-            name: config.whisperModel.name,
-            avatar: config.whisperModel.avatar || '/imgs/model/whisper.svg',
-            charsPointsPrice: config.whisperModel.charsPointsPrice || 0,
-            requestUrl: config.whisperModel.requestUrl,
-            requestHeader: config.whisperModel.requestHeader || {},
-            defaultConfig: config.whisperModel.defaultConfig || {},
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date()
-          });
-          console.log(`语音识别模型 ${config.whisperModel.model} 迁移成功`);
-        } else {
-          console.log(`语音识别模型 ${config.whisperModel.model} 已存在，跳过`);
-        }
+        await upsertOne(
+          whisperCollection,
+          { model: m.model },
+          {
+            model: m.model,
+            name: m.name,
+            avatar: m.avatar || '/imgs/model/huggingface.svg',
+            charsPointsPrice: m.charsPointsPrice || 0,
+            requestUrl: m.requestUrl,
+            requestHeader: m.requestHeader || {},
+            defaultConfig: m.defaultConfig || {}
+          }
+        );
+        console.log(`语音识别模型 ${m.model} 已同步`);
       } catch (error) {
         console.error('语音识别模型迁移失败:', error.message);
       }
     }
 
-    // 迁移OCR模型
-    if (config.ocrModel) {
-      console.log('开始迁移OCR模型...');
+    // 6) 迁移 OCR 模型（单条）
+    if (config.ocrModel && config.ocrModel.model) {
+      console.log('开始迁移 OCR 模型...');
       const ocrCollection = db.collection('ocr_models');
-
+      const m = config.ocrModel;
       try {
-        const existing = await ocrCollection.findOne({
-          model: config.ocrModel.model
-        });
-
-        if (!existing) {
-          await ocrCollection.insertOne({
-            model: config.ocrModel.model,
-            name: config.ocrModel.name,
-            avatar: config.ocrModel.avatar || '/imgs/model/ocr.svg',
-            charsPointsPrice: config.ocrModel.charsPointsPrice || 0,
-            requestUrl: config.ocrModel.requestUrl,
-            requestHeader: config.ocrModel.requestHeader || {},
-            defaultConfig: config.ocrModel.defaultConfig || {},
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date()
-          });
-          console.log(`OCR模型 ${config.ocrModel.model} 迁移成功`);
-        } else {
-          console.log(`OCR模型 ${config.ocrModel.model} 已存在，跳过`);
-        }
+        await upsertOne(
+          ocrCollection,
+          { model: m.model },
+          {
+            model: m.model,
+            name: m.name,
+            avatar: m.avatar || '/imgs/model/qwen.svg',
+            charsPointsPrice: m.charsPointsPrice || 0,
+            requestUrl: m.requestUrl,
+            requestHeader: m.requestHeader || {},
+            requestAuth: m.requestAuth || '',
+            defaultConfig: m.defaultConfig || {}
+          }
+        );
+        console.log(`OCR模型 ${m.model} 已同步`);
       } catch (error) {
         console.error('OCR模型迁移失败:', error.message);
       }
     }
 
-    // 迁移系统配置
-    const systemConfigCollection = db.collection('system_configs');
-    const systemConfigs = [
-      {
-        configKey: 'feConfigs',
-        configValue: config.feConfigs || {},
-        description: '前端配置'
-      },
-      {
-        configKey: 'systemEnv',
-        configValue: config.systemEnv || {},
-        description: '系统环境配置'
-      },
-      {
-        configKey: 'vectorModels',
-        configValue: config.vectorModels || [],
-        description: '向量模型配置'
-      }
-    ];
-
-    for (const sysConfig of systemConfigs) {
-      try {
-        const existing = await systemConfigCollection.findOne({
-          configKey: sysConfig.configKey
-        });
-
-        if (!existing) {
-          await systemConfigCollection.insertOne({
-            ...sysConfig,
-            isActive: true,
-            createTime: new Date(),
-            updateTime: new Date()
-          });
-          console.log(`系统配置 ${sysConfig.configKey} 迁移成功`);
-        } else {
-          console.log(`系统配置 ${sysConfig.configKey} 已存在，跳过`);
-        }
-      } catch (error) {
-        console.error(`系统配置 ${sysConfig.configKey} 迁移失败:`, error.message);
-      }
-    }
-
     console.log('模型配置迁移完成！');
-
   } catch (error) {
     console.error('迁移失败:', error);
     process.exit(1);
