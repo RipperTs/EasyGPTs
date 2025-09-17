@@ -31,6 +31,107 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
 
+// 判断字符串是否为HTML内容
+const isHtmlContent = (text: string) => {
+  if (!text) return false;
+  const trimmed = text.trim();
+
+  // 检查是否包含HTML标签的模式
+  // 1. 检查常见的HTML标签
+  const htmlTagRegex =
+    /<\/?(?:!DOCTYPE|html|head|body|div|p|span|table|thead|tbody|tr|td|th|h[1-6]|ul|ol|li|a|img|script|style|link|meta|form|input|button|select|textarea|iframe|video|audio|svg|canvas|br|hr|strong|em|b|i|u|pre|code|blockquote|article|section|nav|aside|header|footer|main)[^>]*>/i;
+
+  // 2. 检查是否有多个成对的标签
+  const pairedTagRegex = /<([a-zA-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/;
+
+  // 3. 检查自闭合标签
+  const selfClosingTagRegex = /<(?:img|br|hr|input|meta|link)[^>]*\/?>/i;
+
+  // 满足任一条件即认为是HTML
+  return (
+    htmlTagRegex.test(trimmed) || pairedTagRegex.test(trimmed) || selfClosingTagRegex.test(trimmed)
+  );
+};
+
+// 渲染内容的组件
+const ContentRenderer = ({ content, isDisabled }: { content: string; isDisabled?: boolean }) => {
+  const [iframeHeight, setIframeHeight] = useState(200);
+
+  if (isHtmlContent(content)) {
+    // 确保HTML内容有完整的文档结构
+    const fullHtmlContent = content.includes('<html')
+      ? content
+      : `<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              margin: 10px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              font-size: 14px;
+              line-height: 1.5;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin: 10px 0;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #f5f5f5;
+              font-weight: 600;
+            }
+            tr:nth-child(even) {
+              background-color: #fafafa;
+            }
+          </style>
+          <script>
+            window.onload = function() {
+              const height = document.body.scrollHeight;
+              window.parent.postMessage({ height: height }, '*');
+            };
+          </script>
+        </head>
+        <body>${content}</body>
+        </html>`;
+
+    return (
+      <Box position="relative">
+        <Box
+          as="iframe"
+          srcDoc={fullHtmlContent}
+          sandbox="allow-scripts allow-same-origin"
+          width="100%"
+          height={`${iframeHeight}px`}
+          minHeight="100px"
+          maxHeight="600px"
+          border="1px solid"
+          borderColor="gray.200"
+          borderRadius="md"
+          bg="white"
+          overflow="auto"
+          onLoad={(e: React.SyntheticEvent<HTMLIFrameElement>) => {
+            const iframe = e.currentTarget;
+            try {
+              const height = iframe.contentDocument?.body?.scrollHeight || 200;
+              setIframeHeight(Math.min(height + 20, 600));
+            } catch (err) {
+              // 跨域情况下无法访问，使用默认高度
+            }
+          }}
+        />
+        {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} />}
+      </Box>
+    );
+  }
+  return <Markdown source={content} isDisabled={isDisabled} />;
+};
+
 const DataCard = () => {
   const theme = useTheme();
   const router = useRouter();
@@ -220,11 +321,11 @@ const DataCard = () => {
 
                 {/* Data content */}
                 <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  <Markdown source={item.q} isDisabled />
+                  <ContentRenderer content={item.q} isDisabled />
                   {!!item.a && (
                     <>
                       <MyDivider />
-                      <Markdown source={item.a} isDisabled />
+                      <ContentRenderer content={item.a} isDisabled />
                     </>
                   )}
                 </Box>
