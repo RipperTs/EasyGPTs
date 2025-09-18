@@ -112,6 +112,7 @@ export const authDatasetByTmbId = async ({
 
     return {
       ...dataset,
+      ocrModel: dataset.ocrModel || '',
       defaultPermission,
       permission: Per
     };
