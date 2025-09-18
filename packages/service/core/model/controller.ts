@@ -16,9 +16,16 @@ import type {
   OCRModelSchema
 } from '@fastgpt/global/core/model/type.d';
 
-// 配置文件路径
-const CONFIG_FILE_PATH =
-  process.env.CONFIG_PATH || path.join(process.cwd(), 'data/config.local.json');
+// 解析配置文件路径：优先 CONFIG_PATH，其次本地与生产默认文件
+const resolveConfigPath = (): string | null => {
+  if (process.env.CONFIG_PATH) return process.env.CONFIG_PATH;
+  const cwd = process.cwd();
+  const localPath = path.join(cwd, 'data/config.local.json');
+  const prodPath = path.join(cwd, 'data/config.json');
+  if (fs.existsSync(localPath)) return localPath;
+  if (fs.existsSync(prodPath)) return prodPath;
+  return null;
+};
 
 // 配置文件缓存
 let configCache: any = null;
@@ -344,7 +351,12 @@ export const loadConfigFile = () => {
   }
 
   try {
-    const configContent = fs.readFileSync(CONFIG_FILE_PATH, 'utf-8');
+    const filePath = resolveConfigPath();
+    if (!filePath) {
+      console.warn('未找到配置文件: data/config.local.json 或 data/config.json');
+      return null;
+    }
+    const configContent = fs.readFileSync(filePath, 'utf-8');
     configCache = json5.parse(configContent);
     lastLoadTime = now;
     return configCache;
