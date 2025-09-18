@@ -61,3 +61,6 @@ export const getAxiosConfig = (props?: { userKey?: UserModelSchema['openaiAccoun
     authorization: apiKey ? `Bearer ${apiKey}` : ''
   };
 };
+
+// 向后兼容：导出默认的 OpenAI 基础地址（可能来自 ONEAPI_URL/OPENAI_BASE_URL）
+export const openaiBaseUrl = pickBaseUrl();
