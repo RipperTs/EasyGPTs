@@ -96,7 +96,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ocrModels: (ocrModels || []).map((m) => ({
         model: m.model,
         name: m.name,
-        charsPointsPrice: m.charsPointsPrice || 0
+        charsPointsPrice: m.charsPointsPrice || 0,
+        avatar: m.avatar || ''
       })),
       whisperModel: whisperModel
         ? {

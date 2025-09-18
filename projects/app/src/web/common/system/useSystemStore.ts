@@ -41,7 +41,7 @@ type State = {
   audioSpeechModelList: AudioSpeechModelType[];
   reRankModelList: ReRankModelItemType[];
   whisperModel?: WhisperModelType;
-  ocrModelList: { model: string; name: string; charsPointsPrice: number }[];
+  ocrModelList: { model: string; name: string; charsPointsPrice: number; avatar?: string }[];
   initStaticData: (e: InitDateResponse) => void;
 };
 

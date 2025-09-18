@@ -16,13 +16,14 @@ type Props = SelectProps & {
 
 const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
+  const { feConfigs, llmModelList, vectorModelList, ocrModelList } = useSystemStore();
   const router = useRouter();
 
   const avatarList = list.map((item) => {
     const modelData =
       llmModelList.find((model) => model.model === item.value) ||
-      vectorModelList.find((model) => model.model === item.value);
+      vectorModelList.find((model) => model.model === item.value) ||
+      ocrModelList.find((model) => model.model === item.value);
 
     return {
       value: item.value,

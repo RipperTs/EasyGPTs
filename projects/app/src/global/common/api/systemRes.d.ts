@@ -15,7 +15,7 @@ export type InitDateResponse = {
   audioSpeechModels: AudioSpeechModels[];
   reRankModels: ReRankModelItemType[];
   whisperModel: WhisperModelType;
-  ocrModels: { model: string; name: string; charsPointsPrice: number }[];
+  ocrModels: { model: string; name: string; charsPointsPrice: number; avatar?: string }[];
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
