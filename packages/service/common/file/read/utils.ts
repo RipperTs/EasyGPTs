@@ -4,7 +4,8 @@ import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
-import type { ReadFileResponse } from '../../../worker/readFile/type';
+import type { ReadFileResponse, ImageType } from '../../../worker/readFile/type';
+import { getOcrModelAsync } from '../../../core/ai/model';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
@@ -58,6 +59,18 @@ export const readRawContentByFileBuffer = async ({
   metadata?: Record<string, any>;
   ocrModel?: string;
 }) => {
+  // 优先使用知识库传入的 OCR 模型；若未设置则尝试读取系统激活的 OCR 模型
+  let finalOcrModel = ocrModel || '';
+  const isImage = ['jpg', 'jpeg', 'png'].includes((extension || '').toLowerCase());
+  if (!finalOcrModel && isImage) {
+    try {
+      const dbOcr = await getOcrModelAsync();
+      finalOcrModel = dbOcr?.model || '';
+    } catch (e) {
+      // 忽略读取失败，交由后续校验报错
+    }
+  }
+
   // Custom read file service
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
   const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || 'pdf';
@@ -140,15 +153,28 @@ export const readRawContentByFileBuffer = async ({
     };
   };
 
-  let { rawText, formatText, imageList } =
-    (await readFileFromCustomService()) ||
-    (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+  const customRes = await readFileFromCustomService();
+  let rawText: string;
+  let formatText: string | undefined;
+  let imageList: ImageType[] | undefined;
+
+  if (customRes) {
+    ({ rawText, formatText, imageList } = customRes);
+  } else {
+    if (isImage && !finalOcrModel) {
+      throw new Error(
+        'OCR 模型未配置，请在“系统设置-模型配置”新增并启用一个 OCR 模型，或在该知识库设置中选择 OCR 模型'
+      );
+    }
+    const workerRes = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
       extension,
       encoding,
       buffer,
       teamId,
-      ocrModel
-    }));
+      ocrModel: finalOcrModel
+    });
+    ({ rawText, formatText, imageList } = workerRes);
+  }
 
   // markdown data format
   if (imageList) {

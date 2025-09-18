@@ -133,12 +133,14 @@ export const readFileContentFromMongo = async ({
   teamId,
   bucketName,
   fileId,
-  isQAImport = false
+  isQAImport = false,
+  ocrModel
 }: {
   teamId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
   isQAImport?: boolean;
+  ocrModel?: string;
 }): Promise<{
   rawText: string;
   filename: string;
@@ -180,7 +182,8 @@ export const readFileContentFromMongo = async ({
     encoding,
     metadata: {
       relatedId: fileId
-    }
+    },
+    ocrModel
   });
 
   // < 14M

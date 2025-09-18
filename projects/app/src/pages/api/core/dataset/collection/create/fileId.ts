@@ -49,7 +49,8 @@ async function handler(
   const { rawText, filename } = await readFileContentFromMongo({
     teamId,
     bucketName: BucketNameEnum.dataset,
-    fileId
+    fileId,
+    ocrModel: dataset.ocrModel
   });
   // 2. split chunks
   const chunks = rawText2Chunks({
