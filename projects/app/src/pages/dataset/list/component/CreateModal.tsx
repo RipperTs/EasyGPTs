@@ -38,7 +38,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { vectorModelList, datasetModelList } = useSystemStore();
+  const { vectorModelList, datasetModelList, ocrModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const databaseNameMap = useMemo(() => {
@@ -67,12 +67,14 @@ const CreateModal = ({
       name: '',
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
-      agentModel: datasetModelList[0].model
+      agentModel: datasetModelList[0].model,
+      ocrModel: ocrModelList?.[0]?.model
     }
   });
   const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
+  const ocrModel = watch('ocrModel');
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -219,6 +221,39 @@ const CreateModal = ({
                 }))}
                 onchange={(e) => {
                   setValue('agentModel', e);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {ocrModelList.length > 0 && (
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>OCR 模型</Box>
+              <QuestionTip label={'用于解析图片内文字（PNG/JPG 等）'} />
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={ocrModel || ''}
+                list={ocrModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onchange={(e) => {
+                  setValue('ocrModel', e);
                 }}
               />
             </Box>

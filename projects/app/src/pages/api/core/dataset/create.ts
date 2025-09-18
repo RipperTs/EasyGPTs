@@ -23,7 +23,8 @@ async function handler(
     type = DatasetTypeEnum.dataset,
     avatar,
     vectorModel = global.vectorModels?.[0]?.model || '',
-    agentModel = getDatasetModel()?.model || ''
+    agentModel = getDatasetModel()?.model || '',
+    ocrModel
   } = req.body;
 
   // auth
@@ -49,6 +50,7 @@ async function handler(
     tmbId,
     vectorModel,
     agentModel,
+    ...(ocrModel ? { ocrModel } : {}),
     avatar,
     type
   });
