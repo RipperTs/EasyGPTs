@@ -215,7 +215,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             }}
           />
         </Flex>
-        <Flex mt={3} w={'100%'} flexDir={'column'} userSelect={'none'}>
+        <Flex mt={3} w={'100%'} flexDir={'column'}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.dataset.Dataset ID')}
           </FormLabel>
