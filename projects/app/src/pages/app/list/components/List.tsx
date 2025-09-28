@@ -100,7 +100,7 @@ const ListItem = () => {
   });
   const { runAsync: onclickCopy } = useRequest2(postCopyApp, {
     onSuccess({ appId }) {
-      router.push(`/app/detail?appId=${appId}`);
+      router.push(`/app/detail/${appId}`);
       loadMyApps();
     },
     successToast: t('app:create_copy_success')
@@ -184,7 +184,7 @@ const ListItem = () => {
                       }
                     });
                   } else if (app.permission.hasWritePer) {
-                    router.push(`/app/detail?appId=${app._id}`);
+                    router.push(`/app/detail/${app._id}`);
                   } else {
                     router.push(`/chat?appId=${app._id}`);
                   }

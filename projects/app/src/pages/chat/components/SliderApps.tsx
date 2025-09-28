@@ -25,7 +25,13 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
       parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+      type: [
+        AppTypeEnum.folder,
+        AppTypeEnum.simple,
+        AppTypeEnum.workflow,
+        AppTypeEnum.toolSet,
+        AppTypeEnum.plugin
+      ]
     }).then((res) =>
       res.map<GetResourceListItemResponse>((item) => ({
         id: item._id,
@@ -133,7 +139,9 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       <Box flex={'1 0 0'} px={4} h={0} overflow={'overlay'}>
         {apps.map((item) =>
           // 仅展示简单应用和工作流
-          item.type === AppTypeEnum.simple || item.type === AppTypeEnum.workflow ? (
+          item.type === AppTypeEnum.simple ||
+          item.type === AppTypeEnum.workflow ||
+          item.type === AppTypeEnum.toolSet ? (
             <Flex
               key={item._id}
               py={2}

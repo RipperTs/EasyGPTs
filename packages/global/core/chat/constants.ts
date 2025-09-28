@@ -37,7 +37,8 @@ export enum ChatSourceEnum {
   team = 'team',
   feishu = 'feishu',
   official_account = 'official_account',
-  wecom = 'wecom'
+  wecom = 'wecom',
+  mcp = 'mcp'
 }
 
 export const ChatSourceMap = {
@@ -64,6 +65,9 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.wecom]: {
     name: i18nT('common:core.chat.logs.wecom')
+  },
+  [ChatSourceEnum.mcp]: {
+    name: 'MCP'
   }
 };
 

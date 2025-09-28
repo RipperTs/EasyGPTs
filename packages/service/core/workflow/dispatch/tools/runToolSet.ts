@@ -1,0 +1,70 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { MCPClient } from '../../../app/mcp';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { MongoApp } from '../../../app/schema';
+import { getNodeErrResponse } from '../utils';
+
+type RunToolSetProps = ModuleDispatchProps<{
+  [key: string]: any;
+}>;
+
+export const dispatchRunToolSet = async (props: RunToolSetProps) => {
+  const {
+    params,
+    runningAppInfo,
+    runningUserInfo,
+    node: { name, avatar, toolConfig, version }
+  } = props;
+
+  try {
+    // Get toolSet configuration
+    if (toolConfig?.mcpTool?.toolId) {
+      const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
+      const [parentId, toolName] = pluginId.split('/');
+
+      // Get the toolSet app from database
+      const toolSetApp = await MongoApp.findById(parentId).lean();
+
+      if (!toolSetApp) {
+        throw new Error('ToolSet app not found');
+      }
+
+      // Get MCP configuration from the toolSet app
+      const mcpConfig = toolSetApp.modules?.[0]?.inputs?.find(
+        (i: any) => i.key === 'mcpToolSetConfig'
+      )?.value;
+
+      if (!mcpConfig?.url) {
+        throw new Error('MCP toolSet configuration not found');
+      }
+
+      const mcpClient = new MCPClient({
+        url: mcpConfig.url,
+        headers: mcpConfig.headers || {}
+      });
+
+      const result = await mcpClient.toolCall(toolName, params);
+
+      return {
+        data: { [NodeOutputKeyEnum.rawResponse]: result },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
+      };
+    }
+
+    throw new Error('No valid toolSet configuration found');
+  } catch (error) {
+    return getNodeErrResponse({
+      error,
+      customNodeResponse: {
+        moduleLogo: avatar
+      }
+    });
+  }
+};

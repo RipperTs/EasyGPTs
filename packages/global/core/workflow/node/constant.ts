@@ -125,7 +125,10 @@ export enum FlowNodeTypeEnum {
   textEditor = 'textEditor',
   customFeedback = 'customFeedback',
   readFiles = 'readFiles',
-  userSelect = 'userSelect'
+  userSelect = 'userSelect',
+  // mcp toolset
+  tool = 'tool',
+  toolSet = 'toolSet'
 }
 
 // node IO value type

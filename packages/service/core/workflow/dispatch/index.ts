@@ -38,7 +38,7 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { removeSystemVariable, valueTypeFormat } from './utils';
+import { removeSystemVariable, valueTypeFormat, rewriteRuntimeWorkFlow } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus
@@ -60,6 +60,8 @@ import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
+import { dispatchRunTool } from './child/runTool';
+import { dispatchRunToolSet } from './tools/runToolSet';
 import { dispatchUserSelect } from './interactive/userSelect';
 import {
   InteractiveNodeResponseItemType,
@@ -91,6 +93,8 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
+  [FlowNodeTypeEnum.tool]: dispatchRunTool,
+  [FlowNodeTypeEnum.toolSet]: dispatchRunToolSet,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -156,6 +160,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ...getSystemVariable(data),
     ...variables
   };
+
+  // 展开工具集（toolSet）为实际可调用的 tool 节点
+  await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges });
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user

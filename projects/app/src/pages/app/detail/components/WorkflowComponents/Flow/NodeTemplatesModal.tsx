@@ -26,6 +26,7 @@ import {
   getSystemPlugTemplates,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
+import { getAppDetailById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
@@ -45,6 +46,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
@@ -383,6 +385,95 @@ const RenderList = React.memo(function RenderList({
 
             setLoading(false);
             return res;
+          }
+
+          // Handle tool and toolSet nodes from MCP
+          if (template.flowNodeType === FlowNodeTypeEnum.tool) {
+            // For individual tools from MCP toolSet
+            const baseTemplate = moduleTemplatesFlat.find(
+              (item) => item.id === FlowNodeTypeEnum.tool
+            );
+            if (!baseTemplate) {
+              throw new Error('Tool template not found');
+            }
+
+            // template.id is composed as `${toolSetAppId}/${toolName}` in getChildren
+            const [toolSetAppId, ...rest] = template.id.split('/');
+            const toolName = rest.join('/');
+
+            // Load the parent toolSet app to retrieve MCP config and tool schema
+            const appDetail = await getAppDetailById(toolSetAppId);
+            const toolSetNode = appDetail.modules?.find(
+              (n: any) => n.flowNodeType === FlowNodeTypeEnum.toolSet
+            );
+            const mcpConfig =
+              toolSetNode?.inputs?.find((i: any) => i.key === 'mcpToolSetConfig')?.value || {};
+
+            const {
+              url = '',
+              headers = {},
+              toolList = []
+            } = mcpConfig as {
+              url?: string;
+              headers?: Record<string, string>;
+              toolList?: { name: string; description: string; inputSchema: any }[];
+            };
+
+            const tool = (toolList as any[]).find((t) => t.name === toolName);
+            if (!tool) {
+              throw new Error('MCP tool not found in toolSet');
+            }
+
+            // Build runtime node to get schema-based inputs/outputs
+            const runtimeNode = getMCPToolRuntimeNode({
+              tool,
+              url,
+              headers,
+              avatar: template.avatar
+            });
+
+            return {
+              ...baseTemplate,
+              name: template.name,
+              intro: template.intro || '',
+              avatar: template.avatar,
+              inputs: runtimeNode.inputs,
+              outputs: runtimeNode.outputs,
+              version: baseTemplate.version,
+              // Store tool config for runtime
+              toolConfig: {
+                mcpTool: {
+                  toolId: template.id
+                }
+              }
+            };
+          }
+
+          if (template.flowNodeType === FlowNodeTypeEnum.toolSet) {
+            // For toolSet nodes
+            const baseTemplate = moduleTemplatesFlat.find(
+              (item) => item.id === FlowNodeTypeEnum.toolSet
+            );
+            if (!baseTemplate) {
+              throw new Error('ToolSet template not found');
+            }
+            // Fetch toolSet details to get the tool list
+            const appDetail = await getAppDetailById(template.id);
+            const toolSetNode = appDetail.modules?.find(
+              (n: any) => n.flowNodeType === FlowNodeTypeEnum.toolSet
+            );
+            const mcpConfig =
+              toolSetNode?.inputs?.find((i: any) => i.key === 'mcpToolSetConfig')?.value || {};
+
+            return {
+              ...baseTemplate,
+              name: template.name,
+              intro: template.intro || '',
+              avatar: template.avatar,
+              toolConfig: {
+                mcpToolSet: mcpConfig
+              }
+            };
           }
 
           // base node

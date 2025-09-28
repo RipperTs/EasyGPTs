@@ -139,7 +139,7 @@ const CreateModal = ({
     },
     {
       onSuccess(id: string) {
-        router.push(`/app/detail?appId=${id}`);
+        router.push(`/app/detail/${id}`);
         loadMyApps();
         onClose();
       },

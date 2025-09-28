@@ -103,7 +103,7 @@ const TemplateMarketModal = ({
     {
       onSuccess(id: string) {
         onClose();
-        router.push(`/app/detail?appId=${id}`);
+        router.push(`/app/detail/${id}`);
       },
       successToast: t('common:common.Create Success'),
       errorToast: t('common:common.Create Failed')

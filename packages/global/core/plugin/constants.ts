@@ -21,5 +21,6 @@ export const pluginTypeMap = {
 export enum PluginSourceEnum {
   personal = 'personal',
   community = 'community',
-  commercial = 'commercial'
+  commercial = 'commercial',
+  mcp = 'mcp'
 }

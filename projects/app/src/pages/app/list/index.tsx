@@ -49,6 +49,7 @@ const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
 const HttpEditModal = dynamic(() => import('./components/HttpPluginEditModal'));
+const McpToolsEditModal = dynamic(() => import('./components/McpToolsEditModal'));
 
 const MyApps = () => {
   const { t } = useTranslation();
@@ -76,6 +77,11 @@ const MyApps = () => {
     isOpen: isOpenCreateHttpPlugin,
     onOpen: onOpenCreateHttpPlugin,
     onClose: onCloseCreateHttpPlugin
+  } = useDisclosure();
+  const {
+    isOpen: isOpenCreateMcp,
+    onOpen: onOpenCreateMcp,
+    onClose: onCloseCreateMcp
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [templateModalType, setTemplateModalType] = useState<AppTypeEnum | 'all'>();
@@ -161,6 +167,10 @@ const MyApps = () => {
                 {
                   label: t('app:type.Plugin'),
                   value: AppTypeEnum.plugin
+                },
+                {
+                  label: 'MCP Tools',
+                  value: AppTypeEnum.toolSet
                 }
               ]}
               value={appType}
@@ -218,6 +228,12 @@ const MyApps = () => {
                           label: t('app:type.Http plugin'),
                           description: t('app:type.Create http plugin tip'),
                           onClick: onOpenCreateHttpPlugin
+                        },
+                        {
+                          icon: 'core/app/type/pluginFill',
+                          label: 'MCP Tools',
+                          description: '从 MCP 服务导入工具集',
+                          onClick: onOpenCreateMcp
                         }
                       ]
                     },
@@ -325,6 +341,7 @@ const MyApps = () => {
         />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
+      {isOpenCreateMcp && <McpToolsEditModal onClose={onCloseCreateMcp} />}
       {!!templateModalType && (
         <TemplateMarketModal
           onClose={() => setTemplateModalType(undefined)}

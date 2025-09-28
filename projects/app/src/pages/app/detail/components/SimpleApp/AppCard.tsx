@@ -89,14 +89,16 @@ const AppCard = () => {
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
         <HStack alignItems={'flex-end'}>
-          <Button
-            size={['sm', 'md']}
-            variant={'whitePrimary'}
-            leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
-            onClick={() => router.push(`/chat?appId=${appId}`)}
-          >
-            {t('common:core.Chat')}
-          </Button>
+          {appDetail.type !== AppTypeEnum.toolSet && (
+            <Button
+              size={['sm', 'md']}
+              variant={'whitePrimary'}
+              leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
+              onClick={() => router.push(`/chat?appId=${appId}`)}
+            >
+              {t('common:core.Chat')}
+            </Button>
+          )}
           {appDetail.permission.hasManagePer && (
             <Button
               size={['sm', 'md']}
@@ -120,11 +122,15 @@ const AppCard = () => {
               menuList={[
                 {
                   children: [
-                    {
-                      icon: 'core/app/type/workflow',
-                      label: appT('transition_to_workflow'),
-                      onClick: () => setTransitionCreateNew(true)
-                    },
+                    ...(appDetail.type !== AppTypeEnum.toolSet
+                      ? [
+                          {
+                            icon: 'core/app/type/workflow',
+                            label: appT('transition_to_workflow'),
+                            onClick: () => setTransitionCreateNew(true)
+                          }
+                        ]
+                      : []),
                     ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
                       ? [
                           {

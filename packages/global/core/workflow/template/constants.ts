@@ -28,6 +28,8 @@ import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { ReadFilesNodes } from './system/readFiles';
 import { UserSelectNode } from './system/userSelect/index';
+import { ToolSetNode } from './system/toolSet';
+import { RunToolNode } from './system/runTool';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -36,6 +38,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   DatasetSearchModule,
   DatasetConcatModule,
   ToolModule,
+  ToolSetNode,
   StopToolNode,
   ClassifyQuestionModule,
   ContextExtractModule,
@@ -72,5 +75,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   EmptyNode,
   RunPluginModule,
   RunAppNode,
-  RunAppModule
+  RunAppModule,
+  ToolSetNode,
+  RunToolNode
 ];

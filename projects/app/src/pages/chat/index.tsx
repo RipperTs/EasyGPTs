@@ -228,7 +228,7 @@ const Chat = ({
               chatData={chatData}
               history={chatRecords}
               showHistory
-              onRouteToAppDetail={() => router.push(`/app/detail?appId=${appId}`)}
+              onRouteToAppDetail={() => router.push(`/app/detail/${appId}`)}
             />
 
             {/* chat box */}

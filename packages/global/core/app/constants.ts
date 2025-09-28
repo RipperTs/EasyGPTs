@@ -5,6 +5,7 @@ export enum AppTypeEnum {
   simple = 'simple',
   workflow = 'advanced',
   plugin = 'plugin',
+  toolSet = 'toolSet',
   httpPlugin = 'httpPlugin'
 }
 

@@ -11,7 +11,10 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
 import { NextApiResponse } from 'next';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  SseResponseEventEnum,
+  DispatchNodeResponseKeyEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export const getWorkflowResponseWrite = ({
@@ -149,6 +152,66 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
   return quoteQA;
 };
 
+// 扩展：在运行期将 toolSet 节点展开为多个 tool 节点
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+
+export const rewriteRuntimeWorkFlow = async ({
+  nodes,
+  edges
+}: {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+}) => {
+  const toolSetNodes = nodes.filter((n) => n.flowNodeType === FlowNodeTypeEnum.toolSet);
+  if (toolSetNodes.length === 0) return;
+
+  const removeIds = new Set<string>();
+  for (const tsNode of toolSetNodes) {
+    removeIds.add(tsNode.nodeId);
+    const conf = tsNode.inputs?.find((i) => i.key === 'mcpToolSetConfig')?.value || {};
+    const {
+      url,
+      headers,
+      toolList = []
+    } = conf as {
+      url: string;
+      headers?: Record<string, string>;
+      toolList: { name: string; description: string; inputSchema: any }[];
+    };
+
+    const incoming = edges.filter((e) => e.target === tsNode.nodeId);
+    const pushEdges = (nodeId: string) => {
+      incoming.forEach((e) => {
+        edges.push({
+          source: e.source,
+          target: nodeId,
+          sourceHandle: e.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: e.status
+        });
+      });
+    };
+
+    toolList.forEach((tool, idx) => {
+      const newNode = getMCPToolRuntimeNode({ tool, url, headers, avatar: tsNode.avatar }) as any;
+      // 确保稳定 nodeId，便于下次展开能对齐
+      newNode.nodeId = `${tsNode.nodeId}-${idx}`;
+      nodes.push(newNode);
+      pushEdges(newNode.nodeId);
+    });
+  }
+
+  // 删除 toolSet 节点及连接到它的边
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (removeIds.has(nodes[i].nodeId)) nodes.splice(i, 1);
+  }
+  for (let i = edges.length - 1; i >= 0; i--) {
+    if (removeIds.has(edges[i].target)) edges.splice(i, 1);
+  }
+};
+
 /* remove system variable */
 export const removeSystemVariable = (variables: Record<string, any>) => {
   const copyVariables = { ...variables };
@@ -179,5 +242,33 @@ export const formatHttpError = (error: any) => {
     method: error?.config?.method,
     code: error?.code,
     status: error?.status
+  };
+};
+
+// Align with upstream: standardize node error response structure
+export const getNodeErrResponse = ({
+  error,
+  customErr,
+  customNodeResponse
+}: {
+  error: any;
+  customErr?: Record<string, any>;
+  customNodeResponse?: Record<string, any>;
+}) => {
+  const errorText = getErrText(error);
+
+  return {
+    [NodeOutputKeyEnum.error]: {
+      message: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      errorText,
+      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      error: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    }
   };
 };

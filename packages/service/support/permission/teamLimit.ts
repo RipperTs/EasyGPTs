@@ -68,7 +68,9 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     getTeamStandPlan({ teamId }),
     MongoApp.count({
       teamId,
-      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+      type: {
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+      }
     })
   ]);
 

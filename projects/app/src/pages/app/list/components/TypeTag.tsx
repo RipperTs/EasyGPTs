@@ -15,6 +15,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#DBF3FF',
       color: '#0884DD'
     },
+    [AppTypeEnum.toolSet]: {
+      label: 'MCP Tools',
+      icon: 'core/app/type/plugin',
+      bg: '#E4F1FF',
+      color: '#2B6CB0'
+    },
     [AppTypeEnum.workflow]: {
       label: appT('type.Workflow bot'),
       icon: 'core/app/type/workflow',

@@ -16,6 +16,10 @@ const Workflow = dynamic(() => import('./components/Workflow'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
+const MCPTools = dynamic(() => import('./components/MCPTools'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
 const Plugin = dynamic(() => import('./components/Plugin'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
@@ -34,6 +38,7 @@ const AppDetail = () => {
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
+            {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
           </>
         )}
