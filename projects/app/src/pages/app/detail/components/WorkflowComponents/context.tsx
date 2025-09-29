@@ -520,10 +520,12 @@ const WorkflowContextProvider = ({
       (edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === nodeId
     );
 
+    const visibleInputs = inputs.filter((item) => item.key !== 'mcpConfig');
+
     return {
       isTool,
-      toolInputs: inputs.filter((item) => isTool && item.toolDescription),
-      commonInputs: inputs.filter((item) => {
+      toolInputs: visibleInputs.filter((item) => isTool && item.toolDescription),
+      commonInputs: visibleInputs.filter((item) => {
         if (!isTool) return true;
         return !item.toolDescription;
       })

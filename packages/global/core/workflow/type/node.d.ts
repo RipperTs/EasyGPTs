@@ -4,6 +4,41 @@ import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
 import { ChatHistoryItemResType } from '../../chat/type';
 import { ParentIdType } from 'common/parentFolder/type';
 
+export type NodeToolConfigType = {
+  mcpToolSet?: {
+    toolId?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    headerSecret?: Record<string, any>;
+    toolList?: any[];
+  };
+  mcpTool?: {
+    toolId?: string;
+  };
+  systemToolSet?: {
+    toolId?: string;
+    toolList?: {
+      toolId?: string;
+      name?: string;
+      description?: string;
+    }[];
+  };
+  systemTool?: {
+    toolId?: string;
+  };
+  httpToolSet?: {
+    toolId?: string;
+    baseUrl?: string;
+    toolList?: any[];
+    apiSchemaStr?: string;
+    customHeaders?: string;
+    headerSecret?: Record<string, any>;
+  };
+  httpTool?: {
+    toolId?: string;
+  };
+};
+
 export type FlowNodeCommonType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   abandon?: boolean; // abandon node
@@ -18,6 +53,7 @@ export type FlowNodeCommonType = {
   // data
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+  toolConfig?: NodeToolConfigType;
 
   // plugin data
   pluginId?: string;

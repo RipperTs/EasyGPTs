@@ -22,18 +22,26 @@ export const getMCPToolSetRuntimeNode = ({
   name?: string;
   avatar?: string;
 }) => {
+  const toolSetConfig = {
+    url,
+    headers,
+    toolList
+  };
   return {
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
     intro: 'MCP Tools',
+    toolConfig: {
+      mcpToolSet: toolSetConfig
+    },
     inputs: [
       {
         key: 'mcpToolSetConfig',
         label: 'mcpToolSetConfig',
         renderTypeList: [],
         valueType: WorkflowIOValueTypeEnum.object,
-        value: { url, headers, toolList },
+        value: toolSetConfig,
         canEdit: false
       }
     ],
@@ -54,11 +62,17 @@ export const getMCPToolRuntimeNode = ({
   headers?: Record<string, string>;
   avatar?: string;
 }) => {
+  const mcpConfig = { url, headers, toolName: tool.name };
   return {
     nodeId: getNanoid(),
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
+    toolConfig: {
+      mcpTool: {
+        toolId: tool.name
+      }
+    },
     inputs: [
       ...jsonSchema2NodeInput(tool.inputSchema),
       {
@@ -66,7 +80,7 @@ export const getMCPToolRuntimeNode = ({
         label: 'mcpConfig',
         renderTypeList: [],
         valueType: WorkflowIOValueTypeEnum.object,
-        value: { url, headers, toolName: tool.name },
+        value: mcpConfig,
         canEdit: false
       }
     ],

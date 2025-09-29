@@ -343,16 +343,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     isOpen,
     onClose,
     isLoading,
-    t,
     templateType,
-    feConfigs.systemPluginCourseUrl,
     searchKey,
     parentId,
     paths,
     onUpdateParentId,
     templates,
-    loadNodeTemplates,
-    router
+    loadNodeTemplates
   ]);
 
   return Render;
@@ -498,7 +495,10 @@ const RenderList = React.memo(function RenderList({
               intro: template.intro || '',
               avatar: template.avatar,
               toolConfig: {
-                mcpToolSet: mcpConfig
+                mcpToolSet: {
+                  ...mcpConfig,
+                  toolId: template.id
+                }
               }
             };
           }
@@ -696,7 +696,6 @@ const RenderList = React.memo(function RenderList({
       </Box>
     );
   }, [
-    feConfigs.systemTitle,
     formatTemplates,
     gridStyle,
     isPc,
