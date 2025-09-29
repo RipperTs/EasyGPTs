@@ -28,7 +28,7 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { HttpPluginImgUrl, MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { McpServerImgUrl, MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
 import { useRouter } from 'next/router';
 
@@ -40,7 +40,7 @@ export type EditMcpToolsProps = {
   pluginData?: AppSchema['pluginData'];
 };
 
-const defaultAvatar = HttpPluginImgUrl;
+const defaultAvatar = McpServerImgUrl;
 
 const McpToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { toast } = useToast();
@@ -121,7 +121,7 @@ const McpToolsEditModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal
         isOpen
         onClose={onClose}
-        iconSrc="core/app/type/pluginFill"
+        iconSrc="core/app/type/mcpFill"
         title={'导入 MCP 工具集'}
         w={['90vw', '600px']}
         h={['90vh', '80vh']}

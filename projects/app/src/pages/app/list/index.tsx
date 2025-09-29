@@ -230,7 +230,7 @@ const MyApps = () => {
                           onClick: onOpenCreateHttpPlugin
                         },
                         {
-                          icon: 'core/app/type/pluginFill',
+                          icon: 'core/app/type/mcpFill',
                           label: 'MCP Tools',
                           description: '从 MCP 服务导入工具集',
                           onClick: onOpenCreateMcp

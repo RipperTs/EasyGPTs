@@ -68,15 +68,13 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
 
 async function handler(req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponseType<any>) {
   if (req.method === 'POST') return handlePost(req, res);
-  res
-    .writeHead(405)
-    .end(
-      JSON.stringify({
-        jsonrpc: '2.0',
-        error: { code: -32000, message: 'Method not allowed.' },
-        id: null
-      })
-    );
+  res.writeHead(405).end(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Method not allowed.' },
+      id: null
+    })
+  );
 }
 
 export default handler;

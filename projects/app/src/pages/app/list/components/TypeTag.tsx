@@ -17,7 +17,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     },
     [AppTypeEnum.toolSet]: {
       label: 'MCP Tools',
-      icon: 'core/app/type/plugin',
+      icon: 'core/app/type/mcp',
       bg: '#E4F1FF',
       color: '#2B6CB0'
     },

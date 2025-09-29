@@ -55,3 +55,4 @@ export const FolderIcon = 'file/fill/folder';
 export const FolderImgUrl = '/imgs/files/folder.svg';
 export const HttpPluginImgUrl = '/imgs/app/httpPluginFill.svg';
 export const HttpImgUrl = '/imgs/workflow/http.png';
+export const McpServerImgUrl = '/imgs/app/mcpFill.svg';
