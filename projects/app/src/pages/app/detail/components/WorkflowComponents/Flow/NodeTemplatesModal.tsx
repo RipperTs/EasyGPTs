@@ -72,7 +72,7 @@ enum TemplateTypeEnum {
   'mcpToolSet' = 'mcpToolSet'
 }
 
-const sliderWidth = 460;
+const sliderWidth = 510;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
