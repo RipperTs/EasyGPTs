@@ -170,6 +170,7 @@ export const iconPaths = {
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),
+  'core/modules/toolSet': () => import('./icons/core/modules/toolSet.svg'),
   'core/modules/previewLight': () => import('./icons/core/modules/previewLight.svg'),
   'core/modules/systemPlugin': () => import('./icons/core/modules/systemPlugin.svg'),
   'core/modules/teamPlugin': () => import('./icons/core/modules/teamPlugin.svg'),

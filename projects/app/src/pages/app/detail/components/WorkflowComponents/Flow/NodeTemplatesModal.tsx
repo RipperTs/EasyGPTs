@@ -24,7 +24,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getPreviewPluginNode,
   getSystemPlugTemplates,
-  getSystemPluginPaths
+  getSystemPluginPaths,
+  getMCPToolSetTemplates
 } from '@/web/core/app/api/plugin';
 import { getAppDetailById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -67,7 +68,8 @@ type RenderListProps = {
 enum TemplateTypeEnum {
   'basic' = 'basic',
   'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
+  'teamPlugin' = 'teamPlugin',
+  'mcpToolSet' = 'mcpToolSet'
 }
 
 const sliderWidth = 460;
@@ -158,6 +160,21 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           };
         });
       }
+      if (type === TemplateTypeEnum.mcpToolSet) {
+        const toolSetApps = await getMCPToolSetTemplates({
+          parentId,
+          searchKey: searchVal
+        });
+
+        return toolSetApps.map<NodeTemplateListItemType>((app) => {
+          const member = members.find((member) => member.tmbId === app.tmbId);
+          return {
+            ...app,
+            author: member?.memberName,
+            authorAvatar: member?.avatar
+          };
+        });
+      }
       if (type === TemplateTypeEnum.systemPlugin) {
         return getSystemPlugTemplates({
           searchKey: searchVal,
@@ -182,12 +199,16 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
+      if (
+        templateType === TemplateTypeEnum.teamPlugin ||
+        templateType === TemplateTypeEnum.mcpToolSet
+      )
+        return getAppFolderPath(parentId);
       return getSystemPluginPaths(parentId);
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [parentId, templateType]
     }
   );
 
@@ -269,6 +290,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                       icon: 'core/modules/teamPlugin',
                       label: '我的插件',
                       value: TemplateTypeEnum.teamPlugin
+                    },
+                    {
+                      icon: 'core/modules/toolSet',
+                      label: 'MCP工具集',
+                      value: TemplateTypeEnum.mcpToolSet
                     }
                   ]}
                   width={'100%'}
@@ -294,7 +320,8 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             </Flex>
             {/* paths */}
             {(templateType === TemplateTypeEnum.teamPlugin ||
-              templateType === TemplateTypeEnum.systemPlugin) &&
+              templateType === TemplateTypeEnum.systemPlugin ||
+              templateType === TemplateTypeEnum.mcpToolSet) &&
               !searchKey &&
               parentId && (
                 <Flex alignItems={'center'} mt={2}>
@@ -539,7 +566,7 @@ const RenderList = React.memo(function RenderList({
   );
 
   const gridStyle = useMemo(() => {
-    if (type === TemplateTypeEnum.teamPlugin) {
+    if (type === TemplateTypeEnum.teamPlugin || type === TemplateTypeEnum.mcpToolSet) {
       return {
         gridTemplateColumns: ['1fr', '1fr'],
         py: 2,

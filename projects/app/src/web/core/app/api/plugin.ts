@@ -19,6 +19,56 @@ import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
+/* ============ MCP toolSet ============== */
+export const getMCPToolSetTemplates = async (data?: ListAppBody) => {
+  // 如果提供了parentId，检查parent是否是toolSet
+  if (data?.parentId) {
+    const apps = await getMyApps({});
+    const parentApp = apps.find((app) => app._id === data.parentId);
+
+    if (parentApp?.type === AppTypeEnum.toolSet) {
+      // 使用 getMCPToolsChildren API 获取工具列表
+      const children = await getMCPToolsChildren({
+        id: data.parentId,
+        searchKey: data.searchKey
+      });
+
+      return children.map((item) => ({
+        id: item.id,
+        pluginId: item.id,
+        avatar: item.avatar,
+        name: item.name,
+        intro: item.description || '',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        isTool: true,
+        // Add version info for proper tool config
+        version: '481'
+      }));
+    }
+  }
+
+  // 获取根目录和子目录下的toolSet应用
+  return getMyApps(data).then((res) =>
+    res
+      .filter((app) => app.type === AppTypeEnum.toolSet)
+      .map((app) => ({
+        tmbId: app.tmbId,
+        id: app._id,
+        pluginId: app._id,
+        isFolder: true,
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        avatar: app.avatar,
+        name: app.name,
+        intro: app.intro,
+        showStatus: false,
+        version: app.pluginData?.nodeVersion || defaultNodeVersion,
+        isTool: true
+      }))
+  );
+};
+
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: ListAppBody) => {
   // 如果提供了parentId，检查parent是否是toolSet
@@ -47,23 +97,44 @@ export const getTeamPlugTemplates = async (data?: ListAppBody) => {
       }));
     }
 
-    // If parent is not toolSet, return apps under this parent
+    // If parent is not toolSet, return apps under this parent (excluding toolSet)
     return getMyApps(data).then((res) =>
-      res.map((app) => ({
+      res
+        .filter((app) => app.type !== AppTypeEnum.toolSet)
+        .map((app) => ({
+          tmbId: app.tmbId,
+          id: app._id,
+          pluginId: app._id,
+          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
+          templateType: FlowNodeTemplateTypeEnum.teamApp,
+          flowNodeType:
+            app.type === AppTypeEnum.workflow
+              ? FlowNodeTypeEnum.appModule
+              : FlowNodeTypeEnum.pluginModule,
+          avatar: app.avatar,
+          name: app.name,
+          intro: app.intro,
+          showStatus: false,
+          version: app.pluginData?.nodeVersion || defaultNodeVersion,
+          isTool: true
+        }))
+    );
+  }
+
+  // 获取根目录的应用列表，排除toolSet类型
+  return getMyApps(data).then((res) =>
+    res
+      .filter((app) => app.type !== AppTypeEnum.toolSet)
+      .map((app) => ({
         tmbId: app.tmbId,
         id: app._id,
         pluginId: app._id,
-        isFolder:
-          app.type === AppTypeEnum.folder ||
-          app.type === AppTypeEnum.httpPlugin ||
-          app.type === AppTypeEnum.toolSet,
+        isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         flowNodeType:
           app.type === AppTypeEnum.workflow
             ? FlowNodeTypeEnum.appModule
-            : app.type === AppTypeEnum.toolSet
-              ? FlowNodeTypeEnum.toolSet
-              : FlowNodeTypeEnum.pluginModule,
+            : FlowNodeTypeEnum.pluginModule,
         avatar: app.avatar,
         name: app.name,
         intro: app.intro,
@@ -71,33 +142,6 @@ export const getTeamPlugTemplates = async (data?: ListAppBody) => {
         version: app.pluginData?.nodeVersion || defaultNodeVersion,
         isTool: true
       }))
-    );
-  }
-
-  // 获取根目录的应用列表
-  return getMyApps(data).then((res) =>
-    res.map((app) => ({
-      tmbId: app.tmbId,
-      id: app._id,
-      pluginId: app._id,
-      isFolder:
-        app.type === AppTypeEnum.folder ||
-        app.type === AppTypeEnum.httpPlugin ||
-        app.type === AppTypeEnum.toolSet,
-      templateType: FlowNodeTemplateTypeEnum.teamApp,
-      flowNodeType:
-        app.type === AppTypeEnum.workflow
-          ? FlowNodeTypeEnum.appModule
-          : app.type === AppTypeEnum.toolSet
-            ? FlowNodeTypeEnum.toolSet
-            : FlowNodeTypeEnum.pluginModule,
-      avatar: app.avatar,
-      name: app.name,
-      intro: app.intro,
-      showStatus: false,
-      version: app.pluginData?.nodeVersion || defaultNodeVersion,
-      isTool: true
-    }))
   );
 };
 
