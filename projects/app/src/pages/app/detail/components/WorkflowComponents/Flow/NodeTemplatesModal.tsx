@@ -461,6 +461,7 @@ const RenderList = React.memo(function RenderList({
               name: template.name,
               intro: template.intro || '',
               avatar: template.avatar,
+              pluginId: template.pluginId || template.id,
               inputs: runtimeNode.inputs,
               outputs: runtimeNode.outputs,
               version: baseTemplate.version,
@@ -494,12 +495,17 @@ const RenderList = React.memo(function RenderList({
               name: template.name,
               intro: template.intro || '',
               avatar: template.avatar,
+              pluginId: template.pluginId || template.id,
               toolConfig: {
                 mcpToolSet: {
                   ...mcpConfig,
                   toolId: template.id
                 }
-              }
+              },
+              inputs:
+                toolSetNode?.inputs?.map((input: any) => ({
+                  ...input
+                })) || []
             };
           }
 
@@ -641,9 +647,13 @@ const RenderList = React.memo(function RenderList({
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
                       borderRadius={'sm'}
-                      draggable={!template.isFolder}
+                      draggable={
+                        !template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet
+                      }
                       onDragEnd={(e) => {
                         if (e.clientX < sliderWidth) return;
+                        if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet)
+                          return;
                         onAddNode({
                           template,
                           position: { x: e.clientX, y: e.clientY }
