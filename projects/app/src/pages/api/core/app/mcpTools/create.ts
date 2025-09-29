@@ -18,6 +18,7 @@ export type createMCPToolsBody = Omit<
 > & {
   url: string;
   headers?: Record<string, string>;
+  headerSecret?: Record<string, any>;
   toolList: { name: string; description: string; inputSchema: any }[];
 };
 
@@ -27,7 +28,7 @@ async function handler(
   req: ApiRequestProps<createMCPToolsBody, createMCPToolsQuery>,
   _res: ApiResponseType<createMCPToolsResponse>
 ): Promise<createMCPToolsResponse> {
-  const { name, avatar, toolList, url, headers = {}, parentId } = req.body;
+  const { name, avatar, toolList, url, headers = {}, headerSecret = {}, parentId } = req.body;
 
   const { teamId, tmbId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
@@ -43,7 +44,17 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.toolSet,
-      modules: [getMCPToolSetRuntimeNode({ url, toolList, headers, name, avatar }) as any],
+      modules: [
+        getMCPToolSetRuntimeNode({
+          url,
+          toolList,
+          headers,
+          headerSecret,
+          name,
+          avatar,
+          toolId: ''
+        }) as any
+      ],
       session
     });
     return id as string;

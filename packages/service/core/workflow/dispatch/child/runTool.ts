@@ -53,24 +53,24 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
       const [parentId, toolName] = pluginId.split('/');
 
-      // Get the parent app (toolSet)
       const toolSetApp = await MongoApp.findById(parentId).lean();
       if (!toolSetApp) {
         throw new Error('ToolSet app not found');
       }
 
-      // Get MCP configuration from the toolSet app
       const mcpConfig =
-        toolSetApp.modules?.[0]?.inputs?.find((i: any) => i.key === 'mcpToolSetConfig')?.value ||
-        toolSetApp.modules?.[0]?.toolConfig?.mcpToolSet;
+        toolSetApp.modules?.[0]?.toolConfig?.mcpToolSet ||
+        toolSetApp.modules?.[0]?.inputs?.find((i: any) => i.key === 'mcpToolSetConfig')?.value;
 
       if (!mcpConfig?.url) {
         throw new Error('MCP configuration not found');
       }
 
+      const headers = (mcpConfig.headers as Record<string, string>) || {};
+
       const mcpClient = new MCPClient({
         url: mcpConfig.url,
-        headers: mcpConfig.headers || {}
+        headers
       });
 
       const result = await mcpClient.toolCall(toolName, params);

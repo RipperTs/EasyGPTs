@@ -13,6 +13,7 @@ export type updateMCPToolsBody = {
   appId: string;
   url: string;
   headers?: Record<string, string>;
+  headerSecret?: Record<string, any>;
   toolList: { name: string; description: string; inputSchema: any }[];
 };
 
@@ -22,15 +23,17 @@ async function handler(
   req: ApiRequestProps<updateMCPToolsBody, updateMCPToolsQuery>,
   _res: ApiResponseType<updateMCPToolsResponse>
 ): Promise<updateMCPToolsResponse> {
-  const { appId, url, toolList, headers = {} } = req.body;
+  const { appId, url, toolList, headers = {}, headerSecret = {} } = req.body;
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
     url,
     toolList,
     headers,
+    headerSecret,
     name: app.name,
-    avatar: app.avatar
+    avatar: app.avatar,
+    toolId: `mcp-${appId}`
   }) as any;
 
   await mongoSessionRun(async (session) => {

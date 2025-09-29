@@ -421,9 +421,10 @@ const RenderList = React.memo(function RenderList({
               throw new Error('Tool template not found');
             }
 
-            // template.id is composed as `${toolSetAppId}/${toolName}` in getChildren
-            const [toolSetAppId, ...rest] = template.id.split('/');
+            // template.id is composed as `${PluginSourceEnum.mcp}-${toolSetAppId}/${toolName}`
+            const [rawToolSetId, ...rest] = template.id.split('/');
             const toolName = rest.join('/');
+            const toolSetAppId = rawToolSetId.replace(/^mcp-/, '');
 
             // Load the parent toolSet app to retrieve MCP config and tool schema
             const appDetail = await getAppDetailById(toolSetAppId);
@@ -436,10 +437,12 @@ const RenderList = React.memo(function RenderList({
             const {
               url = '',
               headers = {},
+              headerSecret = {},
               toolList = []
             } = mcpConfig as {
               url?: string;
               headers?: Record<string, string>;
+              headerSecret?: Record<string, any>;
               toolList?: { name: string; description: string; inputSchema: any }[];
             };
 
@@ -453,7 +456,9 @@ const RenderList = React.memo(function RenderList({
               tool,
               url,
               headers,
-              avatar: template.avatar
+              headerSecret,
+              avatar: template.avatar,
+              parentId: toolSetAppId
             });
 
             return {

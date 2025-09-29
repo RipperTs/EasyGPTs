@@ -22,5 +22,7 @@ export enum PluginSourceEnum {
   personal = 'personal',
   community = 'community',
   commercial = 'commercial',
-  mcp = 'mcp'
+  mcp = 'mcp',
+  http = 'http',
+  systemTool = 'systemTool'
 }

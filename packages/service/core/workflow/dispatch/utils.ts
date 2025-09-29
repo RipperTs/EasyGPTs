@@ -156,6 +156,8 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPChildren } from '../../app/mcp';
+import { MongoApp } from '../../app/schema';
 
 export const rewriteRuntimeWorkFlow = async ({
   nodes,
@@ -170,15 +172,23 @@ export const rewriteRuntimeWorkFlow = async ({
   const removeIds = new Set<string>();
   for (const tsNode of toolSetNodes) {
     removeIds.add(tsNode.nodeId);
-    const conf = tsNode.inputs?.find((i) => i.key === 'mcpToolSetConfig')?.value || {};
-    const {
-      url,
-      headers,
-      toolList = []
+    const conf =
+      tsNode.toolConfig?.mcpToolSet ||
+      tsNode.inputs?.find((i) => i.key === 'mcpToolSetConfig')?.value ||
+      {};
+
+    let {
+      url = '',
+      headers = {},
+      headerSecret = {},
+      toolList = [],
+      toolId
     } = conf as {
-      url: string;
+      url?: string;
       headers?: Record<string, string>;
-      toolList: { name: string; description: string; inputSchema: any }[];
+      headerSecret?: Record<string, any>;
+      toolList?: { name: string; description: string; inputSchema: any }[];
+      toolId?: string;
     };
 
     const incoming = edges.filter((e) => e.target === tsNode.nodeId);
@@ -194,8 +204,31 @@ export const rewriteRuntimeWorkFlow = async ({
       });
     };
 
-    toolList.forEach((tool, idx) => {
-      const newNode = getMCPToolRuntimeNode({ tool, url, headers, avatar: tsNode.avatar }) as any;
+    let parentAppId = toolId || tsNode.pluginId || '';
+    if (parentAppId.startsWith('mcp-')) {
+      parentAppId = parentAppId.replace(/^mcp-/, '').split('/')[0];
+    }
+
+    if (!Array.isArray(toolList) || toolList.length === 0) {
+      if (parentAppId) {
+        const app = await MongoApp.findById(parentAppId).lean();
+        if (app) {
+          toolList = await getMCPChildren(app as any);
+        }
+      }
+    }
+
+    if (!Array.isArray(toolList) || toolList.length === 0) continue;
+
+    toolList.forEach((tool: any, idx: number) => {
+      const newNode = getMCPToolRuntimeNode({
+        tool,
+        url,
+        headers,
+        headerSecret,
+        avatar: tsNode.avatar,
+        parentId: parentAppId || tsNode.nodeId
+      }) as any;
       // 确保稳定 nodeId，便于下次展开能对齐
       newNode.nodeId = `${tsNode.nodeId}-${idx}`;
       nodes.push(newNode);

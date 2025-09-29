@@ -2,6 +2,7 @@ import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/const
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import { jsonSchema2NodeInput } from '../jsonschema';
 import { getNanoid } from '../../../common/string/tools';
+import { PluginSourceEnum } from '../../plugin/constants';
 
 export type McpToolConfig = {
   name: string;
@@ -9,24 +10,39 @@ export type McpToolConfig = {
   inputSchema: any;
 };
 
+type MCPToolSetConfig = {
+  url: string;
+  headers?: Record<string, string>;
+  headerSecret?: Record<string, any>;
+  toolList: McpToolConfig[];
+  toolId?: string;
+};
+
 export const getMCPToolSetRuntimeNode = ({
   url,
   toolList,
   headers,
+  headerSecret,
+  toolId,
   name,
   avatar
 }: {
   url: string;
   toolList: McpToolConfig[];
   headers?: Record<string, string>;
+  headerSecret?: Record<string, any>;
+  toolId?: string;
   name?: string;
   avatar?: string;
 }) => {
-  const toolSetConfig = {
+  const toolSetConfig: MCPToolSetConfig = {
     url,
     headers,
-    toolList
+    headerSecret,
+    toolList,
+    toolId
   };
+
   return {
     nodeId: getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
@@ -55,14 +71,18 @@ export const getMCPToolRuntimeNode = ({
   tool,
   url,
   headers,
-  avatar
+  headerSecret,
+  avatar,
+  parentId
 }: {
   tool: McpToolConfig;
   url: string;
   headers?: Record<string, string>;
+  headerSecret?: Record<string, any>;
   avatar?: string;
+  parentId: string;
 }) => {
-  const mcpConfig = { url, headers, toolName: tool.name };
+  const mcpConfig = { url, headers, headerSecret, toolName: tool.name };
   return {
     nodeId: getNanoid(),
     flowNodeType: FlowNodeTypeEnum.tool,
@@ -70,7 +90,7 @@ export const getMCPToolRuntimeNode = ({
     intro: tool.description,
     toolConfig: {
       mcpTool: {
-        toolId: tool.name
+        toolId: `${PluginSourceEnum.mcp}-${parentId}/${tool.name}`
       }
     },
     inputs: [

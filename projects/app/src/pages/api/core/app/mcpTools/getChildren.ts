@@ -1,6 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getMCPChildren } from '@fastgpt/service/core/app/mcp';
 
 export type McpGetChildrenmQuery = { id: string; searchKey?: string };
 export type McpGetChildrenmBody = {};
@@ -20,16 +21,7 @@ async function handler(
   const app = await MongoApp.findOne({ _id: id }).lean();
   if (!app) throw new Error('Mcp Toolset app not found');
 
-  const toolSetNode = app.modules?.find((n: any) => n.flowNodeType === 'toolSet');
-  if (!toolSetNode) return [];
-  const { toolList = [] } =
-    toolSetNode.inputs?.find((i: any) => i.key === 'mcpToolSetConfig')?.value || {};
-
-  const list = (toolList as any[]).map((t) => ({
-    id: `${id}/${t.name}`,
-    avatar: app.avatar,
-    ...t
-  }));
+  const list = await getMCPChildren(app as any);
   if (searchKey && searchKey.trim()) {
     const reg = new RegExp(searchKey.trim(), 'i');
     return list.filter((i) => reg.test(i.name));

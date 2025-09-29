@@ -58,13 +58,16 @@ const MCPTools: React.FC = () => {
     const {
       url = '',
       headers = {},
+      headerSecret = {},
       toolList = []
     } = val as {
       url?: string;
       headers?: Record<string, string>;
+      headerSecret?: Record<string, string>;
       toolList?: McpTool[];
     };
-    return { url, headers, toolList };
+    const resolvedHeaders = Object.keys(headers || {}).length ? headers : headerSecret;
+    return { url, headers: resolvedHeaders || {}, toolList };
   }, [appDetail?.modules]);
 
   const [url, setUrl] = useState<string>(mcpConfig.url);

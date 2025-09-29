@@ -3,6 +3,9 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { addLog } from '../../common/system/log';
 import { delay } from '@fastgpt/global/common/system/utils';
+import type { AppSchema } from '@fastgpt/global/core/app/type';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { MongoApp } from './schema';
 
 export class MCPClient {
   private client: Client;
@@ -89,3 +92,51 @@ export class MCPClient {
     }
   }
 }
+
+export const getMCPChildren = async (app: AppSchema) => {
+  const appId = String(app._id);
+  const toolSetNode = app.modules?.[0];
+  const config =
+    toolSetNode?.toolConfig?.mcpToolSet ||
+    toolSetNode?.inputs?.find((item: any) => item.key === 'mcpToolSetConfig')?.value ||
+    {};
+  const {
+    toolList = [],
+    headers,
+    headerSecret
+  } = (config || {}) as {
+    toolList?: Array<{ name: string; description?: string; inputSchema: any }>;
+    headers?: Record<string, string>;
+    headerSecret?: Record<string, any>;
+  };
+
+  if (Array.isArray(toolList) && toolList.length > 0) {
+    return toolList.map((tool) => ({
+      ...tool,
+      id: `${PluginSourceEnum.mcp}-${appId}/${tool.name}`,
+      avatar: app.avatar,
+      headers,
+      headerSecret
+    }));
+  }
+
+  // fallback: old structure, each child app represents a tool
+  const children = await MongoApp.find({ teamId: app.teamId, parentId: appId }).lean();
+  return children.map((child) => {
+    const node = child.modules?.[0];
+    const childConfig =
+      node?.toolConfig?.mcpToolSet ||
+      node?.inputs?.find((item: any) => item.key === 'mcpToolSetConfig')?.value ||
+      {};
+
+    return {
+      avatar: app.avatar,
+      id: `${PluginSourceEnum.mcp}-${appId}/${child.name}`,
+      name: child.name,
+      description: childConfig.description || '',
+      inputSchema: childConfig.inputSchema || {},
+      headers: childConfig.headers,
+      headerSecret: childConfig.headerSecret
+    };
+  });
+};
