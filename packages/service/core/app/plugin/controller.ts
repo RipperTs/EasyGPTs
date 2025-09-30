@@ -42,7 +42,13 @@ const getPluginTemplateById = async (
       pluginOrder: item?.pluginOrder || 0
     };
   } else {
-    const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
+    // 兼容旧版 community/commercial 前缀与新枚举 systemTool 的差异：
+    // splitCombinePluginId 会将 `community-xxx` 映射为 `systemTool-xxx`。
+    // 系统插件模板里仍可能保留 `community-xxx` 作为 id。
+    // 因此这里同时尝试以原始 id 与映射后的 pluginId 进行匹配。
+    const item = getSystemPluginTemplates().find(
+      (plugin) => plugin.id === pluginId || plugin.id === id
+    );
     if (!item) return Promise.reject('plugin not found');
 
     return cloneDeep(item);
