@@ -25,6 +25,12 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [data.inputs, toolConfig?.httpToolSet, toolConfig?.mcpToolSet, toolConfig?.systemToolSet]);
 
   const toolList: any[] = Array.isArray(toolSetConfig?.toolList) ? toolSetConfig.toolList : [];
+  // MCP 工具集：来自 toolConfig.mcpToolSet 或 inputs.mcpToolSetConfig
+  const isMcpToolSet = useMemo(() => {
+    if (toolConfig?.mcpToolSet) return true;
+    const inputConfig = (data.inputs || []).find((i: any) => i.key === 'mcpToolSetConfig');
+    return !!inputConfig;
+  }, [data.inputs, toolConfig?.mcpToolSet]);
   const title = useMemo(() => {
     const baseTitle = 'MCP 工具列表';
     return toolList.length ? `${baseTitle} (${toolList.length})` : baseTitle;
@@ -89,8 +95,8 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           )}
         </Box>
       </Container>
-      {/* Add tool source handle for connection */}
-      <ToolSourceHandle nodeId={data.nodeId} />
+      {/* MCP 工具集不展示底部紫色连接点，保持与插件/单独 MCP 插件一致 */}
+      {!isMcpToolSet && <ToolSourceHandle nodeId={data.nodeId} />}
     </NodeCard>
   );
 };
