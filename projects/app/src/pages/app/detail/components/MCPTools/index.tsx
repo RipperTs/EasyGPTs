@@ -434,6 +434,8 @@ const MCPTools: React.FC = () => {
                     colorScheme={'blue'}
                     mb={4}
                     w={'100px'}
+                    h={'34px'}
+                    style={{ lineHeight: 11 }}
                   >
                     运行
                   </Button>
