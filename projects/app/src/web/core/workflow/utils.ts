@@ -86,7 +86,8 @@ export const storeNode2FlowNode = ({
   const nodeItem: FlowNodeItemType = {
     ...template,
     ...storeNode,
-    avatar: template.avatar ?? storeNode.avatar,
+    // 优先使用已保存的节点头像；模板为空字符串时避免回退成默认icon
+    avatar: storeNode.avatar ?? template.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
 
     /*
@@ -401,6 +402,8 @@ export const getLatestNodeTemplate = (
   const updatedNode: FlowNodeItemType = {
     ...node,
     ...template,
+    // 保留已有头像（例如 MCP toolSet 的自定义图标）
+    avatar: node.avatar ?? template.avatar,
     inputs: template.inputs.map((templateItem) => {
       const nodeItem = node.inputs.find((item) => item.key === templateItem.key);
       if (nodeItem) {

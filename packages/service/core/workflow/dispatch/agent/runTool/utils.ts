@@ -34,3 +34,27 @@ export const filterToolResponseToPreview = (response: AIChatItemValueItemType[])
     return item;
   });
 };
+
+// 规范化工具返回，优先展开 MCP 返回的 content 文本
+export const formatToolResponse = (toolResponses: any): string => {
+  try {
+    if (
+      toolResponses &&
+      typeof toolResponses === 'object' &&
+      Array.isArray((toolResponses as any).content)
+    ) {
+      const text = (toolResponses as any).content
+        .filter((i: any) => i && i.type === 'text' && typeof i.text === 'string')
+        .map((i: any) => i.text)
+        .join('\n');
+      if (text) return text;
+    }
+  } catch {}
+
+  if (typeof toolResponses === 'object') {
+    try {
+      return JSON.stringify(toolResponses, null, 2);
+    } catch {}
+  }
+  return toolResponses ? String(toolResponses) : 'none';
+};

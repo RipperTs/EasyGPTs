@@ -36,6 +36,71 @@ export enum WorkflowIOValueTypeEnum {
   selectDataset = 'selectDataset'
 }
 
+// Tool 参数类型到 JSON Schema 的映射（对齐上游实现）
+export const toolValueTypeList: {
+  label: string;
+  value: WorkflowIOValueTypeEnum;
+  jsonSchema: {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+    items?: { type: 'string' | 'number' | 'boolean' | 'object' };
+  };
+}[] = [
+  {
+    label: WorkflowIOValueTypeEnum.string,
+    value: WorkflowIOValueTypeEnum.string,
+    jsonSchema: { type: 'string' }
+  },
+  {
+    label: WorkflowIOValueTypeEnum.number,
+    value: WorkflowIOValueTypeEnum.number,
+    jsonSchema: { type: 'number' }
+  },
+  {
+    label: WorkflowIOValueTypeEnum.boolean,
+    value: WorkflowIOValueTypeEnum.boolean,
+    jsonSchema: { type: 'boolean' }
+  },
+  {
+    label: 'array<string>',
+    value: WorkflowIOValueTypeEnum.arrayString,
+    jsonSchema: { type: 'array', items: { type: 'string' } }
+  },
+  {
+    label: 'array<number>',
+    value: WorkflowIOValueTypeEnum.arrayNumber,
+    jsonSchema: { type: 'array', items: { type: 'number' } }
+  },
+  {
+    label: 'array<boolean>',
+    value: WorkflowIOValueTypeEnum.arrayBoolean,
+    jsonSchema: { type: 'array', items: { type: 'boolean' } }
+  },
+  {
+    label: 'object',
+    value: WorkflowIOValueTypeEnum.object,
+    jsonSchema: { type: 'object' }
+  },
+  {
+    label: 'array<object>',
+    value: WorkflowIOValueTypeEnum.arrayObject,
+    jsonSchema: { type: 'array', items: { type: 'object' } }
+  }
+];
+
+export const valueTypeJsonSchemaMap: Record<
+  string,
+  {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+    items?: { type: 'string' | 'number' | 'boolean' | 'object' };
+  }
+> = toolValueTypeList.reduce(
+  (acc, item) => {
+    acc[item.value] = item.jsonSchema;
+    return acc;
+  },
+  {} as Record<string, any>
+);
+
 /* reg: modulename key */
 export enum NodeInputKeyEnum {
   // old

@@ -85,7 +85,10 @@ export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeI
     description: value.description,
     toolDescription: value['x-tool-description'] ?? value.description ?? key,
     required: jsonSchema?.required?.includes(key),
-    ...getNodeInputRenderTypeFromSchemaInputType(value)
+    ...getNodeInputRenderTypeFromSchemaInputType(value),
+    ...(value.enum && value.enum.length > 0
+      ? { list: value.enum.map((i) => ({ label: i, value: i })) }
+      : {})
   }));
 };
 

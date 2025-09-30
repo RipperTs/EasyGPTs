@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue } from './utils';
+import { updateToolInputValue, formatToolResponse } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 
@@ -234,13 +234,7 @@ export const runToolWithPromptCall = async (
       )
     });
 
-    const stringToolResponse = (() => {
-      if (typeof moduleRunResponse.toolResponses === 'object') {
-        return JSON.stringify(moduleRunResponse.toolResponses, null, 2);
-      }
-
-      return moduleRunResponse.toolResponses ? String(moduleRunResponse.toolResponses) : 'none';
-    })();
+    const stringToolResponse = formatToolResponse(moduleRunResponse.toolResponses);
 
     workflowStreamResponse?.({
       event: SseResponseEventEnum.toolResponse,
@@ -293,9 +287,11 @@ export const runToolWithPromptCall = async (
 
   // tool assistant
   const toolAssistants = toolsRunResponse.moduleRunResponse.assistantResponses || [];
-  // tool node assistant
-  const adaptChatMessages = GPTMessages2Chats(completeMessages);
-  const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
+  // tool node assistant（仅用本次 assistant/function 调用 + function 响应重建）
+  const toolNodeAssistant = GPTMessages2Chats([
+    assistantToolMsgParams,
+    completeMessages[completeMessages.length - 1]
+  ])[0] as AIChatItemType;
 
   const toolNodeAssistants = [...assistantResponses, ...toolAssistants, ...toolNodeAssistant.value];
 

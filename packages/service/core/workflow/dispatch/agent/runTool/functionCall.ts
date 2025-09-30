@@ -23,8 +23,10 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue } from './utils';
+import { updateToolInputValue, formatToolResponse } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -53,29 +55,31 @@ export const runToolWithFunctionCall = async (
   } = props;
   const assistantResponses = response?.assistantResponses || [];
 
-  const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((item) => {
+  const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((node) => {
     const properties: Record<
       string,
       {
-        type: string;
+        type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+        items?: { type: 'string' | 'number' | 'boolean' | 'object' };
         description: string;
-        required?: boolean;
+        enum?: string[];
       }
     > = {};
-    item.toolParams.forEach((item) => {
-      properties[item.key] = {
-        type: item.valueType || 'string',
-        description: item.toolDescription || ''
-      };
+    node.toolParams.forEach((p) => {
+      const schema = p.valueType
+        ? valueTypeJsonSchemaMap[p.valueType] || toolValueTypeList[0].jsonSchema
+        : toolValueTypeList[0].jsonSchema;
+      properties[p.key] = { ...schema, description: p.toolDescription || '' };
+      if (Array.isArray(p.list) && p.list.length > 0)
+        properties[p.key].enum = p.list.map((i) => i.value);
     });
-
     return {
-      name: item.nodeId,
-      description: item.intro,
+      name: node.nodeId,
+      description: node.intro || node.name,
       parameters: {
         type: 'object',
         properties,
-        required: item.toolParams.filter((item) => item.required).map((item) => item.key)
+        required: node.toolParams.filter((i) => i.required && !!properties[i.key]).map((i) => i.key)
       }
     };
   });
@@ -110,7 +114,7 @@ export const runToolWithFunctionCall = async (
       origin: requestOrigin
     })
   ]);
-  const requestBody: any = {
+  let requestBody: ChatCompletionCreateParams = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -129,11 +133,44 @@ export const runToolWithFunctionCall = async (
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(requestBody, {
-    headers: {
-      Accept: 'application/json, text/plain, */*'
+  let aiResponse;
+  try {
+    aiResponse = await ai.chat.completions.create(requestBody as any, {
+      headers: { Accept: 'application/json, text/plain, */*' }
+    });
+  } catch (error: any) {
+    const msg = `${error?.message || ''}`;
+    const status = error?.status ?? error?.code;
+    // 无可用渠道 → 模型降级（function call 场景）
+    const needFallback =
+      status === 503 || /无可用渠道|no available channel|当前分组/.test(msg || '');
+    if (needFallback && Array.isArray((global as any).llmModels)) {
+      const candidates = (global as any).llmModels.filter(
+        (m: LLMModelItemType) => m.usedInToolCall && m.functionCall && m.model !== toolModel.model
+      ) as LLMModelItemType[];
+      const fallback = candidates[0];
+      if (fallback) {
+        requestBody = {
+          ...(fallback?.defaultConfig || {}),
+          model: fallback.model,
+          temperature: computedTemperature({ model: fallback, temperature }),
+          max_tokens,
+          stream,
+          messages: requestMessages,
+          functions,
+          function_call: 'auto'
+        } as any;
+        const ai2 = getAIApi({ timeout: 480000 });
+        aiResponse = await ai2.chat.completions.create(requestBody as any, {
+          headers: { Accept: 'application/json, text/plain, */*' }
+        });
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
     }
-  });
+  }
 
   const { answer, functionCalls } = await (async () => {
     if (res && stream) {
@@ -201,13 +238,7 @@ export const runToolWithFunctionCall = async (
           )
         });
 
-        const stringToolResponse = (() => {
-          if (typeof toolRunResponse.toolResponses === 'object') {
-            return JSON.stringify(toolRunResponse.toolResponses, null, 2);
-          }
-
-          return toolRunResponse.toolResponses ? String(toolRunResponse.toolResponses) : 'none';
-        })();
+        const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
         const functionCallMsg: ChatCompletionFunctionMessageParam = {
           role: ChatCompletionRequestMessageRoleEnum.Function,
@@ -274,9 +305,15 @@ export const runToolWithFunctionCall = async (
         return assistantResponses;
       })
       .flat();
-    // tool node assistant
-    const adaptChatMessages = GPTMessages2Chats(completeMessages);
-    const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
+    // tool node assistant（仅用本次 assistant 工具调用 + tool 响应重建）
+    const toolNodeAssistant = GPTMessages2Chats([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        // 单函数调用（function call 模式一次只会有一个）
+        function_call: functionCalls[0]
+      } as ChatCompletionAssistantMessageParam,
+      ...toolsRunResponse.map((item) => item?.functionCallMsg)
+    ] as ChatCompletionMessageParam[])[0] as AIChatItemType;
 
     const toolNodeAssistants = [
       ...assistantResponses,
