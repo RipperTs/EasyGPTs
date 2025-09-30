@@ -3,6 +3,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { MCPClient } from '../../../app/mcp';
+import { formatToolResponse } from '../agent/runTool/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { MongoApp } from '../../../app/schema';
 import { getNodeErrResponse } from '../utils';
@@ -47,14 +48,17 @@ export const dispatchRunToolSet = async (props: RunToolSetProps) => {
       });
 
       const result = await mcpClient.toolCall(toolName, params);
+      const textOutput = formatToolResponse(result);
 
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolRes: result,
-          moduleLogo: avatar
+          moduleLogo: avatar,
+          textOutput
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        textOutput
       };
     }
 
