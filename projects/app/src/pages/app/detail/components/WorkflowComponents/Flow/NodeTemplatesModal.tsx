@@ -152,7 +152,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         }).then((res) => res.filter((app) => app.id !== appId));
 
         return teamApps.map<NodeTemplateListItemType>((app) => {
-          const member = members.find((member) => member.tmbId === app.tmbId);
+          const member = members.find((member) => member.tmbId === (app as any).tmbId);
           return {
             ...app,
             author: member?.memberName,
@@ -167,7 +167,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         });
 
         return toolSetApps.map<NodeTemplateListItemType>((app) => {
-          const member = members.find((member) => member.tmbId === app.tmbId);
+          const member = members.find((member) => member.tmbId === (app as any).tmbId);
           return {
             ...app,
             author: member?.memberName,
@@ -551,7 +551,7 @@ const RenderList = React.memo(function RenderList({
             debugLabel: t(input.debugLabel as any),
             toolDescription: t(input.toolDescription as any)
           })),
-          outputs: templateNode.outputs.map((output) => ({
+          outputs: (templateNode.outputs as any[]).map((output: any) => ({
             ...output,
             valueDesc: t(output.valueDesc as any),
             label: t(output.label as any),

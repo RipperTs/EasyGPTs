@@ -274,7 +274,7 @@ const MCPTools: React.FC = () => {
               <Button onClick={onParse} variant={'whitePrimary'}>
                 解析
               </Button>
-              <Button onClick={() => onSave()} isLoading={saving}>
+              <Button onClick={() => onSave(undefined as any)} isLoading={saving}>
                 保存
               </Button>
             </Flex>

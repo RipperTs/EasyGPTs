@@ -97,7 +97,7 @@ const McpToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onCreate, isLoading: isCreating } = useRequest({
     mutationFn: async (data: EditMcpToolsProps) => {
       return postCreateMCPTools({
-        parentId,
+        parentId: parentId || undefined,
         name: data.name,
         avatar: data.avatar,
         url: serverUrl,
@@ -166,7 +166,7 @@ const McpToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               size={'sm'}
               variant={'whitePrimary'}
               isLoading={isLoadingTools}
-              onClick={() => onFetchTools()}
+              onClick={() => onFetchTools(undefined as any)}
             >
               获取工具
             </Button>

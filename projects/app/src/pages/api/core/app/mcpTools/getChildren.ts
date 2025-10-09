@@ -8,7 +8,7 @@ export type McpGetChildrenmBody = {};
 export type McpGetChildrenmResponse = {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   inputSchema: any;
   avatar?: string;
 }[];

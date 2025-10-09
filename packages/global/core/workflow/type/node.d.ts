@@ -96,6 +96,8 @@ export type NodeTemplateListItemType = {
   name: string;
   intro?: string; // template list intro
   isTool?: boolean;
+  pluginId?: string;
+  tmbId?: string;
   authorAvatar?: string;
   author?: string;
   unique?: boolean; // 唯一的

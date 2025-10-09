@@ -73,6 +73,7 @@ export type RuntimeNodeItemType = {
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: StoreNodeItemType['isEntry'];
+  toolConfig?: StoreNodeItemType['toolConfig'];
 
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -101,6 +102,7 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  errorText?: string;
   error?: Record<string, any>;
   customInputs?: Record<string, any>;
   customOutputs?: Record<string, any>;

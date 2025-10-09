@@ -15,9 +15,7 @@ type RunToolSetProps = ModuleDispatchProps<{
 export const dispatchRunToolSet = async (props: RunToolSetProps) => {
   const {
     params,
-    runningAppInfo,
-    runningUserInfo,
-    node: { name, avatar, toolConfig, version }
+    node: { avatar, toolConfig }
   } = props;
 
   try {
@@ -53,7 +51,6 @@ export const dispatchRunToolSet = async (props: RunToolSetProps) => {
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolRes: result,
           moduleLogo: avatar,
           textOutput
         },

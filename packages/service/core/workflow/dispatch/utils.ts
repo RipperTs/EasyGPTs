@@ -187,7 +187,15 @@ export const rewriteRuntimeWorkFlow = async ({
       url?: string;
       headers?: Record<string, string>;
       headerSecret?: Record<string, any>;
-      toolList?: { name: string; description: string; inputSchema: any }[];
+      toolList?: {
+        name: string;
+        description?: string;
+        inputSchema: any;
+        id?: string;
+        avatar?: string;
+        headers?: Record<string, string>;
+        headerSecret?: Record<string, any>;
+      }[];
       toolId?: string;
     };
 

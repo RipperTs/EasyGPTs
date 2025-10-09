@@ -23,7 +23,7 @@ type RunToolResponse = DispatchNodeResultType<{
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
-    node: { name, avatar, toolConfig, version, catchError, inputs }
+    node: { avatar, toolConfig, inputs }
   } = props;
 
   try {
@@ -43,7 +43,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolRes: result,
           moduleLogo: avatar,
           textOutput
         },
@@ -83,7 +82,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolRes: result,
           moduleLogo: avatar,
           textOutput
         },

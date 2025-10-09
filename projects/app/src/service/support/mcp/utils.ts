@@ -53,7 +53,7 @@ export const pluginNodes2InputSchema = (
     schema.properties[input.key] = {
       ...jsonSchema,
       description: input.description,
-      enum: input.enum?.split('\n').filter(Boolean) || undefined
+      enum: (input as any)?.enum?.split('\n').filter(Boolean) || undefined
     };
     if (input.required) schema.required.push(input.key);
   });
@@ -80,7 +80,7 @@ export const workflow2InputSchema = (chatConfig?: {
     const jsonSchema = valueTypeJsonSchemaMap[item.valueType || 'string'] || { type: 'string' };
     schema.properties[item.key] = {
       ...jsonSchema,
-      description: item.description,
+      description: (item as any).description || item.label,
       enum: item.enums?.map((x) => x.value) || undefined
     };
     if (item.required) schema.required.push(item.key);
@@ -89,13 +89,13 @@ export const workflow2InputSchema = (chatConfig?: {
 };
 
 export const getMcpServerTools = async (key: string) => {
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, tmbId: 1 }).lean();
+  const mcp = (await MongoMcpKey.findOne({ key }, { apps: 1, tmbId: 1 }).lean()) as any;
   if (!mcp) throw new Error('invalid mcp key');
 
-  const appList = await MongoApp.find(
+  const appList = (await MongoApp.find(
     { _id: { $in: mcp.apps.map((a: any) => a.appId) } },
     { name: 1, intro: 1 }
-  ).lean();
+  ).lean()) as any[];
 
   const permissionAppList = (
     await Promise.all(
@@ -115,7 +115,7 @@ export const getMcpServerTools = async (key: string) => {
   );
 
   return versionList.map((version, index) => {
-    const app = permissionAppList[index];
+    const app = permissionAppList[index] as any;
     const mcpApp = mcp.apps.find((x: any) => String(x.appId) === String(app._id))!;
     const isPlugin = !!version.nodes.find(
       (n: any) => n.flowNodeType === FlowNodeTypeEnum.pluginInput
@@ -144,10 +144,7 @@ export const callMcpServerTool = async ({
     const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
 
     const userQuestion: UserChatItemType = isPlugin
-      ? getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(nodes || app.modules),
-          variables
-        })
+      ? getPluginRunUserQuery(nodes || app.modules, variables)
       : {
           obj: ChatRoleEnum.Human,
           value: [
@@ -171,27 +168,26 @@ export const callMcpServerTool = async ({
     const tmb = await getTmbInfoByTmbId({ tmbId: String(app.tmbId) });
     const user = await getUserDetail({ tmbId: tmb.tmbId });
 
-    const { flowUsages, assistantResponses, newVariables, flowResponses, durationSeconds } =
-      await dispatchWorkFlow({
-        user: user as any,
-        chatId,
-        mode: 'chat',
-        usageSource: UsageSourceEnum.mcp,
-        runningAppInfo: {
-          id: String(app._id),
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        uid: String(app.tmbId),
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-      } as any);
+    const { flowUsages, assistantResponses, newVariables, flowResponses } = await dispatchWorkFlow({
+      user: user as any,
+      chatId,
+      mode: 'chat',
+      usageSource: UsageSourceEnum.mcp,
+      runningAppInfo: {
+        id: String(app._id),
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      },
+      uid: String(app.tmbId),
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      chatConfig,
+      histories: [],
+      stream: false,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+    } as any);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       obj: ChatRoleEnum.AI,
@@ -229,10 +225,12 @@ export const callMcpServerTool = async ({
       .join('\n');
   };
 
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
+  const mcp = (await MongoMcpKey.findOne({ key }, { apps: 1 }).lean()) as any;
   if (!mcp) throw new Error('invalid mcp key');
 
-  const appList = await MongoApp.find({ _id: { $in: mcp.apps.map((a: any) => a.appId) } }).lean();
+  const appList = (await MongoApp.find({
+    _id: { $in: mcp.apps.map((a: any) => a.appId) }
+  }).lean()) as any[];
   const app = appList.find((app: any) => {
     const m = mcp.apps.find((x: any) => String(x.appId) === String(app._id))!;
     return toolName === m.toolName;

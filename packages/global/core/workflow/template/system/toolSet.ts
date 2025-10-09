@@ -1,4 +1,5 @@
-import { FlowNodeTemplateType } from '../../type/node';
+import { FlowNodeTemplateType } from '../../type/node.d';
+import { getHandleConfig } from '../utils';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
 
@@ -10,8 +11,8 @@ export const ToolSetNode: FlowNodeTemplateType = {
   intro: '',
   avatar: '',
   isTool: true,
-  showSourceHandle: false,
-  showTargetHandle: false,
+  sourceHandle: getHandleConfig(false, false, false, false),
+  targetHandle: getHandleConfig(false, false, false, false),
   showStatus: false,
   inputs: [],
   outputs: [],

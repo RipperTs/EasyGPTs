@@ -80,6 +80,11 @@ export const initWorkflowEdgeStatus = (
   );
 };
 
+// Backward-compatible helper: convert stored edges to runtime edges
+export const storeEdges2RuntimeEdges = (edges: StoreEdgeItemType[]): RuntimeEdgeItemType[] => {
+  return initWorkflowEdgeStatus(edges);
+};
+
 export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
   histories?: ChatItemType[]
