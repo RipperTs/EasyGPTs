@@ -234,6 +234,7 @@ const MCPTools: React.FC = () => {
     router.push({ pathname: '/app/list', query: { parentId } });
   };
 
+  // @ts-ignore
   return (
     <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} pb={3}>
       {/* 顶部面包屑导航 */}

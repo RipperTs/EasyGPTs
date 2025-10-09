@@ -26,7 +26,6 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue, formatToolResponse } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;

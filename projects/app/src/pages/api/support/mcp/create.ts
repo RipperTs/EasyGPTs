@@ -24,15 +24,12 @@ async function handler(
     authApiKey: true
   } as any);
 
-  if (!permission.hasApikeyCreatePer) {
-    return Promise.reject(TeamErrEnum.unPermission);
+  if (!permission.hasReadPer) {
+    return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
   let { name, apps } = req.body;
   if (!apps?.length) return Promise.reject(CommonErrEnum.missingParams);
-
-  const totalMcp = await MongoMcpKey.countDocuments({ teamId });
-  if (totalMcp >= 100) return Promise.reject('最多支持创建 100 个 MCP 服务');
 
   // 去重
   const uniq = new Set<string>();
