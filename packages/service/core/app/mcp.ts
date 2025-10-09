@@ -14,7 +14,10 @@ export class MCPClient {
 
   constructor(config: { url: string; headers: Record<string, any> }) {
     this.url = config.url;
-    this.headers = config.headers;
+    // Normalize headers to plain string map to avoid runtime issues
+    this.headers = Object.fromEntries(
+      Object.entries(config.headers || {}).map(([k, v]) => [String(k), String(v)])
+    );
     this.client = new Client({ name: 'FastGPT-MCP-client', version: '1.0.0' });
   }
 
@@ -26,15 +29,11 @@ export class MCPClient {
       await this.client.connect(transport);
       return this.client;
     } catch (error) {
+      // Fallback to SSE transport. Let SDK handle header merging to avoid issues
+      // with spreading Headers objects (can introduce symbol keys in some runtimes).
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
-          requestInit: { headers: this.headers },
-          eventSourceInit: {
-            fetch: (url, init) => {
-              const headers = new Headers({ ...(init?.headers || {}), ...this.headers });
-              return fetch(url, { ...(init || {}), headers });
-            }
-          }
+          requestInit: { headers: this.headers }
         })
       );
       return this.client;
