@@ -6,7 +6,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## Docker 部署
 ```bash
-# 此分支打包够的镜像
+# 此分支打包好的镜像
 docker pull registry.cn-hangzhou.aliyuncs.com/ripper/easygpts:latest
 ```
 
