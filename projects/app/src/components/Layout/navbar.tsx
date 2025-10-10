@@ -43,7 +43,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'phoneTabbar/tool',
         activeIcon: 'phoneTabbar/toolFill',
         link: `/toolkit`,
-        activeLink: ['/toolkit']
+        activeLink: ['/toolkit', '/toolkit/mcp']
       },
       {
         label: '模型',

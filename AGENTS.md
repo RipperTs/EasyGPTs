@@ -16,6 +16,7 @@
 
 ## Coding Style & Naming Conventions
 - Language: TypeScript. Format with Prettier (`.prettierrc.js`): 2 spaces, single quotes, semicolons, width 100.
+- Type safety: 禁止使用 `any`；类型不明确时优先使用 `unknown` 并在边界进行类型收窄；优先通过泛型/类型别名/接口完善类型；为第三方缺失声明补充 `*.d.ts`；如必须例外需同行注释说明且仅限局部。
 - Lint: Next.js core-web-vitals (`projects/app/.eslintrc.json`). Fix lint before PR.
 - Naming: React components PascalCase; hooks `useCamelCase`; constants `SCREAMING_SNAKE_CASE`.
 - Files: Prefer named exports in packages; Next.js pages export default page components.
@@ -35,4 +36,3 @@
 - Never commit secrets. Copy `projects/app/.env.template` → `projects/app/.env.local` and fill values (`MONGODB_URI`, `OPENAI_BASE_URL`, `CHAT_API_KEY`, `SANDBOX_URL`, etc.).
 - Use `docker-compose.yml` to provision Mongo/Milvus locally if needed.
 - Control verbosity with `LOG_LEVEL` and `STORE_LOG_LEVEL`.
-
