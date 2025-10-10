@@ -37,6 +37,7 @@ export type McpAppForm = {
   toolName: string;
   appName?: string;
   description: string;
+  avatar?: string;
 };
 
 export type EditMcpForm = {
@@ -80,8 +81,8 @@ const SelectAppModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc={'modal/AddClb'}
-      title={'选择应用'}
+      iconSrc={'core/app/type/simple'}
+      title={'应用插件选择'}
       minW="800px"
       maxW={'60vw'}
       h={'100%'}
@@ -105,8 +106,9 @@ const SelectAppModal = ({
             p="4"
           >
             <SearchInput
-              placeholder={'搜索应用'}
+              placeholder={'请输入搜索关键字'}
               bgColor="myGray.50"
+              pl={8}
               onChange={(e) => setSearchKey(e.target.value)}
             />
 
@@ -139,7 +141,8 @@ const SelectAppModal = ({
                             appId: item._id,
                             toolName: item.name,
                             appName: item.name,
-                            description: item.intro || ''
+                            description: item.intro || '',
+                            avatar: item.avatar
                           }
                         ]);
                       }
@@ -161,11 +164,12 @@ const SelectAppModal = ({
               {selectedList.map((item) => (
                 <HStack
                   key={item.appId}
-                  py={2}
+                  py={1}
                   px={3}
                   borderRadius={'md'}
                   _hover={{ bg: 'myGray.100' }}
                 >
+                  <Avatar src={item.avatar} w="1.5rem" borderRadius={'sm'} />
                   <Box flex={'1 0 0'}>{item.toolName}</Box>
                   <MyIconButton
                     icon="delete"
@@ -237,8 +241,8 @@ const EditMcpModal = ({
   return (
     <>
       <MyModal
-        iconSrc="key"
-        title={isEdit ? '编辑 MCP' : '创建 MCP'}
+        iconSrc="core/app/type/mcp"
+        title={isEdit ? '编辑 MCP 服务' : '创建 MCP 服务'}
         w={'100%'}
         maxW={['90vw', '800px']}
         isOpen
@@ -247,22 +251,22 @@ const EditMcpModal = ({
         <ModalBody>
           <Box>
             <FormLabel required mb={0.5}>
-              名称
+              取个名字吧
             </FormLabel>
             <Input {...register('name', { required: true })} bg={'myGray.50'} />
           </Box>
           <Box mt={6}>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
-              <FormLabel>应用集合</FormLabel>
+              <FormLabel>暴露的工具插件</FormLabel>
               <Button variant={'whiteBase'} size={'sm'} onClick={onOpen}>
-                管理应用
+                管理
               </Button>
             </Flex>
             <TableContainer mt={2} position={'relative'}>
               <Table>
                 <Thead>
                   <Tr>
-                    <Th>工具名</Th>
+                    <Th>工具别名</Th>
                     <Th>应用名</Th>
                     <Th>描述</Th>
                     <Th></Th>

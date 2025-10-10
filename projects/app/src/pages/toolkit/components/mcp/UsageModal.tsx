@@ -19,7 +19,9 @@ const UsageModal = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) 
       const url = `${baseUrl}/mcp/app/${mcp.key}/mcp`;
       const jsonConfig = `{
   "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": { "url": "${url}" }
+    "mcp-${mcp._id}": { 
+      "url": "${url}" 
+    }
   }
 }`;
       return { url, jsonConfig };
@@ -29,7 +31,9 @@ const UsageModal = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) 
       : '';
     const jsonConfig = `{
   "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": { "url": "${url}" }
+    "mcp-${mcp._id}": { 
+      "url": "${url}" 
+    }
   }
 }`;
     return { url, jsonConfig };
@@ -43,7 +47,7 @@ const UsageModal = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) 
   ]);
 
   return (
-    <MyModal iconSrc="key" isOpen title={'使用方式'} onClose={onClose}>
+    <MyModal iconSrc="support/team/key" isOpen title={'MCP 服务使用方式'} onClose={onClose}>
       <ModalBody>
         <Flex>
           <LightRowTabs<LinkWay>
@@ -61,7 +65,7 @@ const UsageModal = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) 
         {url ? (
           <>
             <Box mt={4}>
-              <FormLabel>服务地址</FormLabel>
+              <FormLabel>服务接入地址</FormLabel>
               <HStack mt={0.5} bg={'myGray.50'} px={2} py={1} borderRadius={'md'} fontSize={'sm'}>
                 <Box
                   userSelect={'all'}
@@ -84,7 +88,7 @@ const UsageModal = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) 
                   borderTopLeftRadius={'md'}
                   borderTopRightRadius={'md'}
                 >
-                  <Box flex={1}>客户端 JSON 配置</Box>
+                  <Box flex={1}>客户端配置</Box>
                   <MyIconButton
                     icon="copy"
                     onClick={() => navigator.clipboard?.writeText(jsonConfig)}

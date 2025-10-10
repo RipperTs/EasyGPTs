@@ -69,6 +69,7 @@ export type FastGPTFeConfigsType = {
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
   lafEnv?: string;
+  mcpServerProxyEndpoint?: string;
 };
 
 export type SystemEnvType = {

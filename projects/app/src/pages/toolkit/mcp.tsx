@@ -12,7 +12,6 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import ToolkitSideMenu from './components/SideMenu';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -84,7 +83,7 @@ const MCPPage = () => {
                 MCP 服务
               </Box>
               <Box fontSize={'xs'} color={'myGray.500'}>
-                允许你选择部分应用，以 MCP 的协议对外提供使用。由于 MCP
+                允许你选择部分工具插件，以 MCP 的协议对外提供使用。但由于 MCP
                 协议的不成熟，该功能仍处于测试阶段。
               </Box>
             </Box>
@@ -92,7 +91,7 @@ const MCPPage = () => {
               isDisabled={!userInfo?.team?.permission.hasWritePer}
               onClick={() => setEditMcp(defaultForm)}
             >
-              创建 MCP 服务
+              创建服务
             </Button>
           </Flex>
 
