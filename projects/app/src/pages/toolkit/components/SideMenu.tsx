@@ -139,7 +139,7 @@ const ToolkitSideMenu = ({
               onClose();
             }}
           >
-            <MyIcon name={'core/app/modelsConfig'} w={'1rem'} mr={1.5} color={'primary.600'} />
+            <MyIcon name={'core/app/type/mcp'} w={'1rem'} mr={1.5} color={'primary.600'} />
             <Box>MCP服务</Box>
           </Flex>
         </Box>
