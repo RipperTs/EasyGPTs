@@ -2,8 +2,8 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { authUserPer } from '../user/auth';
 import { MongoMcpKey } from '../../mcp/schema';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 
 export const authMcp = async ({
   mcpId,
@@ -14,31 +14,33 @@ export const authMcp = async ({
   per: PermissionValueType;
 }): Promise<
   AuthResponseType & {
-    mcp: any;
+    mcp: McpKeyType;
+    isRoot?: boolean;
   }
 > => {
-  const { userId, teamId, tmbId, permission, isRoot } = await authUserPer(props as any);
+  const result = await authUserPer({ ...props, per });
+  const { teamId, tmbId, permission } = result;
+  const isRoot = 'tmb' in result && result.tmb.role === 'owner';
 
   const mcp = await MongoMcpKey.findOne({ _id: mcpId }).lean();
 
   if (!mcp) {
-    return Promise.reject(CommonErrEnum.invalidResource);
+    return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
   if (teamId !== String(mcp.teamId)) {
-    return Promise.reject(TeamErrEnum.unPermission);
+    return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
   if (!permission.hasManagePer && !isRoot && tmbId !== String(mcp.tmbId)) {
-    return Promise.reject(TeamErrEnum.unPermission);
+    return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
   return {
-    mcp,
-    userId,
+    mcp: mcp as McpKeyType,
     teamId,
     tmbId,
-    isRoot,
-    permission
-  } as any;
+    permission,
+    isRoot
+  };
 };

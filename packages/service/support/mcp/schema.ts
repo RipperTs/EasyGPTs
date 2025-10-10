@@ -5,6 +5,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../core/app/schema';
+import { McpKeyType } from '@fastgpt/global/support/mcp/type';
 
 export const mcpCollectionName = 'mcp_keys';
 
@@ -52,4 +53,4 @@ const McpKeySchema = new Schema({
   }
 });
 
-export const MongoMcpKey = getMongoModel<any>(mcpCollectionName, McpKeySchema);
+export const MongoMcpKey = getMongoModel<McpKeyType>(mcpCollectionName, McpKeySchema);
