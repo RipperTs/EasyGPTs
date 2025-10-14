@@ -37,7 +37,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       | undefined;
     if (mcpInput?.url && mcpInput?.toolName) {
       const mcpClient = new MCPClient({ url: mcpInput.url, headers: mcpInput.headers || {} });
-      const result = await mcpClient.toolCall(mcpInput.toolName, params);
+      // strip internal MCP config from tool arguments
+      const { mcpConfig: _omit1, mcpToolSetConfig: _omit2, ...toolArgs } = params || {};
+      const result = await mcpClient.toolCall(mcpInput.toolName, toolArgs);
       const textOutput = formatToolResponse(result);
 
       return {
@@ -76,7 +78,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         headers
       });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      // strip internal MCP config from tool arguments
+      const { mcpConfig: _omit1, mcpToolSetConfig: _omit2, ...toolArgs } = params || {};
+      const result = await mcpClient.toolCall(toolName, toolArgs);
       const textOutput = formatToolResponse(result);
 
       return {

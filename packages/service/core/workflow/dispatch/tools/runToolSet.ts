@@ -45,7 +45,9 @@ export const dispatchRunToolSet = async (props: RunToolSetProps) => {
         headers: mcpConfig.headers || {}
       });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      // strip internal MCP config from tool arguments
+      const { mcpConfig: _omit1, mcpToolSetConfig: _omit2, ...toolArgs } = params || {};
+      const result = await mcpClient.toolCall(toolName, toolArgs);
       const textOutput = formatToolResponse(result);
 
       return {
