@@ -113,6 +113,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
               return false;
             }
+
+            // 过滤mcp工具集空白节点
+            if (item.flowNodeType === FlowNodeTypeEnum.toolSet) {
+              return false;
+            }
             return true;
           })
           .map<NodeTemplateListItemType>((item) => ({
