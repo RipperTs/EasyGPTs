@@ -102,6 +102,8 @@ export const iconPaths = {
   'core/app/simpleMode/ai': () => import('./icons/core/app/simpleMode/ai.svg'),
   'core/app/simpleMode/chat': () => import('./icons/core/app/simpleMode/chat.svg'),
   'core/workflow/template/sleep': () => import('./icons/core/workflow/template/sleep.svg'),
+  'core/workflow/template/dateExtraction': () =>
+    import('./icons/core/workflow/template/dateExtraction.svg'),
   'core/app/simpleMode/dataset': () => import('./icons/core/app/simpleMode/dataset.svg'),
   'core/app/simpleMode/file': () => import('./icons/core/app/simpleMode/file.svg'),
   'core/app/simpleMode/template': () => import('./icons/core/app/simpleMode/template.svg'),

@@ -1,0 +1,349 @@
+{
+  "author": "collin",
+  "version": "4817",
+  "name": "时间解析器",
+  "avatar": "core/workflow/template/dateExtraction",
+  "intro": "将自然语言中的时间内容转换为真正的年月日时分秒的格式，支持多个时间同时转换返回，抽取失败返回空数组。",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "common:core.module.template.self_input",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 393.0893015355615,
+          "y": -81.05298493910114
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "text",
+            "label": "text",
+            "description": "要转换的文本内容",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "toolDescription": "要转换的文本内容"
+          },
+          {
+            "renderTypeList": [
+              "numberInput"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "only_date",
+            "label": "only_date",
+            "description": "是否只显示日期，1：是，0：否",
+            "defaultValue": "0",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "max": 1,
+            "min": 0
+          }
+        ],
+        "outputs": [
+          {
+            "id": "text",
+            "valueType": "string",
+            "key": "text",
+            "label": "text",
+            "type": "hidden"
+          },
+          {
+            "id": "only_date",
+            "valueType": "number",
+            "key": "only_date",
+            "label": "only_date",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "common:core.module.template.self_output",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1660.6069397614583,
+          "y": -147.20025440795226
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayObject",
+            "canEdit": true,
+            "key": "dates",
+            "label": "dates",
+            "description": "解析出的时间字段（多个）",
+            "value": [
+              "buhUk82vctZ7",
+              "qLUQfhG0ILRX"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "error_msg",
+            "label": "error_msg",
+            "description": "运行错误信息，成功时返回空",
+            "value": [
+              "buhUk82vctZ7",
+              "error"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "buhUk82vctZ7",
+        "name": "解析时间",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1035.9870806342087,
+          "y": -413.2222222250937
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "这些变量会作为代码的运行的输入参数",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "text",
+            "label": "text",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": [
+              "pluginInput",
+              "text"
+            ]
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "py",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "import time\nimport jionlp as jio\nfrom datetime import datetime\nfrom typing import List\n\n\ndef get_time_entities(text: str, only_date: int = 0) -> List[List[str]]:\n    time_entities = jio.ner.extract_time(text, time_base=time.time(), with_parsing=False)\n    if not time_entities:\n        return []\n\n    now_time = time.time()\n    results: List[List[str]] = []\n\n    for time_entity in time_entities:\n        try:\n            parsed = jio.parse_time(\n                time_entity['text'], time_base=now_time, time_type=time_entity['type']\n            )\n            start_time = parsed['time'][0]\n            end_time = parsed['time'][1]\n\n            time_format = \"%Y-%m-%d %H:%M:%S\"\n            dt_start = datetime.strptime(start_time, time_format)\n            dt_end = datetime.strptime(end_time, time_format)\n\n            if only_date == 1:\n                results.append([\n                    dt_start.strftime(\"%Y-%m-%d\"),\n                    dt_end.strftime(\"%Y-%m-%d\"),\n                ])\n            else:\n                results.append([\n                    dt_start.strftime(time_format),\n                    dt_end.strftime(time_format),\n                ])\n        except Exception as e:\n            continue\n\n    return results\n\n\ndef main(text, only_date):\n    result = get_time_entities(text, only_date=only_date)\n    return {\n        \"result\": result,\n    }\n",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "only_date",
+            "label": "only_date",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "only_date"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "完整响应数据",
+            "valueType": "object",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "运行错误",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "arrayObject",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "buhUk82vctZ7",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "buhUk82vctZ7-target-left"
+      },
+      {
+        "source": "buhUk82vctZ7",
+        "target": "pluginOutput",
+        "sourceHandle": "buhUk82vctZ7-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}

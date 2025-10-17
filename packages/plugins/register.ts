@@ -18,7 +18,8 @@ const staticPluginList = [
   'google',
   'GenPyChart',
   'bochaai',
-  'reorder'
+  'reorder',
+  'dateExtraction'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
