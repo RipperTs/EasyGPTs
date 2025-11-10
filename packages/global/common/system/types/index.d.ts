@@ -21,6 +21,7 @@ export type FastGPTConfigFileType = {
   audioSpeechModels?: Record<string, any>[];
   whisperModel?: Record<string, any>;
   ocrModel?: Record<string, any>;
+  pdfModels?: Record<string, any>[];
 };
 
 export type FastGPTFeConfigsType = {

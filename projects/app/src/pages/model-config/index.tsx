@@ -15,6 +15,7 @@ const ReRankModelConfig = dynamic(() => import('./components/ReRankModelConfig')
 const TTSModelConfig = dynamic(() => import('./components/TTSModelConfig'));
 const WhisperModelConfig = dynamic(() => import('./components/WhisperModelConfig'));
 const OCRModelConfig = dynamic(() => import('./components/OCRModelConfig'));
+const PdfModelConfig = dynamic(() => import('./components/PdfModelConfig'));
 
 enum TabEnum {
   llm = 'llm',
@@ -22,7 +23,8 @@ enum TabEnum {
   rerank = 'rerank',
   tts = 'tts',
   whisper = 'whisper',
-  ocr = 'ocr'
+  ocr = 'ocr',
+  pdf = 'pdf'
 }
 
 const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
@@ -61,6 +63,11 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
       icon: '',
       label: 'OCR模型',
       value: TabEnum.ocr
+    },
+    {
+      icon: '',
+      label: 'PDF解析',
+      value: TabEnum.pdf
     }
   ];
 
@@ -132,6 +139,7 @@ const ModelConfig = ({ currentTab }: { currentTab: TabEnum | string }) => {
           {safeCurrentTab === TabEnum.tts && <TTSModelConfig />}
           {safeCurrentTab === TabEnum.whisper && <WhisperModelConfig />}
           {safeCurrentTab === TabEnum.ocr && <OCRModelConfig />}
+          {safeCurrentTab === TabEnum.pdf && <PdfModelConfig />}
         </Box>
       </Flex>
     </PageContainer>

@@ -7,13 +7,15 @@ import { MongoReRankModel } from './rerankSchema';
 import { MongoTTSModel } from './ttsSchema';
 import { MongoWhisperModel } from './whisperSchema';
 import { MongoOCRModel } from './ocrSchema';
+import { MongoPDFModel } from './pdfSchema';
 import type {
   LLMModelSchema,
   EmbeddingModelSchema,
   ReRankModelSchema,
   TTSModelSchema,
   WhisperModelSchema,
-  OCRModelSchema
+  OCRModelSchema,
+  PDFModelSchema
 } from '@fastgpt/global/core/model/type.d';
 
 // 解析配置文件路径：优先 CONFIG_PATH，其次本地与生产默认文件
@@ -40,6 +42,7 @@ interface ModelCache {
   ttsModels: TTSModelSchema[];
   whisperModels: WhisperModelSchema[];
   ocrModels: OCRModelSchema[];
+  pdfModels: PDFModelSchema[];
   systemConfigs: Record<string, any>;
   lastUpdated: Date;
 }
@@ -80,6 +83,7 @@ export async function getAllLLMModels(): Promise<LLMModelSchema[]> {
         ttsModels: [],
         whisperModels: [],
         ocrModels: [],
+        pdfModels: [],
         systemConfigs: {},
         lastUpdated: new Date()
       };
@@ -156,6 +160,7 @@ export async function getAllEmbeddingModels(): Promise<EmbeddingModelSchema[]> {
         ttsModels: [],
         whisperModels: [],
         ocrModels: [],
+        pdfModels: [],
         systemConfigs: {},
         lastUpdated: new Date()
       };
@@ -204,7 +209,8 @@ export async function getAllReRankModels(): Promise<ReRankModelSchema[]> {
         whisperModels: [],
         ocrModels: [],
         systemConfigs: {},
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
+        pdfModels: []
       };
     }
     modelCache.reRankModels = models;
@@ -237,7 +243,8 @@ export async function getAllTTSModels(): Promise<TTSModelSchema[]> {
         whisperModels: [],
         ocrModels: [],
         systemConfigs: {},
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
+        pdfModels: []
       };
     }
     // @ts-ignore
@@ -268,6 +275,7 @@ export async function getWhisperModel(): Promise<WhisperModelSchema | null> {
         reRankModels: [],
         ttsModels: [],
         whisperModels: [],
+        pdfModels: [],
         ocrModels: [],
         systemConfigs: {},
         lastUpdated: new Date()
@@ -302,6 +310,7 @@ export async function getOCRModel(): Promise<OCRModelSchema | null> {
         ttsModels: [],
         whisperModels: [],
         ocrModels: [],
+        pdfModels: [],
         systemConfigs: {},
         lastUpdated: new Date()
       };
@@ -315,6 +324,23 @@ export async function getOCRModel(): Promise<OCRModelSchema | null> {
   } catch (error) {
     console.error('获取OCR模型失败:', error);
     return null;
+  }
+}
+
+export async function getAllPDFModels(): Promise<
+  import('@fastgpt/global/core/model/type.d').PDFModelSchema[]
+> {
+  try {
+    const models = (await MongoPDFModel.find({})
+      .sort({ updateTime: -1 })
+      .lean()) as import('@fastgpt/global/core/model/type.d').PDFModelSchema[];
+    if (!modelCache) return models;
+    modelCache.pdfModels = models;
+    modelCache.lastUpdated = new Date();
+    return models;
+  } catch (error) {
+    console.error('获取PDF模型失败:', error);
+    return [];
   }
 }
 
@@ -451,17 +477,24 @@ export const getActiveOCRModel = async (): Promise<OCRModelSchema | null> => {
   return MongoOCRModel.findOne({ isActive: true }).lean();
 };
 
+export const getActivePDFModels = async (): Promise<
+  import('@fastgpt/global/core/model/type.d').PDFModelSchema[]
+> => {
+  return MongoPDFModel.find({ isActive: true }).sort({ updateTime: -1 }).lean();
+};
+
 // 获取兼容的旧格式配置（用于过渡期间，系统级）
 export async function getLegacyConfig(): Promise<any> {
   try {
-    const [llmModels, embeddingModels, reRankModels, ttsModels, whisperModel, ocrModel] =
+    const [llmModels, embeddingModels, reRankModels, ttsModels, whisperModel, ocrModel, pdfModels] =
       await Promise.all([
         getAllLLMModels(),
         getAllEmbeddingModels(),
         getAllReRankModels(),
         getAllTTSModels(),
         getWhisperModel(),
-        getOCRModel()
+        getOCRModel(),
+        getAllPDFModels()
       ]);
 
     const fileConfig = loadConfigFile() || {};
@@ -520,6 +553,12 @@ export async function getLegacyConfig(): Promise<any> {
             charsPointsPrice: ocrModel.charsPointsPrice
           }
         : null,
+      pdfModels: (pdfModels || []).map((m: PDFModelSchema) => ({
+        model: m.model,
+        name: m.name,
+        charsPointsPrice: m.charsPointsPrice,
+        type: m.type
+      })),
       feConfigs,
       systemEnv,
       vectorModels: embeddingModels.map((model) => ({

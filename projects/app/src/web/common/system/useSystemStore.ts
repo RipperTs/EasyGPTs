@@ -42,6 +42,7 @@ type State = {
   reRankModelList: ReRankModelItemType[];
   whisperModel?: WhisperModelType;
   ocrModelList: { model: string; name: string; charsPointsPrice: number; avatar?: string }[];
+  pdfModelList: import('@fastgpt/global/core/ai/model.d').PdfModelItemType[];
   initStaticData: (e: InitDateResponse) => void;
 };
 
@@ -104,6 +105,7 @@ export const useSystemStore = create<State>()(
         reRankModelList: [],
         whisperModel: undefined,
         ocrModelList: [],
+        pdfModelList: [],
         initStaticData(res) {
           set((state) => {
             state.feConfigs = res.feConfigs || {};
@@ -117,6 +119,7 @@ export const useSystemStore = create<State>()(
             state.reRankModelList = res.reRankModels ?? state.reRankModelList;
             state.whisperModel = res.whisperModel;
             state.ocrModelList = res.ocrModels ?? state.ocrModelList;
+            state.pdfModelList = res.pdfModels ?? state.pdfModelList;
           });
         }
       })),

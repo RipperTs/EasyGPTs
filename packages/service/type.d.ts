@@ -22,6 +22,7 @@ declare global {
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];
   var ocrModel: OcrModelTyoe;
+  var pdfModels: import('@fastgpt/global/core/ai/model.d').PdfModelItemType[];
 
   var systemLoadedGlobalVariables: boolean;
   var systemLoadedGlobalConfig: boolean;

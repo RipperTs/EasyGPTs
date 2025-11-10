@@ -34,6 +34,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   global.whisperModel = config.whisperModel as WhisperModelType;
   global.reRankModels = config.reRankModels as ReRankModelItemType[];
   global.ocrModel = config.ocrModel as OcrModelTyoe;
+  global.pdfModels = (config as any).pdfModels || [];
 };
 
 // 从数据库初始化FastGPT配置（系统级）
@@ -59,6 +60,7 @@ export const initFastGPTConfigFromDB = async () => {
     global.whisperModel = config.whisperModel as WhisperModelType;
     global.reRankModels = (config.reRankModels || []) as ReRankModelItemType[];
     global.ocrModel = config.ocrModel as OcrModelTyoe;
+    global.pdfModels = (config as any).pdfModels || [];
 
     console.log('数据库配置加载完成', {
       llmModels: global.llmModels.length,
@@ -92,6 +94,8 @@ export const refreshModelConfig = async () => {
       global.audioSpeechModels = config.audioSpeechModels || [];
       global.whisperModel = config.whisperModel;
       global.ocrModel = config.ocrModel;
+      // @ts-ignore
+      global.pdfModels = config.pdfModels || [];
 
       console.log('模型配置缓存已刷新，模型数量:', {
         llmModels: global.llmModels.length,

@@ -70,3 +70,10 @@ export type OcrModelTyoe = {
   name: string;
   charsPointsPrice: number;
 };
+
+export type PdfModelItemType = {
+  model: string;
+  name: string;
+  charsPointsPrice: number;
+  type: 'mineru' | 'doc2x' | 'mineru-local';
+};

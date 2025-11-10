@@ -8,6 +8,7 @@ import { MongoEmbeddingModel } from '@fastgpt/service/core/model/embeddingSchema
 import { MongoTTSModel } from '@fastgpt/service/core/model/ttsSchema';
 import { MongoWhisperModel } from '@fastgpt/service/core/model/whisperSchema';
 import { MongoOCRModel } from '@fastgpt/service/core/model/ocrSchema';
+import { MongoPDFModel } from '@fastgpt/service/core/model/pdfSchema';
 import type { OCRModelSchema } from '@fastgpt/global/core/model/type.d';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { ReRankModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -19,7 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
 
   // 从数据库获取所有激活的模型
-  const [llmModels, vectorModels, reRankModels, ttsModels, whisperModel, ocrModels] =
+  const [llmModels, vectorModels, reRankModels, ttsModels, whisperModel, ocrModels, pdfModels] =
     await Promise.all([
       // LLM模型
       MongoLLMModel.find({ isActive: true }).sort({ sort: 1, createTime: -1 }).lean() as Promise<
@@ -42,7 +43,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // OCR模型（列表，全部激活的）
       MongoOCRModel.find({ isActive: true }).sort({ updateTime: -1 }).lean() as Promise<
         OCRModelSchema[]
-      >
+      >,
+      // PDF解析模型（列表）
+      MongoPDFModel.find({ isActive: true }).sort({ updateTime: -1 }).lean()
     ]);
 
   jsonRes<InitDateResponse>(res, {
@@ -98,6 +101,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name: m.name,
         charsPointsPrice: m.charsPointsPrice || 0,
         avatar: m.avatar || ''
+      })),
+      pdfModels: (pdfModels || []).map((m: any) => ({
+        model: m.model,
+        name: m.name,
+        charsPointsPrice: m.charsPointsPrice || 0,
+        type: m.type
       })),
       whisperModel: whisperModel
         ? {

@@ -3,7 +3,8 @@ import type {
   VectorModelItemType,
   AudioSpeechModels,
   WhisperModelType,
-  ReRankModelItemType
+  ReRankModelItemType,
+  PdfModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
@@ -16,6 +17,7 @@ export type InitDateResponse = {
   reRankModels: ReRankModelItemType[];
   whisperModel: WhisperModelType;
   ocrModels: { model: string; name: string; charsPointsPrice: number; avatar?: string }[];
+  pdfModels: PdfModelItemType[];
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;

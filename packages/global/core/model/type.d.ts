@@ -70,6 +70,18 @@ export interface OCRModelSchema extends MongoSchema {
   isActive: boolean; // 是否启用
 }
 
+export interface PDFModelSchema extends MongoSchema {
+  model: string; // 模型名
+  name: string; // 显示名
+  avatar: string; // 图标
+  charsPointsPrice: number; // 价格配置
+  type: 'mineru' | 'doc2x' | 'mineru-local'; // 解析类型
+  requestUrl?: string; // 请求地址
+  apiKey?: string; // 接口鉴权秘钥
+  defaultConfig?: Record<string, any>; // 默认请求参数
+  isActive: boolean; // 是否启用
+}
+
 export interface EmbeddingModelSchema extends MongoSchema {
   model: string; // 模型名（与OneAPI对应）
   name: string; // 模型展示名
@@ -186,6 +198,21 @@ export interface CreateEmbeddingModelParams {
 }
 
 export interface UpdateEmbeddingModelParams extends Partial<CreateEmbeddingModelParams> {
+  id: string;
+}
+
+export interface CreatePDFModelParams {
+  model: string;
+  name: string;
+  charsPointsPrice?: number;
+  avatar?: string;
+  type: 'mineru' | 'doc2x' | 'mineru-local';
+  requestUrl?: string;
+  apiKey?: string;
+  defaultConfig?: Record<string, any>;
+}
+
+export interface UpdatePDFModelParams extends Partial<CreatePDFModelParams> {
   id: string;
 }
 

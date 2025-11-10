@@ -103,7 +103,8 @@ export async function initSystemConfig() {
     reRankModels: dbModelConfig?.reRankModels || [],
     audioSpeechModels: dbModelConfig?.audioSpeechModels || [],
     whisperModel: dbModelConfig?.whisperModel || null,
-    ocrModel: dbModelConfig?.ocrModel || null
+    ocrModel: dbModelConfig?.ocrModel || null,
+    pdfModels: (dbModelConfig as any)?.pdfModels || []
   };
 
   // set config
