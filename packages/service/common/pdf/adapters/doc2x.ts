@@ -24,7 +24,7 @@ type Doc2xStatusResp = {
 };
 
 export async function parseWithDoc2xV2(input: PdfParseInput): Promise<PdfParseResult> {
-  const { buffer, filename, requestUrl, apiKey, embedImages = true } = input;
+  const { buffer, requestUrl, apiKey, embedImages = true } = input;
 
   const base = (requestUrl || 'https://v2.doc2x.noedgeai.com').replace(/\/$/, '');
   if (!apiKey) throw new Error('Doc2x: 缺少 apiKey');
@@ -126,6 +126,9 @@ export async function parseWithDoc2xV2(input: PdfParseInput): Promise<PdfParseRe
     // 去除图片引用
     markdown = markdown.replace(/!\[[^\]]*\]\([^\)]*\)/g, '');
   }
+
+  // 过滤 doc2x 无意义注释，如: <!-- Meanless: 2-->
+  markdown = markdown.replace(/<!--\s*Meanless:\s*[\s\S]*?-->/gi, '').replace(/\n{3,}/g, '\n\n');
 
   const end = Date.now();
 
