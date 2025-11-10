@@ -2,6 +2,7 @@ import { MongoPDFModel } from '../../core/model/pdfSchema';
 import type { PdfParseInput, PdfParseResult, PdfParserType } from './types';
 import type { PDFModelSchema } from '@fastgpt/global/core/model/type.d';
 import { parseWithMineruLocal } from './adapters/mineruLocal';
+import { parseWithDoc2xV2 } from './adapters/doc2x';
 
 type AdapterFn = (input: PdfParseInput) => Promise<PdfParseResult>;
 
@@ -10,9 +11,7 @@ const adapters: Record<PdfParserType, AdapterFn> = {
   mineru: async () => {
     throw new Error('mineru 适配器未实现');
   },
-  doc2x: async () => {
-    throw new Error('doc2x 适配器未实现');
-  }
+  doc2x: parseWithDoc2xV2
 };
 
 export async function parsePdfByType(params: {
