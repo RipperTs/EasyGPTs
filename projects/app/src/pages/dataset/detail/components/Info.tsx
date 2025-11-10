@@ -285,9 +285,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               w={'100%'}
               value={pdfModel?.model || ''}
               list={[
-                { label: '本地解析(pdfjs)', value: '' },
+                { label: '本地解析', value: '' },
                 ...pdfModelList.map((item) => ({
-                  label: `${item.name}(${item.type})`,
+                  label: `${item.name}`,
                   value: item.model
                 }))
               ]}

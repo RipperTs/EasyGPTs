@@ -284,9 +284,9 @@ const CreateModal = ({
                 w={['100%', '300px']}
                 value={pdfModel || ''}
                 list={[
-                  { label: '本地解析(pdfjs)', value: '' },
+                  { label: '本地解析', value: '' },
                   ...pdfModelList.map((item) => ({
-                    label: `${item.name}(${item.type})`,
+                    label: `${item.name}`,
                     value: item.model
                   }))
                 ]}
