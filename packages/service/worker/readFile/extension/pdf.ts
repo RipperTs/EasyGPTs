@@ -56,8 +56,8 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
     }
   };
 
-  // Use a dedicated Uint8Array to avoid ArrayBuffer detachment issues
-  const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  // Always pass a plain Uint8Array (not Node Buffer)
+  const data = Uint8Array.from(buffer);
   const loadingTask = pdfjs.getDocument({ data });
   const doc = await loadingTask.promise;
 

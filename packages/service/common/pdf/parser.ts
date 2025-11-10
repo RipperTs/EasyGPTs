@@ -90,7 +90,8 @@ async function getPdfPageCount(buffer: Buffer): Promise<number> {
   // @ts-ignore - ensure worker loaded in Node
   await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
   // Use a fresh Uint8Array to avoid detached ArrayBuffer issues
-  const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  // Always pass a plain Uint8Array (not Node Buffer)
+  const data = Uint8Array.from(buffer);
   const loadingTask = (pdfjs as any).getDocument({ data });
   const doc = await loadingTask.promise;
   const pages = doc.numPages || 0;
