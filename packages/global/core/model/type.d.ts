@@ -1,4 +1,5 @@
 import { MongoSchema } from '@fastgpt/global/common/system/types';
+import { PdfParserType } from '../../../service/common/pdf/types';
 
 export interface LLMModelSchema extends MongoSchema {
   model: string; // 模型名(对应OneAPI中渠道的模型名)
@@ -75,7 +76,7 @@ export interface PDFModelSchema extends MongoSchema {
   name: string; // 显示名
   avatar: string; // 图标
   charsPointsPrice: number; // 价格配置
-  type: 'mineru' | 'doc2x' | 'mineru-local'; // 解析类型
+  type: PdfParserType; // 解析类型
   requestUrl?: string; // 请求地址
   apiKey?: string; // 接口鉴权秘钥
   defaultConfig?: Record<string, any>; // 默认请求参数
@@ -206,7 +207,7 @@ export interface CreatePDFModelParams {
   name: string;
   charsPointsPrice?: number;
   avatar?: string;
-  type: 'mineru' | 'doc2x' | 'mineru-local';
+  type: PdfParserType;
   requestUrl?: string;
   apiKey?: string;
   defaultConfig?: Record<string, any>;

@@ -1,4 +1,4 @@
-export type PdfParserType = 'mineru' | 'doc2x' | 'mineru-local';
+import { PdfParserType } from '@fastgpt/service/common/pdf/types';
 
 export async function parsePdfFile({
   file,

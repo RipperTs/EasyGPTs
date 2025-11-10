@@ -1,7 +1,5 @@
 import { PermissionSchemaType } from '../../support/permission/type';
 import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.d';
-import { PermissionTypeEnum } from '../../support/permission/constant';
-import { PushDatasetDataChunkProps } from './api';
 import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
@@ -10,8 +8,8 @@ import {
   TrainingModeEnum
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
-import { Permission } from '../../support/permission/controller';
 import { APIFileServer } from './apiDataset';
+import { PdfParserType } from '../../../service/common/pdf/types';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -161,7 +159,7 @@ export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentMode
     model: string;
     name: string;
     charsPointsPrice: number;
-    type: 'mineru' | 'doc2x' | 'mineru-local';
+    type: PdfParserType;
   };
   permission: DatasetPermission;
 };

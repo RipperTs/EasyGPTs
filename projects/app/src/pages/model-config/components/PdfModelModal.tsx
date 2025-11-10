@@ -1,34 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
+  Avatar,
+  Button,
+  Divider,
+  Flex,
   FormControl,
   FormLabel,
-  Input,
-  NumberInput,
-  NumberInputField,
   Grid,
   GridItem,
-  Button,
-  VStack,
-  Text,
-  Divider,
+  HStack,
+  IconButton,
+  Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
+  NumberInput,
+  NumberInputField,
   Select,
-  Avatar,
-  Flex,
+  Text,
   Textarea,
-  HStack
+  VStack
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { MODEL_ICONS } from '@/constants/modelIcons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { IconButton } from '@chakra-ui/react';
+import { PdfParserType } from '@fastgpt/service/common/pdf/types';
 
 type PdfModelWithId = {
   _id: string;
@@ -36,7 +37,7 @@ type PdfModelWithId = {
   name: string;
   avatar?: string;
   charsPointsPrice?: number;
-  type: 'mineru' | 'doc2x' | 'mineru-local';
+  type: PdfParserType;
   requestUrl?: string;
   apiKey?: string;
   defaultConfig?: Record<string, any>;
@@ -54,7 +55,7 @@ type FormType = {
   name: string;
   avatar?: string;
   charsPointsPrice?: number;
-  type: 'mineru' | 'doc2x' | 'mineru-local';
+  type: PdfParserType;
   requestUrl?: string;
   apiKey?: string;
   defaultConfigStr?: string;
@@ -91,7 +92,7 @@ const PdfModelModal = ({ model, onClose, onSuccess }: Props) => {
       name: string;
       avatar?: string;
       charsPointsPrice?: number;
-      type: 'mineru' | 'doc2x' | 'mineru-local';
+      type: PdfParserType;
       requestUrl?: string;
       apiKey?: string;
       defaultConfig?: Record<string, unknown>;

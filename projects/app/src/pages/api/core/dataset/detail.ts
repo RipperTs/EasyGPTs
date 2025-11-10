@@ -1,24 +1,39 @@
-import {
-  getLLMModel,
-  getVectorModel,
-  getLLMModelWithDefault,
-  getVectorModelWithDefault
-} from '@fastgpt/service/core/ai/model';
+import { getLLMModelWithDefault, getVectorModelWithDefault } from '@fastgpt/service/core/ai/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetItemType, DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { LLMModelItemType, VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import type { OCRModelSchema, PDFModelSchema } from '@fastgpt/global/core/model/type.d';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoOCRModel } from '@fastgpt/service/core/model/ocrSchema';
 import { MongoPDFModel } from '@fastgpt/service/core/model/pdfSchema';
+import { PdfParserType } from '@fastgpt/service/common/pdf/types';
 
 type Query = {
   id: string;
 };
 
-async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
+// 仅用于当前接口返回的精确类型，避免与全局 DatasetItemType 冲突
+type DatasetDetailItemType = Omit<
+  DatasetSchemaType,
+  'vectorModel' | 'agentModel' | 'ocrModel' | 'pdfModel'
+> & {
+  vectorModel: VectorModelItemType;
+  agentModel: LLMModelItemType;
+  ocrModel?: { model: string; name: string; charsPointsPrice: number };
+  pdfModel?: {
+    model: string;
+    name: string;
+    charsPointsPrice: number;
+    type: PdfParserType;
+  };
+  permission: DatasetPermission;
+};
+
+async function handler(req: ApiRequestProps<Query>): Promise<DatasetDetailItemType> {
   const { id: datasetId } = req.query as {
     id: string;
   };
@@ -64,7 +79,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
             model: pdf.model,
             name: pdf.name,
             charsPointsPrice: pdf.charsPointsPrice,
-            type: (pdf as any).type
+            type: pdf.type
           }
         }
       : {})

@@ -1,24 +1,24 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+  Avatar,
   Box,
   Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Switch,
-  useDisclosure,
   Flex,
+  HStack,
   Input,
   InputGroup,
   InputLeftElement,
-  HStack,
-  Avatar,
+  Switch,
+  Table,
+  Tag,
+  Tbody,
+  Td,
   Text,
+  Th,
+  Thead,
   Tooltip,
-  Tag
+  Tr,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -27,6 +27,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import PdfModelModal from './PdfModelModal';
 import { clientInitData } from '@/web/common/system/staticData';
+import { PdfParserType } from '@fastgpt/service/common/pdf/types';
 
 type PdfModelType = {
   _id: string;
@@ -34,7 +35,7 @@ type PdfModelType = {
   name: string;
   avatar?: string;
   charsPointsPrice?: number;
-  type: 'mineru' | 'doc2x' | 'mineru-local';
+  type: PdfParserType;
   requestUrl?: string;
   apiKey?: string;
   defaultConfig?: Record<string, any>;
