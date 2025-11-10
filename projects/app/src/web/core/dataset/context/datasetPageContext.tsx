@@ -100,7 +100,7 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { t } = useTranslation();
-  const { feConfigs, ocrModelList } = useSystemStore();
+  const { feConfigs, ocrModelList, pdfModelList } = useSystemStore();
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -126,6 +126,15 @@ export const DatasetPageContextProvider = ({
                   charsPointsPrice: state.ocrModel.charsPointsPrice
                 }
               : { model: data.ocrModel.model, name: data.ocrModel.model, charsPointsPrice: 0 };
+        }
+        if (data.pdfModel && 'model' in data.pdfModel) {
+          if (data.pdfModel.model === '') {
+            // 清空配置 => 使用本地解析
+            (next as any).pdfModel = undefined;
+          } else {
+            const f = pdfModelList.find((m) => m.model === data.pdfModel!.model);
+            next.pdfModel = f as any;
+          }
         }
         return next;
       });

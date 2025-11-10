@@ -37,6 +37,7 @@ async function handler(
     intro,
     agentModel,
     ocrModel,
+    pdfModel,
     websiteConfig,
     externalReadUrl,
     defaultPermission,
@@ -75,6 +76,7 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl && { externalReadUrl }),
+        ...(pdfModel && 'model' in pdfModel ? { pdfModel: (pdfModel as any).model } : {}),
         // move
         ...(updatedDefaultPermission !== undefined && {
           defaultPermission: updatedDefaultPermission

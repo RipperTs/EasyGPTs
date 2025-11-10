@@ -12,6 +12,7 @@ export type DatasetUpdateBody = {
   intro?: string;
   agentModel?: LLMModelItemType;
   ocrModel?: { model: string } | { model: string; name?: string; charsPointsPrice?: number };
+  pdfModel?: { model: string } | { model: string; name?: string; charsPointsPrice?: number };
   status?: DatasetSchemaType['status'];
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];

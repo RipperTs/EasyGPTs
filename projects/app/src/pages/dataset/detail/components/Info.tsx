@@ -58,9 +58,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
   const ocrModel = watch('ocrModel');
+  const pdfModel = watch('pdfModel');
   const defaultPermission = watch('defaultPermission');
 
-  const { datasetModelList, vectorModelList, ocrModelList } = useSystemStore();
+  const { datasetModelList, vectorModelList, ocrModelList, pdfModelList } = useSystemStore();
   const { openConfirm: onOpenConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -94,6 +95,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         id: datasetId,
         agentModel: data.agentModel,
         ...(data.ocrModel?.model ? { ocrModel: { model: data.ocrModel.model } } : {}),
+        ...(data.pdfModel?.model ? { pdfModel: { model: data.pdfModel.model } } : {}),
         externalReadUrl: data.externalReadUrl,
         defaultPermission: data.defaultPermission
       });
@@ -274,12 +276,44 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Box>
         </Box>
 
+        <Box pt={5}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            PDF 解析模型
+          </FormLabel>
+          <Box pt={2}>
+            <AIModelSelector
+              w={'100%'}
+              value={pdfModel?.model || ''}
+              list={[
+                { label: '本地解析(pdfjs)', value: '' },
+                ...pdfModelList.map((item) => ({
+                  label: `${item.name}(${item.type})`,
+                  value: item.model
+                }))
+              ]}
+              fontSize={'mini'}
+              onchange={(e) => {
+                if (e === '') {
+                  setValue('pdfModel', undefined as any);
+                  return handleSubmit((data) =>
+                    onSave({ ...data, pdfModel: { model: '' } as any })
+                  )();
+                }
+                const cur = pdfModelList.find((item) => item.model === e);
+                if (!cur) return;
+                setValue('pdfModel', cur as any);
+                return handleSubmit((data) => onSave({ ...data, pdfModel: cur as any }))();
+              }}
+            />
+          </Box>
+        </Box>
+
         <Flex mt={2} w={'100%'} alignItems={'center'}>
           <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0} fontWeight={'500'}>
-            {t('common:core.Max Token')}
+            PDF页数上限
           </FormLabel>
           <Box flex={[1, '0 0 320px']} fontSize={'mini'}>
-            {vectorModel.maxToken}
+            100
           </Box>
         </Flex>
 
@@ -305,6 +339,15 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             />
           </Box>
         </Box>
+
+        <Flex mt={2} w={'100%'} alignItems={'center'}>
+          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0} fontWeight={'500'}>
+            单条数据解析上限
+          </FormLabel>
+          <Box flex={[1, '0 0 320px']} fontSize={'mini'}>
+            {vectorModel.maxToken}
+          </Box>
+        </Flex>
 
         {/* <MyDivider my={4} h={'2px'} maxW={'500px'} /> */}
 

@@ -38,7 +38,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { vectorModelList, datasetModelList, ocrModelList } = useSystemStore();
+  const { vectorModelList, datasetModelList, ocrModelList, pdfModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const databaseNameMap = useMemo(() => {
@@ -68,13 +68,15 @@ const CreateModal = ({
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
       agentModel: datasetModelList[0].model,
-      ocrModel: ocrModelList?.[0]?.model
+      ocrModel: ocrModelList?.[0]?.model,
+      pdfModel: ''
     }
   });
   const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
   const ocrModel = watch('ocrModel');
+  const pdfModel = watch('pdfModel');
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -255,6 +257,40 @@ const CreateModal = ({
                 onchange={(e) => {
                   setValue('ocrModel', e);
                 }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {pdfModelList.length > 0 && (
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>PDF 解析模型</Box>
+              <QuestionTip label={'用于解析PDF文档为Markdown'} />
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={pdfModel || ''}
+                list={[
+                  { label: '本地解析(pdfjs)', value: '' },
+                  ...pdfModelList.map((item) => ({
+                    label: `${item.name}(${item.type})`,
+                    value: item.model
+                  }))
+                ]}
+                onchange={(e) => setValue('pdfModel', e)}
               />
             </Box>
           </Flex>

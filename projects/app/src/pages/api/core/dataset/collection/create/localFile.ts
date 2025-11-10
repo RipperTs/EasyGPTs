@@ -70,6 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
       teamId,
       path: file.path,
       ocrModel: dataset.ocrModel,
+      pdfModel: (dataset as any).pdfModel,
       metadata: {
         ...fileMetadata,
         relatedId: relatedImgId

@@ -26,6 +26,7 @@ export type CreateDatasetParams = {
   vectorModel?: string;
   agentModel?: string;
   ocrModel?: string;
+  pdfModel?: string;
 };
 
 export type RebuildEmbeddingProps = {

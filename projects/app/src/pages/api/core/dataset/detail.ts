@@ -8,10 +8,11 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetItemType, DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import type { OCRModelSchema } from '@fastgpt/global/core/model/type.d';
+import type { OCRModelSchema, PDFModelSchema } from '@fastgpt/global/core/model/type.d';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoOCRModel } from '@fastgpt/service/core/model/ocrSchema';
+import { MongoPDFModel } from '@fastgpt/service/core/model/pdfSchema';
 
 type Query = {
   id: string;
@@ -41,8 +42,14 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
         isActive: true
       }).lean()) as OCRModelSchema | null)
     : null;
+  const pdf = dataset.pdfModel
+    ? ((await MongoPDFModel.findOne({
+        model: dataset.pdfModel,
+        isActive: true
+      }).lean()) as PDFModelSchema | null)
+    : null;
 
-  const { ocrModel: _ocrModel, ...rest } = dataset as DatasetSchemaType;
+  const { ocrModel: _ocrModel, pdfModel: _pdfModel, ...rest } = dataset as DatasetSchemaType;
   return {
     ...rest,
     permission,
@@ -50,6 +57,16 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     agentModel: getLLMModelWithDefault(dataset.agentModel),
     ...(ocr
       ? { ocrModel: { model: ocr.model, name: ocr.name, charsPointsPrice: ocr.charsPointsPrice } }
+      : {}),
+    ...(pdf
+      ? {
+          pdfModel: {
+            model: pdf.model,
+            name: pdf.name,
+            charsPointsPrice: pdf.charsPointsPrice,
+            type: (pdf as any).type
+          }
+        }
       : {})
   };
 }

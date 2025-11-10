@@ -50,7 +50,8 @@ async function handler(
     teamId,
     bucketName: BucketNameEnum.dataset,
     fileId,
-    ocrModel: dataset.ocrModel
+    ocrModel: dataset.ocrModel,
+    pdfModel: (dataset as any).pdfModel
   });
   // 2. split chunks
   const chunks = rawText2Chunks({

@@ -141,6 +141,7 @@ export const readFileContentFromMongo = async ({
   fileId: string;
   isQAImport?: boolean;
   ocrModel?: string;
+  pdfModel?: string;
 }): Promise<{
   rawText: string;
   filename: string;
@@ -183,7 +184,8 @@ export const readFileContentFromMongo = async ({
     metadata: {
       relatedId: fileId
     },
-    ocrModel
+    ocrModel,
+    pdfModel
   });
 
   // < 14M

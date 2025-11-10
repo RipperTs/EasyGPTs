@@ -24,7 +24,8 @@ async function handler(
     avatar,
     vectorModel = global.vectorModels?.[0]?.model || '',
     agentModel = getDatasetModel()?.model || '',
-    ocrModel
+    ocrModel,
+    pdfModel
   } = req.body;
 
   // auth
@@ -51,6 +52,7 @@ async function handler(
     vectorModel,
     agentModel,
     ...(ocrModel ? { ocrModel } : {}),
+    ...(pdfModel ? { pdfModel } : {}),
     avatar,
     type
   });

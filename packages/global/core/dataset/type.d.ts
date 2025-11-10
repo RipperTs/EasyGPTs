@@ -26,6 +26,7 @@ export type DatasetSchemaType = {
   vectorModel: string;
   agentModel: string;
   ocrModel?: string;
+  pdfModel?: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
   status: `${DatasetStatusEnum}`;
@@ -156,6 +157,12 @@ export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentMode
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
   ocrModel?: { model: string; name: string; charsPointsPrice: number };
+  pdfModel?: {
+    model: string;
+    name: string;
+    charsPointsPrice: number;
+    type: 'mineru' | 'doc2x' | 'mineru-local';
+  };
   permission: DatasetPermission;
 };
 

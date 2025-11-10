@@ -18,6 +18,7 @@ export type readRawTextByLocalFileParams = {
   path: string;
   metadata?: Record<string, any>;
   ocrModel?: string;
+  pdfModel?: string;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
   const { path } = params;
@@ -34,7 +35,8 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     encoding: encoding,
     buffer,
     metadata: params.metadata,
-    ocrModel: params.ocrModel
+    ocrModel: params.ocrModel,
+    pdfModel: params.pdfModel
   });
 
   return {
@@ -49,7 +51,8 @@ export const readRawContentByFileBuffer = async ({
   buffer,
   encoding,
   metadata,
-  ocrModel
+  ocrModel,
+  pdfModel
 }: {
   isQAImport?: boolean;
   extension: string;
@@ -58,6 +61,7 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
   ocrModel?: string;
+  pdfModel?: string;
 }) => {
   // 优先使用知识库传入的 OCR 模型；若未设置则尝试读取系统激活的 OCR 模型
   let finalOcrModel = ocrModel || '';
@@ -68,6 +72,20 @@ export const readRawContentByFileBuffer = async ({
       finalOcrModel = dbOcr?.model || '';
     } catch (e) {
       // 忽略读取失败，交由后续校验报错
+    }
+  }
+
+  // Internal PDF parser first（仅在显式设置了 pdfModel 时触发外部解析；空则走本地解析）
+  if (extension === 'pdf' && pdfModel) {
+    try {
+      const { parsePdfByType } = await import('../../pdf/parser');
+      const start = Date.now();
+      const parsed = await parsePdfByType({ buffer, filename: 'file.pdf', model: pdfModel });
+      const rawText = parsed.markdown || '';
+      const { text, imageList } = matchMdImgTextAndUpload(rawText);
+      return { rawText: text, formatText: rawText, imageList };
+    } catch (err) {
+      addLog.warn(`Internal PDF parser failed, fallback. ${err}`);
     }
   }
 

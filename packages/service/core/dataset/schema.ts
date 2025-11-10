@@ -73,6 +73,10 @@ const DatasetSchema = new Schema({
     type: String,
     default: ''
   },
+  pdfModel: {
+    type: String,
+    default: ''
+  },
   intro: {
     type: String,
     default: ''

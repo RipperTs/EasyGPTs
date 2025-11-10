@@ -27,6 +27,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],
   ocrModel: undefined,
+  pdfModel: undefined,
   defaultPermission: DatasetDefaultPermissionVal,
   inheritPermission: true
 };
@@ -50,6 +51,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     vectorModel: defaultVectorModels[0].model,
     agentModel: defaultQAModels[0].model,
     ocrModel: '',
+    pdfModel: '',
     defaultPermission: DatasetDefaultPermissionVal,
     inheritPermission: true
   },

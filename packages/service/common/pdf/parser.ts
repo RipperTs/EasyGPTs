@@ -38,6 +38,18 @@ export async function parsePdfByType(params: {
     };
   }
 
+  // 2) 如果未指定模型/类型，则默认走本地解析
+  if (!model && !type) {
+    const start = Date.now();
+    const { readPdfFile } = await import('../../worker/readFile/extension/pdf');
+    const local = await readPdfFile({ buffer } as any);
+    return {
+      markdown: local.rawText || '',
+      page: pageCount || null,
+      duration: (Date.now() - start) / 1000
+    };
+  }
+
   // 读取模型配置：优先按 model，其次按 type，默认取第一个激活模型
   const query: Record<string, unknown> = model
     ? { model }
@@ -45,7 +57,17 @@ export async function parsePdfByType(params: {
       ? { type, isActive: true }
       : { isActive: true };
   const doc = (await MongoPDFModel.findOne(query).lean()) as PDFModelSchema | null;
-  if (!doc) throw new Error('未找到可用的PDF解析模型配置');
+  if (!doc) {
+    // 无匹配配置，回退到本地解析
+    const start = Date.now();
+    const { readPdfFile } = await import('../../worker/readFile/extension/pdf');
+    const local = await readPdfFile({ buffer } as any);
+    return {
+      markdown: local.rawText || '',
+      page: pageCount || null,
+      duration: (Date.now() - start) / 1000
+    };
+  }
 
   const realType = doc.type as PdfParserType;
   const adapter = adapters[realType];
