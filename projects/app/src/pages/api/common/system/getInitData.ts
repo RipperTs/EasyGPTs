@@ -105,6 +105,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       pdfModels: (pdfModels || []).map((m: any) => ({
         model: m.model,
         name: m.name,
+        avatar: m.avatar || '',
         charsPointsPrice: m.charsPointsPrice || 0,
         type: m.type
       })),

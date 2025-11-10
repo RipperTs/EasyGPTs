@@ -556,6 +556,7 @@ export async function getLegacyConfig(): Promise<any> {
       pdfModels: (pdfModels || []).map((m: PDFModelSchema) => ({
         model: m.model,
         name: m.name,
+        avatar: m.avatar,
         charsPointsPrice: m.charsPointsPrice,
         type: m.type
       })),

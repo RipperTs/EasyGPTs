@@ -74,6 +74,7 @@ export type OcrModelTyoe = {
 export type PdfModelItemType = {
   model: string;
   name: string;
+  avatar?: string;
   charsPointsPrice: number;
   type: 'mineru' | 'doc2x' | 'mineru-local';
 };

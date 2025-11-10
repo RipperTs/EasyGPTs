@@ -95,7 +95,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         id: datasetId,
         agentModel: data.agentModel,
         ...(data.ocrModel?.model ? { ocrModel: { model: data.ocrModel.model } } : {}),
-        ...(data.pdfModel?.model ? { pdfModel: { model: data.pdfModel.model } } : {}),
+        ...(data.pdfModel && 'model' in data.pdfModel
+          ? { pdfModel: { model: data.pdfModel.model } }
+          : {}),
         externalReadUrl: data.externalReadUrl,
         defaultPermission: data.defaultPermission
       });

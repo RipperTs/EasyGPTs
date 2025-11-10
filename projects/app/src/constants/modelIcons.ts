@@ -15,6 +15,8 @@ export const MODEL_ICONS = [
   'meta.svg',
   'minimax.svg',
   'moonshot.svg',
+  'meetup.svg',
+  'meetupa.svg',
   'NVIDIA.svg',
   'ollama.svg',
   'openai.svg',
