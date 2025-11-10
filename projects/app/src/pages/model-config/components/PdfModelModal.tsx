@@ -74,7 +74,7 @@ const PdfModelModal = ({ model, onClose, onSuccess }: Props) => {
           charsPointsPrice: model.charsPointsPrice || 0,
           type: model.type,
           requestUrl: model.requestUrl,
-          apiKey: model.apiKey ? '********' : '',
+          apiKey: model.apiKey,
           defaultConfigStr: JSON.stringify(model.defaultConfig || {}, null, 2)
         }
       : {
@@ -135,7 +135,7 @@ const PdfModelModal = ({ model, onClose, onSuccess }: Props) => {
       charsPointsPrice: Number(data.charsPointsPrice || 0),
       type: data.type,
       requestUrl: data.requestUrl?.trim(),
-      apiKey: data.apiKey === '********' ? undefined : data.apiKey?.trim(),
+      apiKey: data.apiKey?.trim(),
       defaultConfig
     };
 
@@ -208,9 +208,9 @@ const PdfModelModal = ({ model, onClose, onSuccess }: Props) => {
                   <FormControl isRequired>
                     <FormLabel>类型</FormLabel>
                     <Select {...register('type', { required: true })}>
-                      <option value="mineru">mineru</option>
-                      <option value="doc2x">doc2x</option>
-                      <option value="mineru-local">mineru-local</option>
+                      <option value="mineru">MinerU API</option>
+                      <option value="doc2x">Doc2x</option>
+                      <option value="mineru-local">私有化MinerU</option>
                     </Select>
                   </FormControl>
                 </GridItem>
@@ -226,7 +226,11 @@ const PdfModelModal = ({ model, onClose, onSuccess }: Props) => {
                 <GridItem colSpan={2}>
                   <FormControl>
                     <FormLabel>接口鉴权秘钥</FormLabel>
-                    <Input {...register('apiKey')} placeholder="用于接口鉴权的token" />
+                    <Input
+                      type={'password'}
+                      {...register('apiKey')}
+                      placeholder="用于接口鉴权的token"
+                    />
                   </FormControl>
                 </GridItem>
               </Grid>
