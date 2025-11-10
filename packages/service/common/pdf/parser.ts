@@ -25,9 +25,9 @@ export async function parsePdfByType(params: {
 }): Promise<PdfParseResult> {
   const { buffer, filename, type, model, embedImages, extra } = params;
 
-  // 1) 大文件直接本地解析（>80 页）
+  // 1) 大文件直接本地解析（>100 页）
   const pageCount = await getPdfPageCount(buffer).catch(() => 0);
-  if (pageCount > 80) {
+  if (pageCount > 100) {
     const start = Date.now();
     const { readPdfFile } = await import('../../worker/readFile/extension/pdf');
     const local = await readPdfFile({ buffer } as any);
@@ -89,7 +89,9 @@ async function getPdfPageCount(buffer: Buffer): Promise<number> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   // @ts-ignore - ensure worker loaded in Node
   await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-  const loadingTask = (pdfjs as any).getDocument(buffer.buffer);
+  // Use a fresh Uint8Array to avoid detached ArrayBuffer issues
+  const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const loadingTask = (pdfjs as any).getDocument({ data });
   const doc = await loadingTask.promise;
   const pages = doc.numPages || 0;
   loadingTask.destroy();

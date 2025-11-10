@@ -134,7 +134,8 @@ export const readFileContentFromMongo = async ({
   bucketName,
   fileId,
   isQAImport = false,
-  ocrModel
+  ocrModel,
+  pdfModel
 }: {
   teamId: string;
   bucketName: `${BucketNameEnum}`;

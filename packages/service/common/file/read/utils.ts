@@ -1,12 +1,10 @@
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
 import type { ReadFileResponse, ImageType } from '../../../worker/readFile/type';
 import { getOcrModelAsync } from '../../../core/ai/model';
-import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
 import { addHours } from 'date-fns';
@@ -75,124 +73,35 @@ export const readRawContentByFileBuffer = async ({
     }
   }
 
-  // Internal PDF parser first（仅在显式设置了 pdfModel 时触发外部解析；空则走本地解析）
-  if (extension === 'pdf' && pdfModel) {
-    try {
-      const { parsePdfByType } = await import('../../pdf/parser');
-      const start = Date.now();
-      const parsed = await parsePdfByType({ buffer, filename: 'file.pdf', model: pdfModel });
-      const rawText = parsed.markdown || '';
-      const { text, imageList } = matchMdImgTextAndUpload(rawText);
-      return { rawText: text, formatText: rawText, imageList };
-    } catch (err) {
-      addLog.warn(`Internal PDF parser failed, fallback. ${err}`);
-    }
-  }
-
-  // Custom read file service
-  const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
-  const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || 'pdf';
-  const customReadFileServiceType = process.env.CUSTOM_READ_FILE_SERVICE_TYPE || 'simple';
-  const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
-  const readFileFromCustomService = async (): Promise<ReadFileResponse | undefined> => {
-    if (
-      !customReadfileUrl ||
-      !customReadFileExtension ||
-      !customReadFileExtension.includes(extension)
-    )
-      return;
-
-    // 如果是PDF文件，先检查页数
-    if (extension === 'pdf') {
+  // PDF：优先使用内部 PDF 解析（显式设置了 pdfModel）；失败或未设置则走本地解析
+  if (extension === 'pdf') {
+    if (pdfModel) {
       try {
-        // 使用pdfjs获取页数
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        // @ts-ignore
-        await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-
-        // 将Buffer转换为Uint8Array
-        const uint8Array = new Uint8Array(buffer);
-
-        const loadingTask = pdfjs.getDocument(uint8Array);
-        const doc = await loadingTask.promise;
-        const numPages = doc.numPages;
-
-        // 释放资源
-        loadingTask.destroy();
-
-        // 如果页数超过80页，直接使用本地解析服务
-        if (numPages > 80) {
-          addLog.warn(
-            `PDF has ${numPages} pages, exceeding 80 page limit. Using local parsing service.`
-          );
-          return;
-        }
-
-        addLog.info(`PDF has ${numPages} pages, using external service for parsing.`);
-      } catch (error) {
-        addLog.error(`Failed to check PDF page count: ${error}. Falling back to external service.`);
+        const { parsePdfByType } = await import('../../pdf/parser');
+        const parsed = await parsePdfByType({ buffer, filename: 'file.pdf', model: pdfModel });
+        const rawText = parsed.markdown || '';
+        const { text, imageList } = matchMdImgTextAndUpload(rawText);
+        return { rawText: text, formatText: rawText, imageList };
+      } catch (err) {
+        addLog.warn(`Internal PDF parser failed, fallback to local. ${err}`);
       }
     }
-
-    const start = Date.now();
-    addLog.info('Parsing files from an external service');
-
-    const data = new FormData();
-    data.append('file', buffer, {
-      filename: `file.${extension}`
-    });
-    data.append('extension', extension);
-    data.append('ocr', ocrParse);
-    data.append('type', customReadFileServiceType);
-    const { data: response } = await axios.post<{
-      success: boolean;
-      message: string;
-      data: {
-        page: number;
-        markdown: string;
-        duration: number;
-      };
-    }>(customReadfileUrl, data, {
-      timeout: 1200000,
-      headers: {
-        ...data.getHeaders()
-      }
-    });
-
-    addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
-
-    const rawText = response.data.markdown;
-    const { text, imageList } = matchMdImgTextAndUpload(rawText);
-
-    return {
-      rawText: text,
-      formatText: rawText,
-      imageList
-    };
-  };
-
-  const customRes = await readFileFromCustomService();
-  let rawText: string;
-  let formatText: string | undefined;
-  let imageList: ImageType[] | undefined;
-
-  if (customRes) {
-    ({ rawText, formatText, imageList } = customRes);
-  } else {
-    if (isImage && !finalOcrModel) {
-      throw new Error(
-        'OCR 模型未配置，请在“系统设置-模型配置”新增并启用一个 OCR 模型，或在该知识库设置中选择 OCR 模型'
-      );
-    }
-    const workerRes = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
-      extension,
-      encoding,
-      buffer,
-      teamId,
-      ocrModel: finalOcrModel
-    });
-    ({ rawText, formatText, imageList } = workerRes);
   }
+
+  // 统一走本地 worker 解析
+  if (isImage && !finalOcrModel) {
+    throw new Error(
+      'OCR 模型未配置，请在“系统设置-模型配置”新增并启用一个 OCR 模型，或在该知识库设置中选择 OCR 模型'
+    );
+  }
+  const workerRes = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+    extension,
+    encoding,
+    buffer,
+    teamId,
+    ocrModel: finalOcrModel
+  });
+  let { rawText, formatText, imageList } = workerRes;
 
   // markdown data format
   if (imageList) {
