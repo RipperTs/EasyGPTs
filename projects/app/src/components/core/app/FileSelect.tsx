@@ -8,7 +8,8 @@ import {
   useDisclosure,
   HStack,
   Switch,
-  ModalFooter
+  ModalFooter,
+  Divider
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -20,6 +21,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSelect = ({
@@ -32,7 +34,7 @@ const FileSelect = ({
   onChange: (e: AppFileSelectConfigType) => void;
 }) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, pdfModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
 
@@ -78,36 +80,69 @@ const FileSelect = ({
         onClose={onClose}
       >
         <ModalBody>
-          <HStack>
-            <FormLabel flex={'1 0 0'}>{t('app:document_upload')}</FormLabel>
-            <Switch
-              isChecked={value.canSelectFile}
-              onChange={(e) => {
-                onChange({
-                  ...value,
-                  canSelectFile: e.target.checked
-                });
-              }}
-            />
-          </HStack>
-          <HStack mt={6}>
-            <FormLabel flex={'1 0 0'}>{t('app:image_upload')}</FormLabel>
-            {forbidVision ? (
-              <Box fontSize={'sm'} color={'myGray.500'}>
-                {t('app:llm_not_support_vision')}
-              </Box>
-            ) : (
+          {/* 开关区域 */}
+          <Flex
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <FormLabel mb={0}>{t('app:document_upload')}</FormLabel>
+            </HStack>
+            <Box w={['100%', '300px']}>
               <Switch
-                isChecked={value.canSelectImg}
-                onChange={(e) => {
+                isChecked={value.canSelectFile}
+                onChange={(e) =>
                   onChange({
                     ...value,
-                    canSelectImg: e.target.checked
-                  });
-                }}
+                    canSelectFile: e.target.checked
+                  })
+                }
               />
-            )}
-          </HStack>
+            </Box>
+          </Flex>
+
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <FormLabel mb={0}>{t('app:image_upload')}</FormLabel>
+            </HStack>
+            <Box w={['100%', '300px']}>
+              {forbidVision ? (
+                <Box fontSize={'sm'} color={'myGray.500'}>
+                  {t('app:llm_not_support_vision')}
+                </Box>
+              ) : (
+                <Switch
+                  isChecked={value.canSelectImg}
+                  onChange={(e) =>
+                    onChange({
+                      ...value,
+                      canSelectImg: e.target.checked
+                    })
+                  }
+                />
+              )}
+            </Box>
+          </Flex>
           {!forbidVision && (
             <Flex mt={2} color={'myGray.500'}>
               <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>
@@ -115,13 +150,67 @@ const FileSelect = ({
             </Flex>
           )}
 
-          <Box mt={6}>
-            <HStack spacing={1}>
-              <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
+          <Divider my={5} />
+
+          {pdfModelList.length > 0 && (
+            <Flex
+              mt={1}
+              alignItems={['flex-start', 'center']}
+              justify={'space-between'}
+              flexDir={['column', 'row']}
+            >
+              <HStack
+                spacing={1}
+                flex={['', '0 0 110px']}
+                fontSize={'sm'}
+                color={'myGray.900'}
+                fontWeight={500}
+                pb={['12px', '0']}
+              >
+                <Box>PDF 解析模型</Box>
+                <QuestionTip label={'用于解析PDF文档为Markdown'} />
+              </HStack>
+              <Box w={['100%', '300px']}>
+                <AIModelSelector
+                  w={['100%', '300px']}
+                  value={value.pdfModel || ''}
+                  list={[
+                    { label: '本地解析', value: '' },
+                    ...pdfModelList.map((item) => ({ label: item.name, value: item.model }))
+                  ]}
+                  disableTip={value.canSelectFile ? undefined : '请先开启文档上传'}
+                  onchange={(e) =>
+                    onChange({
+                      ...value,
+                      pdfModel: e || ''
+                    })
+                  }
+                />
+              </Box>
+            </Flex>
+          )}
+
+          <Divider my={5} />
+
+          <Flex
+            mt={1}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <FormLabel mb={0}>{t('app:upload_file_max_amount')}</FormLabel>
               <QuestionTip label={t('app:upload_file_max_amount_tip')} />
             </HStack>
 
-            <Box mt={5}>
+            <Box w={['100%', '300px']}>
               <MySlider
                 markList={[
                   { label: '1', value: 1 },
@@ -140,7 +229,7 @@ const FileSelect = ({
                 }}
               />
             </Box>
-          </Box>
+          </Flex>
         </ModalBody>
         <ModalFooter>
           <Button onClick={onClose} px={8}>

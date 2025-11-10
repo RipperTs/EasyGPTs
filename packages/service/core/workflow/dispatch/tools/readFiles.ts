@@ -165,7 +165,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
             isQAImport: false,
             teamId,
             buffer,
-            encoding
+            encoding,
+            pdfModel: chatConfig?.fileSelectConfig?.pdfModel
           });
 
           // Add to buffer

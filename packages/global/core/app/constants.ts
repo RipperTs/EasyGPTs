@@ -28,7 +28,8 @@ export const defaultChatInputGuideConfig = {
 export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
   canSelectFile: false,
   canSelectImg: false,
-  maxFiles: 10
+  maxFiles: 10,
+  pdfModel: ''
 };
 
 export enum AppTemplateTypeEnum {

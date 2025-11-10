@@ -152,6 +152,8 @@ export type AppFileSelectConfigType = {
   canSelectFile: boolean;
   canSelectImg: boolean;
   maxFiles: number;
+  /** 指定 PDF 解析模型；为空则走本地解析 */
+  pdfModel?: string;
 };
 
 export type TemplateTypeSchemaType = {
