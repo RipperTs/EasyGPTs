@@ -12,6 +12,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -63,6 +64,8 @@ const ChatInput = ({
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   appId: string;
 }) => {
+  const router = useRouter();
+  const urlInitedRef = useRef(false);
   const { isPc } = useSystem();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -669,17 +672,15 @@ const ChatInput = ({
     ]
   );
 
-  // iframe postMessage listener: set textarea value and optional auto send
+  // 统一处理“外部注入消息”：postMessage + 地址栏参数
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const data = event.data as {
-        type?: string;
-        payload?: string;
-        autoSend?: boolean;
-      };
-      if (!data || data.type !== 'SET_USER_MESSAGE') return;
+    // 只在 share 页面生效，避免影响其他 ChatInput 场景
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/chat/share')) {
+      return;
+    }
 
-      const value = typeof data.payload === 'string' ? data.payload : '';
+    const applyMessage = (payload: { value: string; autoSend?: boolean }) => {
+      const { value, autoSend } = payload;
 
       // 更新表单值，保持和手动输入一致的逻辑
       setValue('input', value);
@@ -693,7 +694,7 @@ const ChatInput = ({
       }
 
       // 需要自动发送则直接走发送逻辑
-      if (data.autoSend) {
+      if (autoSend) {
         onSendMessage({
           text: value.trim(),
           files: fileList
@@ -702,11 +703,44 @@ const ChatInput = ({
       }
     };
 
+    // 1. 地址栏参数，只处理一次
+    if (!urlInitedRef.current) {
+      const query = router.query || {};
+      const getFirst = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
+
+      const urlMessage = getFirst(query.userMessage as any);
+      const urlAutoSend = getFirst(query.autoSend as any);
+
+      if (typeof urlMessage === 'string' && urlMessage.length > 0) {
+        urlInitedRef.current = true;
+
+        const autoSend =
+          typeof urlAutoSend === 'string'
+            ? ['1', 'true', 'yes'].includes(urlAutoSend.toLowerCase())
+            : false;
+
+        applyMessage({ value: urlMessage, autoSend });
+      }
+    }
+
+    // 2. postMessage 注入
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data as {
+        type?: string;
+        payload?: string;
+        autoSend?: boolean;
+      };
+      if (!data || data.type !== 'SET_USER_MESSAGE') return;
+
+      const value = typeof data.payload === 'string' ? data.payload : '';
+      applyMessage({ value, autoSend: data.autoSend });
+    };
+
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [TextareaDom, fileList, onSendMessage, replaceFiles, setValue]);
+  }, [TextareaDom, fileList, onSendMessage, replaceFiles, router.query, setValue, urlInitedRef]);
 
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
