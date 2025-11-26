@@ -448,6 +448,7 @@ const ChatInput = ({
 
         {/* input area */}
         <Textarea
+          id="ai-textarea"
           ref={TextareaDom}
           py={0}
           pl={2}
@@ -592,6 +593,7 @@ const ChatInput = ({
             </Box>
           ) : (
             <Flex
+              id="ai-send-btn"
               alignItems={'center'}
               justifyContent={'center'}
               flexShrink={0}
@@ -666,6 +668,45 @@ const ChatInput = ({
       whisperModel
     ]
   );
+
+  // iframe postMessage listener: set textarea value and optional auto send
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data as {
+        type?: string;
+        payload?: string;
+        autoSend?: boolean;
+      };
+      if (!data || data.type !== 'SET_USER_MESSAGE') return;
+
+      const value = typeof data.payload === 'string' ? data.payload : '';
+
+      // 更新表单值，保持和手动输入一致的逻辑
+      setValue('input', value);
+
+      // 自适应高度
+      if (TextareaDom.current) {
+        const textarea = TextareaDom.current;
+        textarea.style.height = textareaMinH;
+        textarea.style.height = `${textarea.scrollHeight}px`;
+        textarea.focus();
+      }
+
+      // 需要自动发送则直接走发送逻辑
+      if (data.autoSend) {
+        onSendMessage({
+          text: value.trim(),
+          files: fileList
+        });
+        replaceFiles([]);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [TextareaDom, fileList, onSendMessage, replaceFiles, setValue]);
 
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
