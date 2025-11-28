@@ -150,8 +150,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
   // set sse response headers
   if (stream && res) {
+    const allowOrigin = res.getHeader('Access-Control-Allow-Origin') || '*';
+
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // 保持与全局 CORS 设置一致，若前面已经设置了 Origin 就沿用
+    res.setHeader('Access-Control-Allow-Origin', allowOrigin as string);
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
   }
