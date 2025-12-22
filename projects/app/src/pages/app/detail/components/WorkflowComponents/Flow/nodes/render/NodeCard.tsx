@@ -98,6 +98,14 @@ const NodeCard = (props: Props) => {
         });
 
         return template;
+      } else if (
+        node?.flowNodeType === FlowNodeTypeEnum.tool ||
+        node?.flowNodeType === FlowNodeTypeEnum.toolSet
+      ) {
+        // MCP工具版本检查
+        if (!node?.pluginId) return;
+        const template = await getPreviewPluginNode({ appId: node.pluginId });
+        return template;
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -114,11 +122,13 @@ const NodeCard = (props: Props) => {
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
       const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
-      if (!node || !template) return;
+      if (!node) return;
 
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.appModule
+        node?.flowNodeType === FlowNodeTypeEnum.appModule ||
+        node?.flowNodeType === FlowNodeTypeEnum.tool ||
+        node?.flowNodeType === FlowNodeTypeEnum.toolSet
       ) {
         if (!node.pluginId) return;
         onResetNode({
@@ -126,6 +136,7 @@ const NodeCard = (props: Props) => {
           node: await getPreviewPluginNode({ appId: node.pluginId })
         });
       } else {
+        if (!template) return;
         onResetNode({
           id: nodeId,
           node: getLatestNodeTemplate(node, template)

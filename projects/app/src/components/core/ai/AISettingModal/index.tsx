@@ -186,7 +186,7 @@ const AIChatSettingsModal = ({
           <Flex mt={6} alignItems={'center'}>
             <Box {...LabelStyles}>
               输出思考
-              <QuestionTip ml={1} label="目前仅支持R1模型的思考过程输出格式"></QuestionTip>
+              <QuestionTip ml={1} label="输出模型的思考过程, 字段: reasoning_content"></QuestionTip>
             </Box>
             <Box flex={1}>
               <Switch
