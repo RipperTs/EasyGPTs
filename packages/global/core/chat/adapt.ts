@@ -107,7 +107,6 @@ export const chats2GPTMessages = ({
             toolResponse.push({
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              name: tool.functionName,
               content: tool.response
             });
           });

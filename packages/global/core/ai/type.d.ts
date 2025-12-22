@@ -3,7 +3,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionChunk,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
-  ChatCompletionToolMessageParam,
+  ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
   ChatCompletionAssistantMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam
@@ -39,7 +39,8 @@ export type ChatCompletionMessageParam = (
 export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
 
 /* ToolChoice and functionCall extension */
-export type ChatCompletionToolMessageParam = ChatCompletionToolMessageParam & { name: string };
+// 与 OpenAI 官方保持一致：tool 消息只包含 role/content/tool_call_id
+export type ChatCompletionToolMessageParam = SdkChatCompletionToolMessageParam;
 export type ChatCompletionAssistantToolParam = {
   role: 'assistant';
   tool_calls: ChatCompletionMessageToolCall[];

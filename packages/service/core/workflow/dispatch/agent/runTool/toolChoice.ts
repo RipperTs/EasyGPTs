@@ -244,7 +244,6 @@ export const runToolWithToolChoice = async (
           const toolMsgParams: ChatCompletionToolMessageParam = {
             tool_call_id: tool.id,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
-            name: tool.function.name,
             content: stringToolResponse
           };
 
@@ -497,7 +496,6 @@ export const runToolWithToolChoice = async (
                 const toolMsgParams: ChatCompletionToolMessageParam = {
                   tool_call_id: tool.id,
                   role: ChatCompletionRequestMessageRoleEnum.Tool,
-                  name: tool.function.name,
                   content: stringToolResponse
                 };
                 workflowStreamResponse?.({
