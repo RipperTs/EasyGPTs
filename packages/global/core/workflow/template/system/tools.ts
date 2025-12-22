@@ -65,6 +65,13 @@ export const ToolModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
     },
+    {
+      key: NodeInputKeyEnum.aiChatReasoningEffort,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: 'medium'
+    },
 
     {
       ...Input_Template_System_Prompt,

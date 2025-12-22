@@ -149,6 +149,7 @@ export enum NodeInputKeyEnum {
   aiChatVision = 'aiChatVision',
   stringQuoteText = 'stringQuoteText',
   aiChatReasoning = 'aiChatReasoning',
+  aiChatReasoningEffort = 'aiChatReasoningEffort',
 
   // dataset
   datasetSelectList = 'datasets',
@@ -203,6 +204,9 @@ export enum NodeInputKeyEnum {
   // user select
   userSelectOptions = 'userSelectOptions'
 }
+
+// AI 推理强度等级
+export type ReasoningEffortLevel = 'low' | 'medium' | 'high';
 
 export enum NodeOutputKeyEnum {
   // common

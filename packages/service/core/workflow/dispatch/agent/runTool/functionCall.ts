@@ -44,6 +44,7 @@ export const runToolWithFunctionCall = async (
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
     enableReasoning: boolean;
+    reasoningEffort?: string;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
@@ -52,6 +53,7 @@ export const runToolWithFunctionCall = async (
     toolNodes,
     messages,
     enableReasoning,
+    reasoningEffort,
     res,
     requestOrigin,
     runtimeNodes,
@@ -121,7 +123,7 @@ export const runToolWithFunctionCall = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: ChatCompletionCreateParams = {
+  let requestBody: ChatCompletionCreateParams & { reasoning_effort?: string } = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -134,6 +136,10 @@ export const runToolWithFunctionCall = async (
     functions,
     function_call: 'auto'
   };
+
+  if (enableReasoning && reasoningEffort) {
+    requestBody.reasoning_effort = reasoningEffort;
+  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */

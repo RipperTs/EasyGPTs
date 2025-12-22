@@ -226,6 +226,13 @@ export const emptyTemplates: Record<
             label: '',
             valueType: WorkflowIOValueTypeEnum.boolean,
             value: true
+          },
+          {
+            key: NodeInputKeyEnum.aiChatReasoningEffort,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'medium'
           }
         ],
         outputs: [

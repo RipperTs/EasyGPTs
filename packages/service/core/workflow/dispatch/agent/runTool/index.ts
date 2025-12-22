@@ -74,7 +74,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runtimeEdges,
     histories,
     query,
-    params: { model, systemPrompt, userChatInput, history = 6, aiChatReasoning = true }
+    params: {
+      model,
+      systemPrompt,
+      userChatInput,
+      history = 6,
+      aiChatReasoning = true,
+      aiChatReasoningEffort
+    }
   } = props;
 
   const toolModel = getLLMModel(model);
@@ -85,6 +92,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   // Check if reasoning is enabled for this model
   const enableReasoning = !!aiChatReasoning && !!toolModel.reasoning;
+  const reasoningEffort =
+    enableReasoning && aiChatReasoningEffort ? aiChatReasoningEffort : undefined;
 
   const chatHistories = getHistories(history, histories);
 
@@ -151,7 +160,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolModel,
         maxRunToolTimes: 30,
         messages: adaptMessages,
-        enableReasoning
+        enableReasoning,
+        reasoningEffort
       });
     }
     if (toolModel.functionCall) {
@@ -160,7 +170,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         messages: adaptMessages,
-        enableReasoning
+        enableReasoning,
+        reasoningEffort
       });
     }
 
@@ -188,7 +199,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolNodes,
       toolModel,
       messages: adaptMessages,
-      enableReasoning
+      enableReasoning,
+      reasoningEffort
     });
   })();
 

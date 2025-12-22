@@ -10,7 +10,7 @@ import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
 import { DispatchNodeResponseKeyEnum } from './constants';
 import { StoreEdgeItemType } from '../type/edge';
-import { NodeInputKeyEnum } from '../constants';
+import { NodeInputKeyEnum, ReasoningEffortLevel } from '../constants';
 import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
 import { NextApiResponse } from 'next';
 import { UserModelSchema } from '../../../support/user/type';
@@ -198,5 +198,6 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffortLevel;
   [NodeInputKeyEnum.stringQuoteText]?: string;
 };

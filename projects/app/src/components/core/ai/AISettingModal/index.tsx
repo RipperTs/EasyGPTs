@@ -2,7 +2,16 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { Box, BoxProps, Button, Flex, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
+import {
+  Box,
+  BoxProps,
+  Button,
+  Flex,
+  ModalBody,
+  ModalFooter,
+  Switch,
+  Select
+} from '@chakra-ui/react';
 import MySlider from '@/components/Slider';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
@@ -30,6 +39,7 @@ const AIChatSettingsModal = ({
   });
   const model = watch('model');
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
+  const reasoningEffort = watch(NodeInputKeyEnum.aiChatReasoningEffort) || 'medium';
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
@@ -196,6 +206,29 @@ const AIChatSettingsModal = ({
                   setValue(NodeInputKeyEnum.aiChatReasoning, value);
                 }}
               />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportReasoning && reasoning && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...LabelStyles}>
+              推理程度
+              <QuestionTip ml={1} label="控制模型推理强度，仅在开启输出思考时生效"></QuestionTip>
+            </Box>
+            <Box flex={1}>
+              <Select
+                size="sm"
+                value={reasoningEffort}
+                onChange={(e) => {
+                  const value = e.target.value as string;
+                  setValue(NodeInputKeyEnum.aiChatReasoningEffort, value);
+                  setRefresh((state) => !state);
+                }}
+              >
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option>
+              </Select>
             </Box>
           </Flex>
         )}

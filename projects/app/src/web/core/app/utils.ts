@@ -189,6 +189,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.aiSettings.aiChatReasoning
+        },
+        {
+          key: NodeInputKeyEnum.aiChatReasoningEffort,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.aiSettings.aiChatReasoningEffort || 'medium'
         }
       ],
       outputs: AiChatModule.outputs
@@ -484,6 +491,20 @@ export function form2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: true
+            },
+            {
+              key: NodeInputKeyEnum.aiChatReasoning,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: formData.aiSettings.aiChatReasoning
+            },
+            {
+              key: NodeInputKeyEnum.aiChatReasoningEffort,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: formData.aiSettings.aiChatReasoningEffort || 'medium'
             }
           ],
           outputs: ToolModule.outputs

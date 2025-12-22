@@ -50,6 +50,7 @@ export const runToolWithPromptCall = async (
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
     enableReasoning: boolean;
+    reasoningEffort?: string;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
@@ -58,6 +59,7 @@ export const runToolWithPromptCall = async (
     toolNodes,
     messages,
     enableReasoning,
+    reasoningEffort,
     res,
     requestOrigin,
     runtimeNodes,
@@ -121,7 +123,7 @@ export const runToolWithPromptCall = async (
       origin: requestOrigin
     })
   ]);
-  const requestBody = {
+  const requestBody: Record<string, any> = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -132,6 +134,10 @@ export const runToolWithPromptCall = async (
     stream,
     messages: requestMessages
   };
+
+  if (enableReasoning && reasoningEffort) {
+    requestBody.reasoning_effort = reasoningEffort;
+  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */

@@ -55,11 +55,19 @@ export const runToolWithToolChoice = async (
     toolModel: LLMModelItemType;
     maxRunToolTimes: number;
     enableReasoning: boolean;
+    reasoningEffort?: string;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { messages, toolNodes, toolModel, maxRunToolTimes, enableReasoning, ...workflowProps } =
-    props;
+  const {
+    messages,
+    toolNodes,
+    toolModel,
+    maxRunToolTimes,
+    enableReasoning,
+    reasoningEffort,
+    ...workflowProps
+  } = props;
   const {
     res,
     requestOrigin,
@@ -148,7 +156,7 @@ export const runToolWithToolChoice = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: ChatCompletionCreateParams = {
+  let requestBody: ChatCompletionCreateParams & { reasoning_effort?: string } = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -161,6 +169,10 @@ export const runToolWithToolChoice = async (
     tools,
     tool_choice: 'auto'
   };
+
+  if (enableReasoning && reasoningEffort) {
+    requestBody.reasoning_effort = reasoningEffort;
+  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */

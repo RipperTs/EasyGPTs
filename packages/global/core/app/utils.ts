@@ -15,7 +15,8 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       isResponseAnswerText: true,
       maxHistories: 6,
       maxToken: 4000,
-      aiChatReasoning: true
+      aiChatReasoning: true,
+      aiChatReasoningEffort: 'medium'
     },
     dataset: {
       datasets: [],
@@ -66,6 +67,15 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.history
       );
+      defaultAppForm.aiSettings.aiChatReasoning = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatReasoning
+      );
+      const reasoningEffort = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatReasoningEffort
+      ) as import('../workflow/constants').ReasoningEffortLevel | undefined;
+      defaultAppForm.aiSettings.aiChatReasoningEffort = reasoningEffort || 'medium';
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,

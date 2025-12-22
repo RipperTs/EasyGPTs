@@ -80,6 +80,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt,
       aiChatVision,
       aiChatReasoning = true,
+      aiChatReasoningEffort,
       stringQuoteText
     }
   } = props;
@@ -96,6 +97,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   stream = stream && isResponseAnswerText;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
+  const reasoningEffort =
+    aiChatReasoning && aiChatReasoningEffort ? aiChatReasoningEffort : undefined;
 
   // 测试推理结果是否开启
   // console.log(aiChatReasoning, '测试推理结果是否开启');
@@ -170,7 +173,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }),
     max_tokens,
     stream,
-    messages: requestMessages
+    messages: requestMessages,
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
   };
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {

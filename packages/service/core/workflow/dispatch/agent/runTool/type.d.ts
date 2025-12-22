@@ -24,6 +24,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatMaxToken]: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoningEffort]?: string;
 }>;
 
 export type RunToolResponse = {

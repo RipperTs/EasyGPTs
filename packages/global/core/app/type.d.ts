@@ -4,7 +4,8 @@ import { PermissionTypeEnum } from '../../support/permission/constant';
 import {
   NodeInputKeyEnum,
   VariableInputEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  ReasoningEffortLevel
 } from '../workflow/constants';
 import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
@@ -73,6 +74,7 @@ export type AppSimpleEditFormType = {
     isResponseAnswerText: boolean;
     maxHistories: number;
     [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+    [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffortLevel;
   };
   dataset: {
     datasets: SelectedDatasetType;
@@ -110,6 +112,7 @@ export type SettingAIDataType = {
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
   [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
+  [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffortLevel; // Reasoning effort level
 };
 
 // variable
