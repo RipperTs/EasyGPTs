@@ -212,8 +212,11 @@ const AIChatSettingsModal = ({
         {llmSupportReasoning && reasoning && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...LabelStyles}>
-              推理程度
-              <QuestionTip ml={1} label="控制模型推理强度，仅在开启输出思考时生效"></QuestionTip>
+              推理强度
+              <QuestionTip
+                ml={1}
+                label="推理强度越高则模型思考消耗的 Tokens 越多，仅在开启输出思考时生效"
+              ></QuestionTip>
             </Box>
             <Box flex={1}>
               <Select
@@ -221,6 +224,7 @@ const AIChatSettingsModal = ({
                 value={reasoningEffort}
                 onChange={(e) => {
                   const value = e.target.value as string;
+                  // @ts-ignore
                   setValue(NodeInputKeyEnum.aiChatReasoningEffort, value);
                   setRefresh((state) => !state);
                 }}
