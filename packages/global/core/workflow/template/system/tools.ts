@@ -87,8 +87,8 @@ export const ToolModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.reasoningText,
       key: NodeOutputKeyEnum.reasoningText,
-      label: i18nT('common:core.module.output.label.Reasoning'),
-      description: i18nT('common:core.module.output.description.Reasoning'),
+      label: '思考过程内容',
+      description: 'AI思考过程内容输出',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
