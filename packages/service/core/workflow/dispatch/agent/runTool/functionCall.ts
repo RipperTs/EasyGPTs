@@ -37,6 +37,7 @@ export const runToolWithFunctionCall = async (
     messages: ChatCompletionMessageParam[];
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
+    enableReasoning: boolean;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
@@ -44,6 +45,7 @@ export const runToolWithFunctionCall = async (
     toolModel,
     toolNodes,
     messages,
+    enableReasoning,
     res,
     requestOrigin,
     runtimeNodes,
@@ -171,13 +173,14 @@ export const runToolWithFunctionCall = async (
     }
   }
 
-  const { answer, functionCalls } = await (async () => {
+  const { answer, functionCalls, reasoning } = await (async () => {
     if (res && stream) {
       return streamResponse({
         res,
         toolNodes,
         stream: aiResponse,
-        workflowStreamResponse
+        workflowStreamResponse,
+        enableReasoning
       });
     } else {
       const result = aiResponse as ChatCompletion;
@@ -195,9 +198,15 @@ export const runToolWithFunctionCall = async (
           ]
         : [];
 
+      const reasoning = enableReasoning
+        ? // @ts-ignore
+          result.choices?.[0]?.message?.reasoning_content || ''
+        : '';
+
       return {
         answer: result.choices?.[0]?.message?.content || '',
-        functionCalls: toolCalls
+        functionCalls: toolCalls,
+        reasoning: reasoning
       };
     }
   })();
@@ -317,7 +326,7 @@ export const runToolWithFunctionCall = async (
     const toolNodeAssistants = [
       ...assistantResponses,
       ...toolAssistants,
-      ...toolNodeAssistant.value
+      ...(toolNodeAssistant?.value || [])
     ];
 
     // concat tool responses
@@ -372,8 +381,9 @@ export const runToolWithFunctionCall = async (
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
-      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
-      runTimes: (response?.runTimes || 0) + 1
+      assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
+      runTimes: (response?.runTimes || 0) + 1,
+      reasoningText: (response?.reasoningText || '') + reasoning
     };
   }
 };
@@ -382,12 +392,14 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  enableReasoning
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  enableReasoning: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -395,6 +407,7 @@ async function streamResponse({
   });
 
   let textAnswer = '';
+  let reasoning = '';
   let functionCalls: ChatCompletionMessageFunctionCall[] = [];
   let functionId = getNanoid();
 
@@ -406,6 +419,10 @@ async function streamResponse({
 
     const responseChoice = part.choices?.[0]?.delta;
 
+    // Extract reasoning content first (it may come separately from content or function_call)
+    const reasoningContent = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    reasoning += reasoningContent;
+
     if (responseChoice.content) {
       const content = responseChoice?.content || '';
       textAnswer += content;
@@ -414,7 +431,18 @@ async function streamResponse({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          text: content,
+          reasoning_content: reasoningContent
+        })
+      });
+    } else if (reasoningContent) {
+      // Send reasoning content even when there's no text content
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: '',
+          reasoning_content: reasoningContent
         })
       });
     } else if (responseChoice.function_call) {
@@ -482,9 +510,9 @@ async function streamResponse({
     }
   }
 
-  if (!textAnswer && functionCalls.length === 0) {
+  if (!textAnswer && functionCalls.length === 0 && !reasoning) {
     return Promise.reject('LLM api response empty');
   }
 
-  return { answer: textAnswer, functionCalls };
+  return { answer: textAnswer, functionCalls, reasoning };
 }

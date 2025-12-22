@@ -43,6 +43,7 @@ export const runToolWithPromptCall = async (
     messages: ChatCompletionMessageParam[];
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
+    enableReasoning: boolean;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
@@ -50,6 +51,7 @@ export const runToolWithPromptCall = async (
     toolModel,
     toolNodes,
     messages,
+    enableReasoning,
     res,
     requestOrigin,
     runtimeNodes,
@@ -136,20 +138,26 @@ export const runToolWithPromptCall = async (
     }
   });
 
-  const answer = await (async () => {
+  const { answer, reasoning } = await (async () => {
     if (res && stream) {
-      const { answer } = await streamResponse({
+      const { answer, reasoning } = await streamResponse({
         res,
         toolNodes,
         stream: aiResponse,
-        workflowStreamResponse
+        workflowStreamResponse,
+        enableReasoning
       });
 
-      return answer;
+      return { answer, reasoning };
     } else {
       const result = aiResponse as ChatCompletion;
+      const answer = result.choices?.[0]?.message?.content || '';
+      const reasoning = enableReasoning
+        ? // @ts-ignore
+          result.choices?.[0]?.message?.reasoning_content || ''
+        : '';
 
-      return result.choices?.[0]?.message?.content || '';
+      return { answer, reasoning };
     }
   })();
 
@@ -180,7 +188,7 @@ export const runToolWithPromptCall = async (
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
-      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
+      assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
       runTimes: (response?.runTimes || 0) + 1
     };
   }
@@ -293,7 +301,11 @@ export const runToolWithPromptCall = async (
     completeMessages[completeMessages.length - 1]
   ])[0] as AIChatItemType;
 
-  const toolNodeAssistants = [...assistantResponses, ...toolAssistants, ...toolNodeAssistant.value];
+  const toolNodeAssistants = [
+    ...assistantResponses,
+    ...toolAssistants,
+    ...(toolNodeAssistant?.value || [])
+  ];
 
   const dispatchFlowResponse = response
     ? response.dispatchFlowResponse.concat(toolsRunResponse.moduleRunResponse)
@@ -316,7 +328,8 @@ ANSWER: `;
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages: filterMessages,
       assistantResponses: toolNodeAssistants,
-      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
+      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes,
+      reasoningText: (response?.reasoningText || '') + reasoning
     };
   }
 
@@ -329,20 +342,24 @@ ANSWER: `;
       dispatchFlowResponse,
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       assistantResponses: toolNodeAssistants,
-      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
+      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes,
+      reasoningText: (response?.reasoningText || '') + reasoning
     }
   );
 };
 
 async function streamResponse({
   res,
+  toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  enableReasoning
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  enableReasoning: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -351,6 +368,7 @@ async function streamResponse({
 
   let startResponseWrite = false;
   let textAnswer = '';
+  let reasoning = '';
 
   for await (const part of stream) {
     if (res.closed) {
@@ -361,6 +379,10 @@ async function streamResponse({
     const responseChoice = part.choices?.[0]?.delta;
     // console.log(responseChoice, '---===');
 
+    // Extract reasoning content first (it may come separately from content)
+    const reasoningContent = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    reasoning += reasoningContent;
+
     if (responseChoice?.content) {
       const content = responseChoice?.content || '';
       textAnswer += content;
@@ -370,7 +392,8 @@ async function streamResponse({
           write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
-            text: content
+            text: content,
+            reasoning_content: reasoningContent
           })
         });
       } else if (textAnswer.length >= 3) {
@@ -389,13 +412,23 @@ async function streamResponse({
           });
         }
       }
+    } else if (reasoningContent && startResponseWrite) {
+      // Send reasoning content even when there's no text content (only after startResponseWrite is true)
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: '',
+          reasoning_content: reasoningContent
+        })
+      });
     }
   }
 
-  if (!textAnswer) {
+  if (!textAnswer && !reasoning) {
     return Promise.reject('LLM api response empty');
   }
-  return { answer: textAnswer.trim() };
+  return { answer: textAnswer ? textAnswer.trim() : '', reasoning };
 }
 
 const parseAnswer = (

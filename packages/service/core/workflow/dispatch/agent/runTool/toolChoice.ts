@@ -48,10 +48,12 @@ export const runToolWithToolChoice = async (
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
     maxRunToolTimes: number;
+    enableReasoning: boolean;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { messages, toolNodes, toolModel, maxRunToolTimes, ...workflowProps } = props;
+  const { messages, toolNodes, toolModel, maxRunToolTimes, enableReasoning, ...workflowProps } =
+    props;
   const {
     res,
     requestOrigin,
@@ -168,13 +170,14 @@ export const runToolWithToolChoice = async (
     });
     // 成功直接进入解析
 
-    const { answer, toolCalls } = await (async () => {
+    const { answer, toolCalls, reasoning } = await (async () => {
       if (res && stream) {
         return streamResponse({
           res,
           workflowStreamResponse,
           toolNodes,
-          stream: aiResponse
+          stream: aiResponse,
+          enableReasoning
         });
       } else {
         const result = aiResponse as ChatCompletion;
@@ -190,9 +193,15 @@ export const runToolWithToolChoice = async (
           };
         });
 
+        const reasoning = enableReasoning
+          ? // @ts-ignore
+            result.choices?.[0]?.message?.reasoning_content || ''
+          : '';
+
         return {
           answer: result.choices?.[0]?.message?.content || '',
-          toolCalls: toolCalls
+          toolCalls: toolCalls,
+          reasoning: reasoning
         };
       }
     })();
@@ -318,7 +327,7 @@ export const runToolWithToolChoice = async (
       const toolNodeAssistants = [
         ...assistantResponses,
         ...toolAssistants,
-        ...toolNodeAssistant.value
+        ...(toolNodeAssistant?.value || [])
       ];
 
       // concat tool responses
@@ -338,7 +347,8 @@ export const runToolWithToolChoice = async (
           assistantResponses: toolNodeAssistants,
           runTimes:
             (response?.runTimes || 0) +
-            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+          reasoningText: (response?.reasoningText || '') + reasoning
         };
       }
 
@@ -374,8 +384,9 @@ export const runToolWithToolChoice = async (
         dispatchFlowResponse: response?.dispatchFlowResponse || [],
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
         completeMessages,
-        assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
-        runTimes: (response?.runTimes || 0) + 1
+        assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
+        runTimes: (response?.runTimes || 0) + 1,
+        reasoningText: (response?.reasoningText || '') + reasoning
       };
     }
   } catch (error: any) {
@@ -412,13 +423,18 @@ export const runToolWithToolChoice = async (
           const aiResponse2 = await ai2.chat.completions.create(requestBody as any, {
             headers: { Accept: 'application/json, text/plain, */*' }
           });
-          const { answer, toolCalls } = await (async () => {
+          const {
+            answer,
+            toolCalls,
+            reasoning: reasoning2
+          } = await (async () => {
             if (res && stream) {
               return streamResponse({
                 res,
                 workflowStreamResponse,
                 toolNodes,
-                stream: aiResponse2
+                stream: aiResponse2,
+                enableReasoning
               });
             } else {
               const result = aiResponse2 as ChatCompletion;
@@ -431,9 +447,15 @@ export const runToolWithToolChoice = async (
                   toolAvatar: toolNode?.avatar || ''
                 };
               });
+              const reasoning2 = enableReasoning
+                ? // @ts-ignore
+                  result.choices?.[0]?.message?.reasoning_content || ''
+                : '';
+
               return {
                 answer: result.choices?.[0]?.message?.content || '',
-                toolCalls
+                toolCalls,
+                reasoning: reasoning2
               };
             }
           })();
@@ -524,7 +546,7 @@ export const runToolWithToolChoice = async (
             const toolNodeAssistants = [
               ...assistantResponses,
               ...toolAssistants,
-              ...toolNodeAssistant.value
+              ...(toolNodeAssistant?.value || [])
             ];
             const dispatchFlowResponse = response
               ? response.dispatchFlowResponse.concat(flatToolsResponseData)
@@ -540,7 +562,8 @@ export const runToolWithToolChoice = async (
                 assistantResponses: toolNodeAssistants,
                 runTimes:
                   (response?.runTimes || 0) +
-                  flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0)
+                  flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0),
+                reasoningText: (response?.reasoningText || '') + reasoning2
               };
             }
             return runToolWithToolChoice(
@@ -551,7 +574,8 @@ export const runToolWithToolChoice = async (
                 assistantResponses: toolNodeAssistants,
                 runTimes:
                   (response?.runTimes || 0) +
-                  flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0)
+                  flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0),
+                reasoningText: (response?.reasoningText || '') + reasoning2
               }
             );
           }
@@ -560,7 +584,8 @@ export const runToolWithToolChoice = async (
             totalTokens: response?.totalTokens || 0,
             completeMessages: requestMessages,
             assistantResponses: assistantResponses,
-            runTimes: response?.runTimes || 0
+            runTimes: response?.runTimes || 0,
+            reasoningText: response?.reasoningText || ''
           };
         } catch (e2) {
           addLog.warn('LLM fallback model still failed', { err: `${e2}` });
@@ -575,12 +600,14 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  enableReasoning
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  enableReasoning: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -588,6 +615,7 @@ async function streamResponse({
   });
 
   let textAnswer = '';
+  let reasoning = '';
   let callingTool: { name: string; arguments: string } | null = null;
   let toolCalls: ChatCompletionMessageToolCall[] = [];
 
@@ -599,6 +627,10 @@ async function streamResponse({
 
     const responseChoice = part.choices?.[0]?.delta;
 
+    // Extract reasoning content first (it may come separately from content or tool_calls)
+    const reasoningContent = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    reasoning += reasoningContent;
+
     if (responseChoice?.content) {
       const content = responseChoice.content || '';
       textAnswer += content;
@@ -607,7 +639,18 @@ async function streamResponse({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          text: content,
+          reasoning_content: reasoningContent
+        })
+      });
+    } else if (reasoningContent) {
+      // Send reasoning content even when there's no text content
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: '',
+          reasoning_content: reasoningContent
         })
       });
     } else if (responseChoice?.tool_calls?.[0]) {
@@ -682,9 +725,9 @@ async function streamResponse({
     }
   }
 
-  if (!textAnswer && toolCalls.length === 0) {
+  if (!textAnswer && toolCalls.length === 0 && !reasoning) {
     return Promise.reject('LLM api response empty');
   }
 
-  return { answer: textAnswer, toolCalls };
+  return { answer: textAnswer, toolCalls, reasoning };
 }

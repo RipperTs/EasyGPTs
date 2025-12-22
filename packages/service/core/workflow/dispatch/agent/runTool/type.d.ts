@@ -7,7 +7,11 @@ import type {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../../type.d';
-import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  AIChatItemValueItemType,
+  ChatItemValueItemType,
+  ChatItemType
+} from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
@@ -19,6 +23,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean;
 }>;
 
 export type RunToolResponse = {
@@ -27,6 +32,7 @@ export type RunToolResponse = {
   completeMessages?: ChatCompletionMessageParam[];
   assistantResponses?: AIChatItemValueItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]: number;
+  reasoningText?: string;
 };
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];

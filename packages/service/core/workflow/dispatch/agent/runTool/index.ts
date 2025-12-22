@@ -27,6 +27,7 @@ import { filterToolResponseToPreview } from './utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.reasoningText]?: string;
 }>;
 
 /* 
@@ -69,7 +70,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runtimeEdges,
     histories,
     query,
-    params: { model, systemPrompt, userChatInput, history = 6 }
+    params: { model, systemPrompt, userChatInput, history = 6, aiChatReasoning = true }
   } = props;
 
   const toolModel = getLLMModel(model);
@@ -77,6 +78,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (!toolModel) {
     return Promise.reject('LLM model not found');
   }
+
+  // Check if reasoning is enabled for this model
+  const enableReasoning = !!aiChatReasoning && !!toolModel.reasoning;
 
   const chatHistories = getHistories(history, histories);
 
@@ -131,7 +135,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     totalTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
     assistantResponses = [], // FastGPT system store assistant.value response
-    runTimes
+    runTimes,
+    reasoningText = ''
   } = await (async () => {
     const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
 
@@ -141,7 +146,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         maxRunToolTimes: 30,
-        messages: adaptMessages
+        messages: adaptMessages,
+        enableReasoning
       });
     }
     if (toolModel.functionCall) {
@@ -149,7 +155,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...props,
         toolNodes,
         toolModel,
-        messages: adaptMessages
+        messages: adaptMessages,
+        enableReasoning
       });
     }
 
@@ -176,7 +183,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       ...props,
       toolNodes,
       toolModel,
-      messages: adaptMessages
+      messages: adaptMessages,
+      enableReasoning
     });
   })();
 
@@ -206,6 +214,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .filter((item) => item.text?.content)
       .map((item) => item.text?.content || '')
       .join(''),
+    [NodeOutputKeyEnum.reasoningText]: reasoningText,
     [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,

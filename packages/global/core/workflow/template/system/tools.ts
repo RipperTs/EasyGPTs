@@ -58,6 +58,13 @@ export const ToolModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
     },
+    {
+      key: NodeInputKeyEnum.aiChatReasoning,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
 
     {
       ...Input_Template_System_Prompt,
@@ -74,6 +81,14 @@ export const ToolModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.answerText,
       label: i18nT('common:core.module.output.label.Ai response content'),
       description: i18nT('common:core.module.output.description.Ai response content'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.reasoningText,
+      key: NodeOutputKeyEnum.reasoningText,
+      label: i18nT('common:core.module.output.label.Reasoning'),
+      description: i18nT('common:core.module.output.description.Reasoning'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
