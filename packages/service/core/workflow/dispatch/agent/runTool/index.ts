@@ -8,8 +8,12 @@ import { ModelTypeEnum, getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  AIChatItemValueItemType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -208,6 +212,19 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
 
+  // 将思考过程一起写入 assistantResponses，便于前端刷新后还能还原完整内容
+  const finalAssistantResponses: AIChatItemValueItemType[] = reasoningText
+    ? [
+        {
+          type: ChatItemValueTypeEnum.reasoning,
+          reasoning: {
+            content: reasoningText
+          }
+        },
+        ...previewAssistantResponses
+      ]
+    : previewAssistantResponses;
+
   return {
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [NodeOutputKeyEnum.answerText]: previewAssistantResponses
@@ -215,7 +232,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .map((item) => item.text?.content || '')
       .join(''),
     [NodeOutputKeyEnum.reasoningText]: reasoningText,
-    [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,
       toolCallTokens: totalTokens,
