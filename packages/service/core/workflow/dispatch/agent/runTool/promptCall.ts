@@ -144,7 +144,7 @@ export const runToolWithPromptCall = async (
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(requestBody, {
+  const aiResponse = await ai.chat.completions.create(requestBody as any, {
     headers: {
       Accept: 'application/json, text/plain, */*'
     }
