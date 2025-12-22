@@ -32,6 +32,12 @@ type FunctionRunResponseType = {
   functionCallMsg: ChatCompletionFunctionMessageParam;
 }[];
 
+// 合并多次推理内容，用 '\n' 分隔，最终返回一个整体字符串
+const mergeReasoningText = (prev?: string, curr?: string): string => {
+  if (prev && curr) return `${prev}\n${curr}`;
+  return prev || curr || '';
+};
+
 export const runToolWithFunctionCall = async (
   props: DispatchToolModuleProps & {
     messages: ChatCompletionMessageParam[];
@@ -346,7 +352,8 @@ export const runToolWithFunctionCall = async (
         assistantResponses: toolNodeAssistants,
         runTimes:
           (response?.runTimes || 0) +
-          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+        reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
       };
     }
 
@@ -361,7 +368,8 @@ export const runToolWithFunctionCall = async (
         assistantResponses: toolNodeAssistants,
         runTimes:
           (response?.runTimes || 0) +
-          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+        reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
       }
     );
   } else {
@@ -383,7 +391,7 @@ export const runToolWithFunctionCall = async (
       completeMessages,
       assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
       runTimes: (response?.runTimes || 0) + 1,
-      reasoningText: (response?.reasoningText || '') + reasoning
+      reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
     };
   }
 };

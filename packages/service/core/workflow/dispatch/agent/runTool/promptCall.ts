@@ -36,6 +36,12 @@ type FunctionCallCompletion = {
   toolAvatar?: string;
 };
 
+// 合并多次推理内容，用 '\n' 分隔，最终返回一个整体字符串
+const mergeReasoningText = (prev?: string, curr?: string): string => {
+  if (prev && curr) return `${prev}\n${curr}`;
+  return prev || curr || '';
+};
+
 const ERROR_TEXT = 'Tool run error';
 
 export const runToolWithPromptCall = async (
@@ -189,7 +195,8 @@ export const runToolWithPromptCall = async (
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
       assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
-      runTimes: (response?.runTimes || 0) + 1
+      runTimes: (response?.runTimes || 0) + 1,
+      reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
     };
   }
 
@@ -329,7 +336,7 @@ ANSWER: `;
       completeMessages: filterMessages,
       assistantResponses: toolNodeAssistants,
       runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes,
-      reasoningText: (response?.reasoningText || '') + reasoning
+      reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
     };
   }
 
@@ -343,7 +350,7 @@ ANSWER: `;
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       assistantResponses: toolNodeAssistants,
       runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes,
-      reasoningText: (response?.reasoningText || '') + reasoning
+      reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
     }
   );
 };

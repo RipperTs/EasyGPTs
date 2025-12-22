@@ -35,6 +35,12 @@ type ToolRunResponseType = {
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
+// 合并多次推理内容，用 '\n' 分隔，最终返回一个整体字符串
+const mergeReasoningText = (prev?: string, curr?: string): string => {
+  if (prev && curr) return `${prev}\n${curr}`;
+  return prev || curr || '';
+};
+
 /*
   调用思路
   1. messages 接收发送给AI的消息
@@ -347,7 +353,7 @@ export const runToolWithToolChoice = async (
           runTimes:
             (response?.runTimes || 0) +
             flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
-          reasoningText: (response?.reasoningText || '') + reasoning
+          reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
         };
       }
 
@@ -363,7 +369,8 @@ export const runToolWithToolChoice = async (
           assistantResponses: toolNodeAssistants,
           runTimes:
             (response?.runTimes || 0) +
-            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+          reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
         }
       );
     } else {
@@ -385,7 +392,7 @@ export const runToolWithToolChoice = async (
         completeMessages,
         assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
         runTimes: (response?.runTimes || 0) + 1,
-        reasoningText: (response?.reasoningText || '') + reasoning
+        reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
       };
     }
   } catch (error: any) {
@@ -561,7 +568,7 @@ export const runToolWithToolChoice = async (
                 runTimes:
                   (response?.runTimes || 0) +
                   flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0),
-                reasoningText: (response?.reasoningText || '') + reasoning2
+                reasoningText: mergeReasoningText(response?.reasoningText, reasoning2)
               };
             }
             return runToolWithToolChoice(
@@ -573,7 +580,7 @@ export const runToolWithToolChoice = async (
                 runTimes:
                   (response?.runTimes || 0) +
                   flatToolsResponseData.reduce((s, i) => s + i.runTimes, 0),
-                reasoningText: (response?.reasoningText || '') + reasoning2
+                reasoningText: mergeReasoningText(response?.reasoningText, reasoning2)
               }
             );
           }
