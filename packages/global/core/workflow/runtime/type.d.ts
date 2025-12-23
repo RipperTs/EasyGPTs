@@ -174,6 +174,17 @@ export type DispatchNodeResponseType = {
 
   // update var
   updateVarResult?: any[];
+
+  // database connector
+  databaseType?: string;
+  databaseHost?: string;
+  databasePort?: string | number;
+  databaseName?: string;
+  originalSql?: string;
+  executedSql?: string;
+  tryCount?: number;
+  databaseTimeout?: number;
+  errorMessage?: string;
 };
 
 export type DispatchNodeResultType<T = {}> = {

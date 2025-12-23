@@ -67,7 +67,10 @@
     "sass": "^1.58.3",
     "unist-util-visit": "^5.0.0",
     "use-context-selector": "^1.4.4",
-    "zustand": "^4.3.5"
+    "zustand": "^4.3.5",
+    "mysql2": "^3.11.3",
+    "mssql": "^11.0.1",
+    "pg": "^8.10.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",

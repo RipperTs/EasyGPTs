@@ -8,7 +8,10 @@ import { getAIApi } from '../../../ai/config';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { ModelTypeEnum, getLLMModel } from '../../../ai/model';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import {
+  ChatCompletionMessageParam,
+  SdkChatCompletionMessageParam as OpenAIChatMessageParam
+} from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -125,10 +128,11 @@ const executeQuery = async ({
     });
 
     try {
-      const [rows] = await promiseWithTimeout(connection.execute(sql), timeoutMs, () => {
+      const result = await promiseWithTimeout(connection.execute(sql), timeoutMs, () => {
         // destroy 会立即关闭连接，避免长时间占用
         connection.destroy();
       });
+      const [rows] = result as [unknown, unknown];
       return rows;
     } finally {
       await connection.end().catch(() => {});
@@ -148,7 +152,7 @@ const buildFixSqlMessages = ({
   originalSql: string;
   currentSql: string;
   errorText: string;
-}): ChatCompletionMessageParam[] => {
+}): any[] => {
   const systemPrompt =
     '你是一名资深数据库工程师，负责根据数据库报错信息自动修复 SQL 语句。' +
     '请只返回可以直接执行的 SQL 语句，不要包含任何解释或多余内容。';
@@ -220,10 +224,12 @@ const fixSqlWithAI = async ({
     errorText
   });
 
+  const requestMessages = messages as unknown as OpenAIChatMessageParam[];
+
   const response = await ai.chat.completions.create({
     model,
     temperature: 0,
-    messages
+    messages: requestMessages
   });
 
   const answer = response.choices?.[0]?.message?.content || '';
