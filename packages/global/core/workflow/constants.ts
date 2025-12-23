@@ -169,6 +169,17 @@ export enum NodeInputKeyEnum {
   contextExtractInput = 'content',
   extractKeys = 'extractKeys',
 
+  // database connector
+  databaseType = 'system_databaseType',
+  databaseHost = 'system_databaseHost',
+  databasePort = 'system_databasePort',
+  databaseName = 'system_databaseName',
+  databaseUser = 'system_databaseUser',
+  databasePassword = 'system_databasePassword',
+  databaseSql = 'system_databaseSql',
+  databaseMaxRetry = 'system_databaseMaxRetry',
+  databaseTimeout = 'system_databaseTimeout',
+
   // http
   httpReqUrl = 'system_httpReqUrl',
   httpHeaders = 'system_httpHeader',
@@ -231,6 +242,9 @@ export enum NodeOutputKeyEnum {
   cqResult = 'cqResult',
   // context extract
   contextExtractFields = 'fields',
+
+  // database connector
+  databaseQueryResult = 'databaseQueryResult',
 
   // tf switch
   resultTrue = 'system_resultTrue',

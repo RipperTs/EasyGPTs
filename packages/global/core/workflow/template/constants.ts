@@ -30,6 +30,7 @@ import { ReadFilesNodes } from './system/readFiles';
 import { UserSelectNode } from './system/userSelect/index';
 import { ToolSetNode } from './system/toolSet';
 import { RunToolNode } from './system/runTool';
+import { DatabaseConnectorModule } from './system/databaseConnector';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -43,6 +44,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   ReadFilesNodes,
+  DatabaseConnectorModule,
   HttpNode468,
   AiQueryExtension,
   IfElseNode,
