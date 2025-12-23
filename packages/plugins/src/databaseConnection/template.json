@@ -1,7 +1,7 @@
 {
   "author": "",
   "version": "4811",
-  "name": "数据源配置",
+  "name": "数据源配置 (旧版)",
   "avatar": "core/workflow/template/datasource",
   "intro": "可连接常用数据库，并执行sql",
   "showStatus": true,
