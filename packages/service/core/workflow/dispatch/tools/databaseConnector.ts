@@ -361,8 +361,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
 
       const pluginOutput = {
         success: true,
-        result,
-        executedSql: currentSql
+        result
       };
 
       return {
@@ -415,8 +414,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
 
         const pluginOutput = {
           success: false,
-          error: errorOutput,
-          executedSql: currentSql
+          error: errorOutput
         };
 
         return {
@@ -495,8 +493,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
 
   const pluginOutput = {
     success: false,
-    error: finalError,
-    executedSql: currentSql
+    error: finalError
   };
 
   return {
