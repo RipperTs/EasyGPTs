@@ -16,13 +16,13 @@ import { getHandleConfig } from '../../utils';
 
 export const DatabaseConnectorModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.databaseConnector,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.databaseConnector,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/datasource',
-  name: '数据库连接器',
-  intro: '配置 MySQL / PostgreSQL 连接并执行 SQL，支持自动修复错误 SQL。',
+  name: '数据库查询',
+  intro: '配置 MySQL / PostgreSQL 连接并执行 SQL，支持通过AI自动分析错误并修复错误 SQL。',
   showStatus: true,
   isTool: true,
   version: '481',
