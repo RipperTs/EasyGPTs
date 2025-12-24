@@ -248,6 +248,8 @@ export const iconPaths = {
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/schema': () => import('./icons/core/workflow/template/schema.svg'),
+  'core/workflow/template/sqlzhuanhuan': () =>
+    import('./icons/core/workflow/template/sqlzhuanhuan.svg'),
   'core/workflow/template/xiangguanbiao': () =>
     import('./icons/core/workflow/template/xiangguanbiao.svg'),
   'core/workflow/template/SolarSortBold': () =>

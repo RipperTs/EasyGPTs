@@ -21,7 +21,8 @@ const staticPluginList = [
   'reorder',
   'dateExtraction',
   'databaseSchema',
-  'relatedTables'
+  'relatedTables',
+  'sqlTranslation'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [

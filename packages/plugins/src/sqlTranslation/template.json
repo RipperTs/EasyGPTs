@@ -1,0 +1,611 @@
+{
+  "author": "",
+  "version": "4811",
+  "name": "SQL转译",
+  "avatar": "core/workflow/template/sqlzhuanhuan",
+  "intro": "用于格式化 SQL 或在不同的数据库语法（如 Presto、Spark 和 Hive）之间进行转换, 支持20多种数据库类型。",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "database",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "插件输入",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 394.60346872338937,
+          "y": 67.74580461101743
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "textarea"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "SQL",
+            "label": "SQL",
+            "description": "要转译的原始SQL语句",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "select"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "输入类型",
+            "label": "输入类型",
+            "description": "原始SQL是哪个数据库的语法",
+            "defaultValue": "auto",
+            "list": [
+              {
+                "label": "auto",
+                "value": "auto"
+              },
+              {
+                "label": "athena",
+                "value": "athena"
+              },
+              {
+                "label": "bigquery",
+                "value": "bigquery"
+              },
+              {
+                "label": "clickhouse",
+                "value": "clickhouse"
+              },
+              {
+                "label": "databricks",
+                "value": "databricks"
+              },
+              {
+                "label": "doris",
+                "value": "doris"
+              },
+              {
+                "label": "drill",
+                "value": "drill"
+              },
+              {
+                "label": "duckdb",
+                "value": "duckdb"
+              },
+              {
+                "label": "hive",
+                "value": "hive"
+              },
+              {
+                "label": "mysql",
+                "value": "mysql"
+              },
+              {
+                "label": "oracle",
+                "value": "oracle"
+              },
+              {
+                "label": "postgres",
+                "value": "postgres"
+              },
+              {
+                "label": "presto",
+                "value": "presto"
+              },
+              {
+                "label": "prql",
+                "value": "prql"
+              },
+              {
+                "label": "redshift",
+                "value": "redshift"
+              },
+              {
+                "label": "snowflake",
+                "value": "snowflake"
+              },
+              {
+                "label": "spark",
+                "value": "spark"
+              },
+              {
+                "label": "spark2",
+                "value": "spark2"
+              },
+              {
+                "label": "sqlite",
+                "value": "sqlite"
+              },
+              {
+                "label": "starrocks",
+                "value": "starrocks"
+              },
+              {
+                "label": "tableau",
+                "value": "tableau"
+              },
+              {
+                "label": "teradata",
+                "value": "teradata"
+              },
+              {
+                "label": "trino",
+                "value": "trino"
+              },
+              {
+                "label": "tsql",
+                "value": "tsql"
+              }
+            ],
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "select"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "输出类型",
+            "label": "输出类型",
+            "description": "输出哪个数据库的SQL语法",
+            "defaultValue": "mysql",
+            "list": [
+              {
+                "label": "auto",
+                "value": "auto"
+              },
+              {
+                "label": "athena",
+                "value": "athena"
+              },
+              {
+                "label": "bigquery",
+                "value": "bigquery"
+              },
+              {
+                "label": "clickhouse",
+                "value": "clickhouse"
+              },
+              {
+                "label": "databricks",
+                "value": "databricks"
+              },
+              {
+                "label": "doris",
+                "value": "doris"
+              },
+              {
+                "label": "drill",
+                "value": "drill"
+              },
+              {
+                "label": "duckdb",
+                "value": "duckdb"
+              },
+              {
+                "label": "hive",
+                "value": "hive"
+              },
+              {
+                "label": "mysql",
+                "value": "mysql"
+              },
+              {
+                "label": "oracle",
+                "value": "oracle"
+              },
+              {
+                "label": "postgres",
+                "value": "postgres"
+              },
+              {
+                "label": "presto",
+                "value": "presto"
+              },
+              {
+                "label": "prql",
+                "value": "prql"
+              },
+              {
+                "label": "redshift",
+                "value": "redshift"
+              },
+              {
+                "label": "snowflake",
+                "value": "snowflake"
+              },
+              {
+                "label": "spark",
+                "value": "spark"
+              },
+              {
+                "label": "spark2",
+                "value": "spark2"
+              },
+              {
+                "label": "sqlite",
+                "value": "sqlite"
+              },
+              {
+                "label": "starrocks",
+                "value": "starrocks"
+              },
+              {
+                "label": "tableau",
+                "value": "tableau"
+              },
+              {
+                "label": "teradata",
+                "value": "teradata"
+              },
+              {
+                "label": "trino",
+                "value": "trino"
+              },
+              {
+                "label": "tsql",
+                "value": "tsql"
+              }
+            ],
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "id": "SQL",
+            "valueType": "string",
+            "key": "SQL",
+            "label": "SQL",
+            "type": "hidden"
+          },
+          {
+            "id": "输入SQL数据库",
+            "valueType": "string",
+            "key": "输入类型",
+            "label": "输入类型",
+            "type": "hidden"
+          },
+          {
+            "id": "输出类型",
+            "valueType": "string",
+            "key": "输出类型",
+            "label": "输出类型",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "插件输出",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1807.5210374440524,
+          "y": 43.362255242443396
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "SQL",
+            "label": "SQL",
+            "description": "转译后的SQL，如果转换失败则值是原始SQL",
+            "value": [
+              "n56bmNiQA6aD",
+              "zpPSHyzy6NJI"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "转译错误",
+            "label": "转译错误",
+            "description": "转译失败的错误信息，成功则返回空",
+            "value": [
+              "n56bmNiQA6aD",
+              "yXRAeS3uiGb0"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "运行错误",
+            "label": "运行错误",
+            "description": "运行错误信息，成功返回空",
+            "value": [
+              "n56bmNiQA6aD",
+              "error"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "n56bmNiQA6aD",
+        "name": "SQLGlot",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1052.4235175213346,
+          "y": -218.23577699150314
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "py",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "import sqlglot\n\n\ndef main(sql, write=\"mysql\", read=None):\n    \"\"\"\n    转换SQL语法\n    :param sql:\n    :param write:\n    :param read:\n    :return: 解析错误将返回原始SQL和错误信息\n    \"\"\"\n    try:\n        if read.strip() == 'auto':\n            read = None\n\n        if write.strip() == 'auto':\n            write = None\n\n        new_sql = sqlglot.transpile(sql, write=write, read=read)\n        return {\n            \"sql\": new_sql[0],\n            \"error_msg\": \"\"\n        }\n    except Exception as e:\n        return {\n            \"sql\": sql,\n            \"error_msg\": str(e)\n        }\n",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "sql",
+            "label": "sql",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": [
+              "pluginInput",
+              "SQL"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "write",
+            "label": "write",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": [
+              "pluginInput",
+              "输出类型"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "read",
+            "label": "read",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "输入SQL数据库"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "zpPSHyzy6NJI",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "sql",
+            "label": "sql"
+          },
+          {
+            "id": "yXRAeS3uiGb0",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "error_msg",
+            "label": "error_msg"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "n56bmNiQA6aD",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "n56bmNiQA6aD-target-left"
+      },
+      {
+        "source": "n56bmNiQA6aD",
+        "target": "pluginOutput",
+        "sourceHandle": "n56bmNiQA6aD-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
