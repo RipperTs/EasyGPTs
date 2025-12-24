@@ -1,0 +1,387 @@
+{
+  "author": "",
+  "version": "4811",
+  "name": "相关数据表名称",
+  "avatar": "core/workflow/template/xiangguanbiao",
+  "intro": "使用AI模型根据问题和数据库 Schema 信息, 来获取所有可能相关的数据库表名",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "database",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "插件输入",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 309.1517397036722,
+          "y": -116.16897889008847
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "用户问题",
+            "label": "用户问题",
+            "description": "用户提问的问题",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true,
+            "toolDescription": "用户提问的问题"
+          },
+          {
+            "renderTypeList": [
+              "textarea"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "数据表结构",
+            "label": "数据表结构",
+            "description": "数据表结构信息",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "数据表结构信息",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "renderTypeList": [
+              "selectLLMModel"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "AI 模型",
+            "label": "AI 模型",
+            "description": "作为提取表名的模型，要求模型必须支持 System Prompt",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "id": "question",
+            "valueType": "string",
+            "key": "用户问题",
+            "label": "用户问题",
+            "type": "hidden"
+          },
+          {
+            "id": "数据表结构",
+            "valueType": "string",
+            "key": "数据表结构",
+            "label": "数据表结构",
+            "type": "hidden"
+          },
+          {
+            "id": "AI 模型",
+            "valueType": "string",
+            "key": "AI 模型",
+            "label": "AI 模型",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "插件输出",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1956.9466807759597,
+          "y": -63.71115759039344
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "数据表名称",
+            "label": "数据表名称",
+            "description": "多个数据表名称使用 , 分隔",
+            "value": [
+              "aB0sV7lAhfcD",
+              "answerText"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "aB0sV7lAhfcD",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1076.3667041575854,
+          "y": -370.873591797604
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "selectedTypeIndex": 1,
+            "value": [
+              "pluginInput",
+              "AI 模型"
+            ]
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": 1
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoningEffort",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "medium",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.chatNodeSystemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "Returns the names of all SQL tables that may be relevant to the user's question, based on the database Schema information provided.\n\nYou need to carefully analyze the user issue and then look for the names of all tables in the table comments that may be related to the issue. \n\nThe Schema is as follows:\n\n\"\"\"\n{{$pluginInput.数据表结构$}}\n\"\"\"\n\nRemember to include ALL POTENTIALLY RELEVANT tables, even if you're not sure that they're needed.\n\nThe returned format uses multiple table names separated by commas, for example: users,order..."
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "stringQuoteText",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "label": "文档引用",
+            "debugLabel": "文档引用",
+            "description": "app:document_quote_tip",
+            "valueType": "string",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "value": [
+              "pluginInput",
+              "question"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "aB0sV7lAhfcD",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "aB0sV7lAhfcD-target-left"
+      },
+      {
+        "source": "aB0sV7lAhfcD",
+        "target": "pluginOutput",
+        "sourceHandle": "aB0sV7lAhfcD-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
