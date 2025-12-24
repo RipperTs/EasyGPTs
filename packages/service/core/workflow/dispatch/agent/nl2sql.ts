@@ -25,6 +25,28 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.error]: string;
 }>;
 
+const buildErrorResponse = (
+  error: string,
+  extra?: Record<string, unknown>
+): DispatchNodeResultType<{
+  [NodeOutputKeyEnum.sql]: string;
+  [NodeOutputKeyEnum.error]: string;
+}> => {
+  const pluginOutput = { sql: '', error };
+
+  return {
+    [NodeOutputKeyEnum.sql]: '',
+    [NodeOutputKeyEnum.error]: error,
+    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      error,
+      pluginOutput,
+      textOutput: error,
+      ...(extra || {})
+    }
+  };
+};
+
 const extractSqlFromModelOutput = (raw: string) => {
   const text = raw.trim();
   if (!text) return '';
@@ -67,24 +89,15 @@ export async function dispatchNL2SQL({
   const llmModel = getLLMModel(model);
 
   if (!llmModel) {
-    return {
-      [NodeOutputKeyEnum.sql]: '',
-      [NodeOutputKeyEnum.error]: 'LLM model not found'
-    };
+    return buildErrorResponse('LLM model not found');
   }
 
   if (!nl2sqlDatabaseSchema) {
-    return {
-      [NodeOutputKeyEnum.sql]: '',
-      [NodeOutputKeyEnum.error]: 'Database schema is empty'
-    };
+    return buildErrorResponse('Database schema is empty');
   }
 
   if (!userChatInput) {
-    return {
-      [NodeOutputKeyEnum.sql]: '',
-      [NodeOutputKeyEnum.error]: 'Question is empty'
-    };
+    return buildErrorResponse('Question is empty');
   }
 
   const finalSystemPrompt = systemPrompt?.trim() || PROMPT_NL2SQL_SYSTEM;
@@ -108,10 +121,7 @@ ${relationFields ? `\n${relationFields}` : ''}
 The following SQL query best answers the question: \`${userChatInput}\`:
 `;
 
-  console.log('生成的NL2SQL提示词：');
-  console.log(userPrompt);
-
-  const messages: any[] = [
+  const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: finalSystemPrompt
@@ -142,20 +152,16 @@ The following SQL query best answers the question: \`${userChatInput}\`:
     const sql = extractSqlFromModelOutput(raw);
 
     if (!sql) {
-      return {
-        [NodeOutputKeyEnum.sql]: '',
-        [NodeOutputKeyEnum.error]: 'Empty SQL output',
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          model: llmModel.model,
-          tokens,
-          query: userChatInput,
-          databaseSchema: nl2sqlDatabaseSchema,
-          relationFields,
-          systemPrompt: finalSystemPrompt,
-          userPrompt,
-          rawResponse: raw
-        }
-      };
+      return buildErrorResponse('Empty SQL output', {
+        model: llmModel.model,
+        tokens,
+        query: userChatInput,
+        databaseSchema: nl2sqlDatabaseSchema,
+        relationFields,
+        systemPrompt: finalSystemPrompt,
+        userPrompt,
+        rawResponse: raw
+      });
     }
 
     const { totalPoints, modelName } = formatModelChars2Points({
@@ -164,9 +170,12 @@ The following SQL query best answers the question: \`${userChatInput}\`:
       modelType: ModelTypeEnum.llm
     });
 
+    const pluginOutput = { sql, error: '', userPrompt };
+
     return {
       [NodeOutputKeyEnum.sql]: sql,
       [NodeOutputKeyEnum.error]: '',
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
@@ -176,7 +185,9 @@ The following SQL query best answers the question: \`${userChatInput}\`:
         relationFields,
         systemPrompt: finalSystemPrompt,
         userPrompt,
-        rawResponse: raw
+        rawResponse: raw,
+        pluginOutput,
+        textOutput: sql
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
         {
@@ -196,9 +207,12 @@ The following SQL query best answers the question: \`${userChatInput}\`:
       modelType: ModelTypeEnum.llm
     });
 
+    const pluginOutput = { sql: '', error: errText, userPrompt };
+
     return {
       [NodeOutputKeyEnum.sql]: '',
       [NodeOutputKeyEnum.error]: errText,
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
@@ -208,7 +222,9 @@ The following SQL query best answers the question: \`${userChatInput}\`:
         relationFields,
         systemPrompt: finalSystemPrompt,
         userPrompt,
-        error: errText
+        error: errText,
+        pluginOutput,
+        textOutput: errText
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
         tokens > 0
