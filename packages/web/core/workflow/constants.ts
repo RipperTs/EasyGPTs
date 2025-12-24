@@ -62,6 +62,10 @@ export const systemPluginTemplateList: TGroupType[] = [
     typeName: '搜索'
   },
   {
+    typeId: FlowNodeTemplateTypeEnum.database,
+    typeName: '数据库'
+  },
+  {
     typeId: FlowNodeTemplateTypeEnum.multimodal,
     typeName: '多模态'
   },
@@ -71,7 +75,7 @@ export const systemPluginTemplateList: TGroupType[] = [
   },
   {
     typeId: FlowNodeTemplateTypeEnum.other,
-    typeName: i18nT('common:common.Other')
+    typeName: '其他'
   }
 ];
 

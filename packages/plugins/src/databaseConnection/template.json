@@ -3,12 +3,12 @@
   "version": "4811",
   "name": "数据源配置 (旧版)",
   "avatar": "core/workflow/template/datasource",
-  "intro": "可连接常用数据库，并执行sql",
+  "intro": "可连接常用数据库，并执行sql (支持MySQL、PostgreSQL)",
   "showStatus": true,
   "weight": 10,
 
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "database",
 
   "workflow": {
     "nodes": [

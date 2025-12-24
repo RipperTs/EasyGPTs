@@ -7,7 +7,7 @@
   "showStatus": true,
   "weight": 10,
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "database",
   "workflow": {
     "nodes": [
       {

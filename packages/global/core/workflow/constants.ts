@@ -8,6 +8,7 @@ export enum FlowNodeTemplateTypeEnum {
   interactive = 'interactive',
 
   search = 'search',
+  database = 'database',
   multimodal = 'multimodal',
   communication = 'communication',
 
