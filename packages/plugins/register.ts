@@ -22,7 +22,8 @@ const staticPluginList = [
   'dateExtraction',
   'databaseSchema',
   'relatedTables',
-  'sqlTranslation'
+  'sqlTranslation',
+  'timeEntityConversion'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [

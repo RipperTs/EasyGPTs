@@ -1,0 +1,314 @@
+{
+  "author": "",
+  "version": "1.0.0",
+  "name": "时间实体转换",
+  "avatar": "core/workflow/template/shijianshiti",
+  "intro": "将一段文字中的时间抽取出来转为标准的时间格式然后生成一个新的文字",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 473.761147827899,
+          "y": -180.017476586758
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "text",
+            "label": "text",
+            "description": "要转换的文本内容",
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "numberInput"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "only_date",
+            "label": "only_date",
+            "description": "是否只显示日期，1是，0否",
+            "required": false,
+            "defaultValue": "0"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "text",
+            "valueType": "string",
+            "key": "text",
+            "label": "text",
+            "type": "hidden"
+          },
+          {
+            "id": "only_date",
+            "valueType": "number",
+            "key": "only_date",
+            "label": "only_date",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1886.4886707727194,
+          "y": -180.017476586758
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "text",
+            "label": "text",
+            "description": "转换后的文本内容",
+            "value": [
+              "l6oGknF345n3",
+              "qLUQfhG0ILRX"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "l6oGknF345n3",
+        "name": "时间提取转换",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1197.473928908152,
+          "y": -486.4969973827215
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "py",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "import time\nimport jionlp as jio\nfrom datetime import datetime\n\n\ndef get_time_entities(text: str, only_date: int = 0) -> str:\n    time_entities = jio.ner.extract_time(text, time_base=time.time(), with_parsing=False)\n    if len(time_entities) == 0:\n        return text\n\n    now_time = time.time()\n    new_text = text\n\n    # 偏移量修正值，用于调整索引\n    offset_correction = 0\n\n    for time_entity in time_entities:\n        try:\n            parse_time_util = jio.parse_time(time_entity['text'], time_base=now_time, time_type=time_entity['type'])\n            start_time = parse_time_util['time'][0]\n            end_time = parse_time_util['time'][1]\n\n            # 解析时间字符串为 datetime 对象\n            time_format = \"%Y-%m-%d %H:%M:%S\"\n            dt1 = datetime.strptime(start_time, time_format)\n            dt2 = datetime.strptime(end_time, time_format)\n            new_date_str = f\"{dt1} 到 {dt2}\"\n            if only_date == 1:\n                if dt1.date() == dt2.date():\n                    new_date_str = f\"{dt1.date()}\"\n                else:\n                    new_date_str = f\"{dt1.date()} 到 {dt2.date()}\"\n\n            offset = time_entity['offset']\n            start_idx = offset[0] + offset_correction\n            end_idx = offset[1] + offset_correction\n            original_str = new_text[start_idx:end_idx]\n\n            # 替换文本\n            new_text = new_text[:start_idx] + new_date_str + new_text[end_idx:]\n\n            # 更新偏移量修正值\n            offset_correction += len(new_date_str) - len(original_str)\n\n        except Exception as e:\n            print(e)\n            continue\n\n    return new_text\n\n\ndef main(text, only_date):\n    result = get_time_entities(text, only_date)\n    return {\n        \"result\": result,\n    }\n",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "text",
+            "label": "text",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "text"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "only_date",
+            "label": "only_date",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "only_date"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "l6oGknF345n3",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "l6oGknF345n3-target-left"
+      },
+      {
+        "source": "l6oGknF345n3",
+        "target": "pluginOutput",
+        "sourceHandle": "l6oGknF345n3-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
