@@ -19,7 +19,8 @@ const staticPluginList = [
   'GenPyChart',
   'bochaai',
   'reorder',
-  'dateExtraction'
+  'dateExtraction',
+  'databaseSchema'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [

@@ -1,0 +1,561 @@
+{
+  "author": "",
+  "version": "4811",
+  "name": "获取数据表结构",
+  "avatar": "core/workflow/template/schema",
+  "intro": "获取指定类型数据库指定表的schema，用于AI模型分析作为 “问数” 的前置操作插件",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "插件输入",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 87.03813308668094,
+          "y": 129.5804196088754
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "textarea"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "数据库连接url",
+            "label": "数据库连接url",
+            "description": "目前支持: mysql, postgres, clickhouse数据库，格式参考SQLAlchemy的数据库URL格式",
+            "defaultValue": "mysql+pymysql://user:password@ip:port/table_name",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "textarea"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "查询的数据表",
+            "label": "查询的数据表",
+            "description": "多个数据表使用,分隔，例如：users,order",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "多个数据表使用,分隔，例如：users,order",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "renderTypeList": [
+              "JSONEditor"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "忽略字段配置",
+            "label": "忽略字段配置",
+            "description": "不需要AI关心的数据库字段，json格式传入。\n示例：[{\"table_name\":\"users\",\"field_names\":[\"password\",\"salt\"]}]",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "JSONEditor"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "关联字段配置",
+            "label": "关联字段配置",
+            "description": "声明多表之间的字段关联，json格式\n示例：[{\"column_name_a\":\"users.id\",\"column_name_b\":\"agent.user_id\"}]",
+            "defaultValue": "",
+            "required": false,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "renderTypeList": [
+              "switch"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "视图查询",
+            "label": "视图查询",
+            "description": "要获取视图中的schema，则需要开启",
+            "defaultValue": false,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "id": "数据库连接url",
+            "valueType": "string",
+            "key": "数据库连接url",
+            "label": "数据库连接url",
+            "type": "hidden"
+          },
+          {
+            "id": "查询的数据表",
+            "valueType": "string",
+            "key": "查询的数据表",
+            "label": "查询的数据表",
+            "type": "hidden"
+          },
+          {
+            "id": "忽略字段配置",
+            "valueType": "string",
+            "key": "忽略字段配置",
+            "label": "忽略字段配置",
+            "type": "hidden"
+          },
+          {
+            "id": "关联字段配置",
+            "valueType": "string",
+            "key": "关联字段配置",
+            "label": "关联字段配置",
+            "type": "hidden"
+          },
+          {
+            "id": "视图查询",
+            "valueType": "boolean",
+            "key": "视图查询",
+            "label": "视图查询",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "插件输出",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1630.8396633143489,
+          "y": 78.18955252960245
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "原始数据表结构",
+            "label": "原始数据表结构",
+            "description": "仅原始的数据表结构，不含关联字段配置",
+            "value": [
+              "upRPjixIzevu",
+              "zM6la3pIjtVR"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "格式化的数据表结构",
+            "label": "格式化的数据表结构",
+            "description": "基于原始数据表结构构建的，适用于 AI Prompt 场景的结构",
+            "value": [
+              "upRPjixIzevu",
+              "g7odh6Ap9t0i"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "格式化关联字段",
+            "label": "格式化关联字段",
+            "description": "如果传入了关联字段配置，则会得到此字段的值",
+            "value": [
+              "upRPjixIzevu",
+              "wJw0F3EDzfYo"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "运行错误",
+            "label": "运行错误",
+            "description": "运行的错误信息，成功时返回为空",
+            "value": [
+              "upRPjixIzevu",
+              "error"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "upRPjixIzevu",
+        "name": "数据库查询",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 944.3757051456507,
+          "y": -265.06512708498866
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "py",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "import json\nfrom langchain_community.utilities import SQLDatabase\nfrom sqlalchemy import create_engine\nfrom typing import Optional, List, Union, Dict, Any\n\nfrom pydantic import BaseModel\n\n\nclass IgnoreFieldsPo(BaseModel):\n    table_name: str\n    \"\"\"表名\"\"\"\n    field_names: List[str]\n    \"\"\"字段名\"\"\"\n\n\nclass JoinedPo(BaseModel):\n    \"\"\"\n    关联字段配置\n    \"\"\"\n    column_name_a: str\n    \"\"\"表A的字段名\"\"\"\n    column_name_b: str\n    \"\"\"表B的字段名\"\"\"\n\n\nclass DBSchemaService:\n    \"\"\"\n    数据库DDL转换服务\n    \"\"\"\n\n    def __init__(self, url: str,\n                 ignore_fields: Optional[List[IgnoreFieldsPo]] = None,\n                 view_support: bool = False):\n        \"\"\"\n        初始化数据库schema服务\n        :param url: 数据库连接url\n        \"\"\"\n        self.engine = create_engine(url)\n        # 修复：避免使用可变默认参数 []\n        self.ignore_fields = ignore_fields if ignore_fields is not None else []\n        self.view_support = view_support\n\n    def get_schema(self, tables: List[str] = None):\n        # 获取表的schema, 支持获取视图 view_support=True\n        # 注意：SQLDatabase 的 sample_rows_in_table_info 控制是否读取样本数据，0表示只读结构\n        db = SQLDatabase(self.engine, sample_rows_in_table_info=0, view_support=self.view_support)\n        return db.get_table_info(tables)\n\n    def convert_table_schema(self, table_schema):\n        # 分割每个表的schema为行\n        lines = table_schema.strip().split('\\n')\n        # 初始化新的schema\n        new_schema = []\n        table_comment = \"\"\n        ignore_fields = []\n        # 遍历每一行\n        for line in lines:\n            # 去掉前后的空格\n            line = line.strip()\n            # 跳过注释和表定义的行\n            if line.startswith('CREATE TABLE'):\n                # 简单的解析获取表名，假设格式标准\n                parts = line.split()\n                if len(parts) > 2:\n                    table_name_raw = parts[2]\n                    # 去除可能存在的反引号或引号\n                    table_name = table_name_raw.strip('`\"\\'')\n                    ignore_fields = self.get_ignore_fields(table_name)\n                continue\n\n            if line.startswith(')DEFAULT CHARSET') or line.startswith(') ENGINE'):\n                # 尝试在结束行捕获表注释\n                if \"COMMENT\" in line:\n                    try:\n                        comment = line.split('COMMENT')[1].strip().strip(\"= \").strip(\"'\").strip('\"')\n                        table_comment = f\"COMMENT '{comment}'\"\n                    except IndexError:\n                        pass\n                continue\n\n            # 检查是否包含需要忽略的字段\n            if any(ignore_field in line for ignore_field in ignore_fields):\n                continue  # 如果包含需要忽略的字段，跳过这一行\n\n            column_name, column_type = self.get_column(line)\n\n            # 如果解析不到列名（例如仅仅是括号或空行），跳过\n            if not column_name:\n                continue\n\n            if \"AUTO_INCREMENT\" in line:\n                # 处理主键定义\n                new_schema.append(f'    {column_name} INTEGER PRIMARY KEY, -- Unique ID')\n            elif \"ENGINE\" in line and \"COMMENT\" in line:\n                # 处理旧版本或特定方言可能的行内注释\n                try:\n                    comment = line.split('COMMENT')[1].strip().strip(\"'\").strip('\"')\n                    table_comment = f\"COMMENT '{comment}'\"\n                except IndexError:\n                    pass\n            elif 'COMMENT' in line:\n                # 处理带注释的表字段\n                try:\n                    comment = line.split('COMMENT')[1].strip().strip(\",\").strip().strip(\"'\").strip('\"')\n                    new_schema.append(f'    {column_name} {column_type}, -- {comment}')\n                except IndexError:\n                    new_schema.append(f'    {column_name} {column_type}')\n            else:\n                # 去掉AUTO_INCREMENT和DEFAULT等多余部分\n                line_clean = line.split(' AUTO_INCREMENT')[0]\n                line_clean = line_clean.split(' DEFAULT')[0]\n\n                if not line_clean.startswith(\n                        'PRIMARY KEY') and \"ENGINE\" not in line_clean and not line_clean.startswith(\n                    'KEY ') and not line_clean.startswith('CONSTRAINT'):\n                    column_name, column_type = self.get_column(line_clean)\n                    if column_name:\n                        new_schema.append(f'    {column_name} {column_type}')\n\n        # 重新组装 CREATE TABLE 语句\n        try:\n            table_name = table_schema.split()[2]\n        except IndexError:\n            table_name = \"UNKNOWN_TABLE\"\n\n        new_schema = ['CREATE TABLE ' + table_name + ' ('] + new_schema + [f') {table_comment};']\n\n        # 合并为一个字符串\n        return '\\n'.join(new_schema)\n\n    def get_ignore_fields(self, table_name) -> List[str]:\n        \"\"\"\n        获取忽略的字段\n        :param table_name:\n        :return:\n        \"\"\"\n        for ignore_item in self.ignore_fields:\n            if ignore_item.table_name == table_name:\n                return ignore_item.field_names\n        return []\n\n    def get_column(self, line):\n        \"\"\"\n        解析每一行的字段信息\n        :param line:\n        :return:\n        \"\"\"\n        parts = line.split()\n        if len(parts) > 1:\n            column_name = parts[0].strip('`\"')  # 去除可能存在的反引号\n            column_type = parts[1]\n            column_type = column_type.split('(')[0]\n            # 排除一些非字段定义的关键字开头\n            if column_name.upper() in ['PRIMARY', 'KEY', 'CONSTRAINT', 'UNIQUE', 'INDEX']:\n                return None, None\n            return column_name, column_type\n        return None, None\n\n    def convert_schema(self, original_schema):\n        \"\"\"\n        开始转换schema\n        :param original_schema: 原始schema\n        :return:\n        \"\"\"\n        if not original_schema:\n            return \"\"\n\n        table_schemas = original_schema.strip().split('\\n\\n')\n        # 初始化结果列表\n        new_schemas = []\n\n        # 遍历每个表的schema\n        for table_schema in table_schemas:\n            if table_schema.strip():\n                new_schemas.append(self.convert_table_schema(table_schema))\n\n        # 合并所有表的schema为一个字符串\n        return '\\n\\n'.join(new_schemas)\n\n\ndef _parse_pydantic_list(data: Union[str, List[Dict], List[BaseModel], None], model_class) -> List[Any]:\n    \"\"\"\n    辅助函数：将JSON字符串、字典列表或对象列表统一转换为Pydantic对象列表\n    \"\"\"\n    if not data:\n        return []\n\n    # 1. 如果是 JSON 字符串，先反序列化\n    if isinstance(data, str):\n        try:\n            data = json.loads(data)\n        except json.JSONDecodeError as e:\n            print(f\"Warning: Failed to parse JSON config for {model_class.__name__}: {e}\")\n            return []\n\n    # 2. 转换列表内容\n    result_list = []\n    if isinstance(data, list):\n        for item in data:\n            if isinstance(item, dict):\n                try:\n                    result_list.append(model_class(**item))\n                except Exception as e:\n                    print(f\"Warning: Validation error for {model_class.__name__}: {e}\")\n                    return []\n            elif isinstance(item, model_class):\n                result_list.append(item)\n\n    return result_list\n\n\ndef main(database_url: str,\n         include_tables_list: str,\n         ignore_fields: Union[str, List[Dict], List[IgnoreFieldsPo], None] = None,\n         joined_config: Union[str, List[Dict], List[JoinedPo], None] = None,\n         view_support: bool = False):\n    \"\"\"\n    生成模型需要用的schema\n    :param database_url: 数据源连接地址\n    :param include_tables_list: 包含的表列表 (支持List或逗号分隔的字符串 \"users,orders\")\n    :param ignore_fields: 忽略字段配置 (支持JSON字符串、字典列表或对象列表)\n    :param joined_config: 关联字段配置 (支持JSON字符串、字典列表或对象列表)\n    :param view_support: 是否支持视图\n    :return: raw_schema, prompt_schema, joineds\n    \"\"\"\n\n    # 1. 处理 include_tables_list (支持字符串分割)\n    final_tables_list = [t.strip() for t in include_tables_list.split(',') if t.strip()]\n\n    # 2. 处理 ignore_fields (转换 JSON/Dict -> Pydantic Model)\n    final_ignore_fields = _parse_pydantic_list(ignore_fields, IgnoreFieldsPo)\n\n    # 3. 处理 joined_config (转换 JSON/Dict -> Pydantic Model)\n    final_joined_config = _parse_pydantic_list(joined_config, JoinedPo)\n\n    # 初始化服务\n    db_schema_service = DBSchemaService(database_url, final_ignore_fields, view_support)\n\n    # 获取数据表结构\n    raw_schema = db_schema_service.get_schema(final_tables_list)\n\n    # 转换为模型需要的schema格式\n    prompt_schema = db_schema_service.convert_schema(raw_schema)\n\n    # 转换关联字段\n    joineds = \"\"\n    for joined in final_joined_config:\n        joineds += f\"-- {joined.column_name_a} can be joined with {joined.column_name_b}\\n\"\n\n    return {\n        \"raw_schema\": raw_schema, \"prompt_schema\": prompt_schema, \"joineds\": joineds\n    }\n\n",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "database_url",
+            "label": "database_url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "数据库连接url"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "include_tables_list",
+            "label": "include_tables_list",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "查询的数据表"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "ignore_fields",
+            "label": "ignore_fields",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "忽略字段配置"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "joined_config",
+            "label": "joined_config",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "关联字段配置"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "view_support",
+            "label": "view_support",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "视图查询"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "zM6la3pIjtVR",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "raw_schema",
+            "label": "raw_schema"
+          },
+          {
+            "id": "g7odh6Ap9t0i",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "prompt_schema",
+            "label": "prompt_schema"
+          },
+          {
+            "id": "wJw0F3EDzfYo",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "joineds",
+            "label": "joineds"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "upRPjixIzevu",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "upRPjixIzevu-target-left"
+      },
+      {
+        "source": "upRPjixIzevu",
+        "target": "pluginOutput",
+        "sourceHandle": "upRPjixIzevu-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}

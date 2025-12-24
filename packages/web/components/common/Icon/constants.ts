@@ -247,6 +247,7 @@ export const iconPaths = {
   'core/workflow/template/Redis': () => import('./icons/core/workflow/template/Redis.svg'),
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
+  'core/workflow/template/schema': () => import('./icons/core/workflow/template/schema.svg'),
   'core/workflow/template/SolarSortBold': () =>
     import('./icons/core/workflow/template/SolarSortBold.svg'),
   'core/workflow/template/bochaai': () => import('./icons/core/workflow/template/bochaai.svg'),
