@@ -38,3 +38,34 @@
 - Never commit secrets. Copy `projects/app/.env.template` → `projects/app/.env.local` and fill values (`MONGODB_URI`, `OPENAI_BASE_URL`, `CHAT_API_KEY`, `SANDBOX_URL`, etc.).
 - Use `docker-compose.yml` to provision Mongo/Milvus locally if needed.
 - Control verbosity with `LOG_LEVEL` and `STORE_LOG_LEVEL`.
+
+---
+
+## 系统基础插件开发流程（Checklist）
+
+> 目标：新增一个可在工作流画布正常显示、可运行、可作为工具使用的系统节点。
+
+1. **新增节点枚举**
+   - `packages/global/core/workflow/node/constant.ts`：在 `FlowNodeTypeEnum` 里添加新节点类型（例如 `nl2sql`）。
+2. **新增输入/输出 Key**
+   - `packages/global/core/workflow/constants.ts`：
+     - `NodeInputKeyEnum`：补充该节点需要的输入 key
+     - `NodeOutputKeyEnum`：补充该节点需要的输出 key（例如 `sql`）
+3. **实现模板（节点长什么样）**
+   - `packages/global/core/workflow/template/system/<yourNode>/index.ts`
+   - 定义 `inputs/outputs`，需要可作为工具时设置 `isTool: true`。
+4. **注册模板到系统节点列表**
+   - `packages/global/core/workflow/template/constants.ts`：把新模块加入 `systemNodes`。
+5. **实现后端 dispatch（节点怎么跑）**
+   - `packages/service/core/workflow/dispatch/**`：新增 `dispatchXxx`，按 inputs 取参、调用能力、组装 outputs。
+6. **注册 dispatch**
+   - `packages/service/core/workflow/dispatch/index.ts`：在 `callbackMap` 里映射 `[FlowNodeTypeEnum.xxx]: dispatchXxx`。
+7. **前端节点渲染注册（否则画布会空白）**
+   - `projects/app/src/pages/app/detail/components/WorkflowComponents/Flow/index.tsx`
+   - 在 `nodeTypes` 中新增映射：`[FlowNodeTypeEnum.xxx]: NodeSimple`（或自定义 Node 组件）。
+
+## 常见坑（本次踩过）
+
+- **忘记注册前端 `nodeTypes`**
+  - 现象：画布中节点显示为“小空白框”，控制台报错：`[React Flow]: Node type "xxx" not found. Using fallback type "default"`。
+  - 修复：在 `projects/app/src/pages/app/detail/components/WorkflowComponents/Flow/index.tsx` 的 `nodeTypes` 补上对应类型映射。

@@ -413,7 +413,7 @@
             ],
             "label": "",
             "valueType": "string",
-            "value": "import sqlglot\n\n\ndef main(sql, write=\"mysql\", read=None):\n    \"\"\"\n    转换SQL语法\n    :param sql:\n    :param write:\n    :param read:\n    :return: 解析错误将返回原始SQL和错误信息\n    \"\"\"\n    try:\n        if read.strip() == 'auto':\n            read = None\n\n        if write.strip() == 'auto':\n            write = None\n\n        new_sql = sqlglot.transpile(sql, write=write, read=read)\n        return {\n            \"sql\": new_sql[0],\n            \"error_msg\": \"\"\n        }\n    except Exception as e:\n        return {\n            \"sql\": sql,\n            \"error_msg\": str(e)\n        }\n",
+            "value": "import sqlglot\n\n\ndef normalize_sql(sql: str) -> str:\n    return sql.replace(\"\\\\r\\\\n\", \" \").replace(\"\\\\n\", \" \").replace(\"\\\\t\", \" \").strip()\n\n\ndef main(sql, write=\"mysql\", read=None):\n    \"\"\"\n    转换SQL语法\n    :param sql:\n    :param write:\n    :param read:\n    :return: 解析错误将返回原始SQL和错误信息\n    \"\"\"\n    try:\n        if read is not None and read.strip() == \"auto\":\n            read = None\n        if write is not None and write.strip() == \"auto\":\n            write = None\n\n        sql = normalize_sql(sql)\n        new_sql = sqlglot.transpile(sql, write=write, read=read)\n        return {\n            \"sql\": new_sql[0],\n            \"error_msg\": \"\"\n        }\n    except Exception as e:\n        return {\n            \"sql\": sql,\n            \"error_msg\": str(e)\n        }",
             "valueDesc": "",
             "description": "",
             "debugLabel": "",

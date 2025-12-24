@@ -170,6 +170,11 @@ export enum NodeInputKeyEnum {
   contextExtractInput = 'content',
   extractKeys = 'extractKeys',
 
+  // nl2sql
+  nl2sqlDatabaseSchema = 'nl2sqlDatabaseSchema',
+  nl2sqlRelationFields = 'nl2sqlRelationFields',
+  nl2sqlUserPrompt = 'nl2sqlUserPrompt',
+
   // database connector
   databaseType = 'system_databaseType',
   databaseHost = 'system_databaseHost',
@@ -229,6 +234,7 @@ export enum NodeOutputKeyEnum {
   success = 'success',
   failed = 'failed',
   error = 'error',
+  sql = 'sql',
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',

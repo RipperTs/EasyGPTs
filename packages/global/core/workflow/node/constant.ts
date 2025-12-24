@@ -109,6 +109,7 @@ export enum FlowNodeTypeEnum {
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',
+  nl2sql = 'nl2sql',
   httpRequest468 = 'httpRequest468',
   databaseConnector = 'databaseConnector',
   runApp = 'app',

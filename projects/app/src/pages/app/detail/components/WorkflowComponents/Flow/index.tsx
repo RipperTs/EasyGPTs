@@ -38,6 +38,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./nodes/NodeAnswer')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./nodes/NodeCQNode')),
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./nodes/NodeExtract')),
+  [FlowNodeTypeEnum.nl2sql]: NodeSimple,
   [FlowNodeTypeEnum.httpRequest468]: dynamic(() => import('./nodes/NodeHttp')),
   [FlowNodeTypeEnum.runApp]: NodeSimple,
   [FlowNodeTypeEnum.appModule]: NodeSimple,
