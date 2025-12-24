@@ -121,7 +121,7 @@ ${relationFields ? `\n${relationFields}` : ''}
 The following SQL query best answers the question: \`${userChatInput}\`:
 `;
 
-  const messages: ChatCompletionMessageParam[] = [
+  const messages: any[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: finalSystemPrompt
