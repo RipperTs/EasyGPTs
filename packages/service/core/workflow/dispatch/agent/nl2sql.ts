@@ -5,7 +5,10 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { getAIApi } from '../../../ai/config';
 import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type {
+  ChatCompletionMessageParam,
+  SdkChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { PROMPT_NL2SQL_SYSTEM } from '@fastgpt/global/core/ai/prompt/nl2sql';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
@@ -27,22 +30,27 @@ type Response = DispatchNodeResultType<{
 
 const buildErrorResponse = (
   error: string,
-  extra?: Record<string, unknown>
-): DispatchNodeResultType<{
-  [NodeOutputKeyEnum.sql]: string;
-  [NodeOutputKeyEnum.error]: string;
-}> => {
-  const pluginOutput = { sql: '', error };
+  extra?: {
+    query?: string;
+    pluginOutput?: Record<string, unknown>;
+    nodeInputs?: Record<string, unknown>;
+    nodeOutputs?: Record<string, unknown>;
+  }
+): Response => {
+  const pluginOutput = extra?.pluginOutput || { sql: '', error };
 
   return {
     [NodeOutputKeyEnum.sql]: '',
     [NodeOutputKeyEnum.error]: error,
     [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      error,
+      query: extra?.query,
+      errorText: error,
+      error: { message: error },
       pluginOutput,
       textOutput: error,
-      ...(extra || {})
+      nodeInputs: extra?.nodeInputs,
+      nodeOutputs: extra?.nodeOutputs
     }
   };
 };
@@ -121,7 +129,7 @@ ${relationFields ? `\n${relationFields}` : ''}
 The following SQL query best answers the question: \`${userChatInput}\`:
 `;
 
-  const messages: any[] = [
+  const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: finalSystemPrompt
@@ -142,7 +150,7 @@ The following SQL query best answers the question: \`${userChatInput}\`:
     const response = await ai.chat.completions.create({
       model: llmModel.model,
       temperature: 0.01,
-      messages,
+      messages: messages as SdkChatCompletionMessageParam[],
       stream: false
     });
 
@@ -153,14 +161,19 @@ The following SQL query best answers the question: \`${userChatInput}\`:
 
     if (!sql) {
       return buildErrorResponse('Empty SQL output', {
-        model: llmModel.model,
-        tokens,
         query: userChatInput,
-        databaseSchema: nl2sqlDatabaseSchema,
-        relationFields,
-        systemPrompt: finalSystemPrompt,
-        userPrompt,
-        rawResponse: raw
+        pluginOutput: { sql: '', error: 'Empty SQL output', userPrompt },
+        nodeInputs: {
+          systemPrompt: finalSystemPrompt,
+          userPrompt,
+          databaseSchema: nl2sqlDatabaseSchema,
+          relationFields
+        },
+        nodeOutputs: {
+          model: llmModel.model,
+          tokens,
+          rawResponse: raw
+        }
       });
     }
 
@@ -181,11 +194,15 @@ The following SQL query best answers the question: \`${userChatInput}\`:
         model: modelName,
         tokens,
         query: userChatInput,
-        databaseSchema: nl2sqlDatabaseSchema,
-        relationFields,
-        systemPrompt: finalSystemPrompt,
-        userPrompt,
-        rawResponse: raw,
+        nodeInputs: {
+          systemPrompt: finalSystemPrompt,
+          userPrompt,
+          databaseSchema: nl2sqlDatabaseSchema,
+          relationFields
+        },
+        nodeOutputs: {
+          rawResponse: raw
+        },
         pluginOutput,
         textOutput: sql
       },
@@ -218,11 +235,14 @@ The following SQL query best answers the question: \`${userChatInput}\`:
         model: modelName,
         tokens,
         query: userChatInput,
-        databaseSchema: nl2sqlDatabaseSchema,
-        relationFields,
-        systemPrompt: finalSystemPrompt,
-        userPrompt,
-        error: errText,
+        errorText: errText,
+        error: { message: errText },
+        nodeInputs: {
+          systemPrompt: finalSystemPrompt,
+          userPrompt,
+          databaseSchema: nl2sqlDatabaseSchema,
+          relationFields
+        },
         pluginOutput,
         textOutput: errText
       },
