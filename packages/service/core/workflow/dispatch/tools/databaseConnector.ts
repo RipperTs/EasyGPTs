@@ -270,15 +270,54 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
   } = props;
 
   if (!databaseType || !host || !port || !databaseName || !dbUser || !password) {
-    return Promise.reject('Database connection config is incomplete');
+    const message = 'Database connection config is incomplete';
+    const pluginOutput = { success: false, error: { message } };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: { message },
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
   }
   if (!originalSql) {
-    return Promise.reject('SQL is empty');
+    const message = 'SQL is empty';
+    const pluginOutput = { success: false, error: { message } };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: { message },
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
   }
 
   const llmModel = getLLMModel(model);
   if (!llmModel) {
-    return Promise.reject('LLM model not found');
+    const message = 'LLM model not found';
+    const pluginOutput = { success: false, error: { message } };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: { message },
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
   }
 
   const maxRetry =
@@ -320,9 +359,16 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
         modelType: ModelTypeEnum.llm
       });
 
+      const pluginOutput = {
+        success: true,
+        result,
+        executedSql: currentSql
+      };
+
       return {
         [NodeOutputKeyEnum.success]: true,
         [NodeOutputKeyEnum.databaseQueryResult]: result,
+        [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
           model: modelName,
@@ -335,7 +381,8 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
           executedSql: currentSql,
           tryCount: tryCount + 1,
           databaseTimeout: timeoutSec,
-          errorMessage: lastError ? getErrText(lastError) : undefined
+          errorMessage: lastError ? getErrText(lastError) : undefined,
+          pluginOutput
         },
         [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
           totalTokens > 0
@@ -366,9 +413,16 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
           databaseType
         };
 
+        const pluginOutput = {
+          success: false,
+          error: errorOutput,
+          executedSql: currentSql
+        };
+
         return {
           [NodeOutputKeyEnum.success]: false,
           [NodeOutputKeyEnum.error]: errorOutput,
+          [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
             model: modelName,
@@ -381,7 +435,10 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
             executedSql: currentSql,
             tryCount,
             databaseTimeout: timeoutSec,
-            errorMessage: getErrText(error, 'Database query error')
+            errorMessage: getErrText(error, 'Database query error'),
+            errorText: errorOutput.message,
+            pluginOutput,
+            textOutput: errorOutput.message
           },
           [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
             totalTokens > 0
@@ -436,9 +493,16 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
     databaseType
   };
 
+  const pluginOutput = {
+    success: false,
+    error: finalError,
+    executedSql: currentSql
+  };
+
   return {
     [NodeOutputKeyEnum.success]: false,
     [NodeOutputKeyEnum.error]: finalError,
+    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
@@ -451,7 +515,10 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
       executedSql: currentSql,
       tryCount,
       databaseTimeout: timeoutSec,
-      errorMessage: finalError.message
+      errorMessage: finalError.message,
+      errorText: finalError.message,
+      pluginOutput,
+      textOutput: finalError.message
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
       totalTokens > 0
