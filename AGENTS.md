@@ -17,6 +17,7 @@
 ## Coding Style & Naming Conventions
 - Language: TypeScript. Format with Prettier (`.prettierrc.js`): 2 spaces, single quotes, semicolons, width 100.
 - Type safety: 禁止使用 `any`；类型不明确时优先使用 `unknown` 并在边界进行类型收窄；优先通过泛型/类型别名/接口完善类型；为第三方缺失声明补充 `*.d.ts`；如必须例外需同行注释说明且仅限局部。
+- 文案/i18n：后续新增功能默认不再接入/补充 i18n（不新增翻译 key，不修改 `packages/web/i18n/*`），界面与配置文案统一直接使用中文字符串；仅当你明确要求“需要多语言”时才使用 i18nT。
 - Lint: Next.js core-web-vitals (`projects/app/.eslintrc.json`). Fix lint before PR.
 - Naming: React components PascalCase; hooks `useCamelCase`; constants `SCREAMING_SNAKE_CASE`.
 - Files: Prefer named exports in packages; Next.js pages export default page components.
@@ -26,6 +27,7 @@
 - No centralized test runner today. When adding critical logic, include minimal unit tests in-package (e.g., `foo.test.ts`) and document manual steps.
 - Prefer pure, testable functions; keep side effects isolated.
 - For UI, include screenshots or clips in PRs demonstrating the change.
+- 验证策略：默认不在任务完成后自动运行 `lint`/`build`/`test` 等自动化校验命令；直接说明“已完成”，由你手动验证。若功能较复杂，我需要提供简要的手动验证步骤与注意事项。
 
 ## Commit & Pull Request Guidelines
 - Use Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`; scope optional (e.g., `feat(app): ...`).

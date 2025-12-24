@@ -21,6 +21,11 @@ export const workflowNodeTemplateList = [
     list: []
   },
   {
+    type: FlowNodeTemplateTypeEnum.database,
+    label: '数据库',
+    list: []
+  },
+  {
     type: FlowNodeTemplateTypeEnum.interactive,
     label: i18nT('common:core.workflow.template.Interactive'),
     list: []
