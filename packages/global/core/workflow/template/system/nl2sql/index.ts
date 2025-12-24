@@ -82,7 +82,6 @@ export const NL2SQLModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.sql,
       label: 'SQL',
       description: '生成的 SQL 语句；若发生错误则为空字符串。',
-      required: true,
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -91,7 +90,6 @@ export const NL2SQLModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.error,
       label: '错误信息',
       description: '生成失败时返回错误信息；成功时为空字符串。',
-      required: true,
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
