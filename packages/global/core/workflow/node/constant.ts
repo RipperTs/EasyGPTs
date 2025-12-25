@@ -129,6 +129,7 @@ export enum FlowNodeTypeEnum {
   readFiles = 'readFiles',
   userSelect = 'userSelect',
   terminateWorkflow = 'terminateWorkflow',
+  timeSemanticParse = 'timeSemanticParse',
   // mcp toolset
   tool = 'tool',
   toolSet = 'toolSet'

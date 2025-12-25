@@ -37,6 +37,7 @@ import { dispatchHttp468Request } from './tools/http468';
 import { dispatchDatabaseConnector } from './tools/databaseConnector';
 import { dispatchAppRequest } from './abandoned/runApp';
 import { dispatchQueryExtension } from './tools/queryExternsion';
+import { dispatchTimeSemanticParse } from './tools/timeSemanticParse';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
@@ -88,6 +89,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
+  [FlowNodeTypeEnum.timeSemanticParse]: dispatchTimeSemanticParse,
   [FlowNodeTypeEnum.tools]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,

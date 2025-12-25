@@ -19,6 +19,7 @@ import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
 import { RunAppNode } from './system/runApp';
 import { AiQueryExtension } from './system/queryExtension';
+import { TimeSemanticParseModule } from './system/timeSemanticParse';
 
 import type { FlowNodeTemplateType } from '../type/node';
 import { IfElseNode } from './system/ifElse/index';
@@ -50,6 +51,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   DatabaseConnectorModule,
   HttpNode468,
   AiQueryExtension,
+  TimeSemanticParseModule,
   IfElseNode,
   VariableUpdateNode,
   CodeNode,

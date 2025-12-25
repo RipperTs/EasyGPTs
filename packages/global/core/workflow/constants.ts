@@ -222,7 +222,11 @@ export enum NodeInputKeyEnum {
   userSelectOptions = 'userSelectOptions',
 
   // terminate workflow
-  terminateError = 'terminateError'
+  terminateError = 'terminateError',
+
+  // time semantic parse
+  timeSemanticParseType = 'timeSemanticParseType',
+  timeSemanticCurrentTime = 'timeSemanticCurrentTime'
 }
 
 // AI 推理强度等级
@@ -273,7 +277,11 @@ export enum NodeOutputKeyEnum {
   ifElseResult = 'ifElseResult',
 
   //user select
-  selectResult = 'selectResult'
+  selectResult = 'selectResult',
+
+  // time semantic parse
+  timeSemanticOriginalText = 'timeSemanticOriginalText',
+  timeSemanticResult = 'timeSemanticResult'
 }
 
 export enum VariableInputEnum {
