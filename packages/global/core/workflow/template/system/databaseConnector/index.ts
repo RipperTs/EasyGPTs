@@ -33,7 +33,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseType,
-      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.select],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '数据库类型',
       description: '选择要连接的数据库类型，目前支持 MySQL 和 PostgreSQL。',
@@ -51,7 +51,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseHost,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '主机地址',
       description: '数据库连接地址，例如：127.0.0.1 或 内网 IP。',
@@ -59,7 +59,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databasePort,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '端口',
       description: '数据库连接端口，例如 MySQL 默认 3306，PostgreSQL 默认 5432。',
@@ -67,7 +67,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseName,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '数据库名称',
       description: '要连接的数据库名称（schema）。',
@@ -75,7 +75,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseUser,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '用户名',
       description: '数据库登录用户名。',
@@ -83,7 +83,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databasePassword,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '密码',
       description: '数据库登录密码。',
@@ -91,7 +91,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseSql,
-      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       label: 'SQL 语句',
       description: '要执行的 SQL，可以直接输入或引用上游节点输出。',
@@ -101,18 +101,18 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.databaseMaxRetry,
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
       label: '自动修复重试次数',
       description: '当 SQL 执行失败时，利用 AI 自动修复并重试的最大次数，默认 3 次。',
       required: true,
       min: 1,
-      max: 10,
+      max: 15,
       value: 3
     },
     {
       key: NodeInputKeyEnum.databaseTimeout,
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
       label: '数据库执行超时时间（秒）',
       description: '单次 SQL 执行的最大等待时间，超时将中断查询并返回错误，默认 30 秒。',
