@@ -13,7 +13,7 @@ export const TerminateWorkflowModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.terminateWorkflow,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: 'core/workflow/template/stopTool',
+  avatar: 'core/workflow/template/stopWl',
   name: '终止工作流',
   intro: '立即终止整个工作流，并将错误信息作为结果返回。',
   showStatus: true,

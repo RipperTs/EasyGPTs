@@ -269,6 +269,7 @@ export const iconPaths = {
   'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
   'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
   'core/workflow/template/stopTool': () => import('./icons/core/workflow/template/stopTool.svg'),
+  'core/workflow/template/stopWl': () => import('./icons/core/workflow/template/stopwl.svg'),
   'core/workflow/template/systemConfig': () =>
     import('./icons/core/workflow/template/systemConfig.svg'),
   'core/workflow/template/textConcat': () =>
