@@ -263,6 +263,7 @@ export const iconPaths = {
   'core/workflow/template/pychart': () => import('./icons/core/workflow/template/pychart.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),
+  'core/workflow/template/timeParse': () => import('./icons/core/workflow/template/timeparse.svg'),
   'core/workflow/template/questionClassify': () =>
     import('./icons/core/workflow/template/questionClassify.svg'),
   'core/workflow/template/readFiles': () => import('./icons/core/workflow/template/readFiles.svg'),

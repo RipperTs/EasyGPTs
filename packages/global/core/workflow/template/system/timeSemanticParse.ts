@@ -24,7 +24,7 @@ export const TimeSemanticParseModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.timeSemanticParse,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: 'core/workflow/template/queryExtension',
+  avatar: 'core/workflow/template/timeParse',
   name: '时间语义化解析',
   intro:
     '将文本中的相对/模糊时间表达（如昨天、本周、近7天）解析为 yyyy-MM-dd；也支持输出时间范围 JSON。',
