@@ -82,6 +82,24 @@ const formatDateYYYYMMDD = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const PROMPT_NL2SQL_TIME_RANGE_RULES_EN = `Time range interpretation rules (when the user question contains fuzzy/relative time expressions, you MUST convert them into explicit dates or date ranges before writing SQL; date format MUST be YYYY-MM-DD). Use the "current date" provided in the prompt as the reference date:
+- "最近" = last 1 month (treat as past 30 days, inclusive of today)
+- "本周" = current week (Monday to Sunday)
+- "上周" = previous week (Monday to Sunday)
+- "本月" = current month (1st to last day of month)
+- "上月"/"上个月" = previous month (1st to last day of month)
+- "今天" = today
+- "昨天" = yesterday (today - 1 day)
+- "前天" = the day before yesterday (today - 2 days)
+- "近7天"/"最近一周" = past 7 days (inclusive of today)
+- "近30天"/"最近30天" = past 30 days (inclusive of today)
+- "今年" = current year (Jan 1 to Dec 31)
+- "去年" = last year (Jan 1 to Dec 31)
+
+Additional:
+- "N天前" = N days before today (e.g. "7天前")
+- For date ranges, prefer \`BETWEEN 'YYYY-MM-DD' AND 'YYYY-MM-DD'\` (inclusive) or equivalent \`>=\`/\`<=\`.`;
+
 export async function dispatchNL2SQL({
   user,
   node,
@@ -108,8 +126,10 @@ export async function dispatchNL2SQL({
     return buildErrorResponse('Question is empty');
   }
 
-  const finalSystemPrompt = systemPrompt?.trim() || PROMPT_NL2SQL_SYSTEM;
-  const currentDate = formatDateYYYYMMDD(new Date());
+  const now = new Date();
+  const currentDate = formatDateYYYYMMDD(now);
+  const baseSystemPrompt = (systemPrompt?.trim() || PROMPT_NL2SQL_SYSTEM).trim();
+  const finalSystemPrompt = `${baseSystemPrompt}\n\n${PROMPT_NL2SQL_TIME_RANGE_RULES_EN}\n`;
 
   const extraRules = nl2sqlUserPrompt?.trim();
   const relationFields = nl2sqlRelationFields?.trim();
