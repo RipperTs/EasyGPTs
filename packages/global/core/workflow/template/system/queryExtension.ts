@@ -21,7 +21,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
-  templateType: FlowNodeTemplateTypeEnum.other,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.queryExtension,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
