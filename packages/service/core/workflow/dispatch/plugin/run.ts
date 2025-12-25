@@ -66,28 +66,32 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     appId: String(plugin.id)
   };
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
-    ...props,
-    runningAppInfo: {
-      id: String(plugin.id),
-      teamId: plugin.teamId || '',
-      tmbId: pluginData?.tmbId || ''
-    },
-    variables: runtimeVariables,
-    query: getPluginRunUserQuery(plugin.nodes, runtimeVariables).value,
-    chatConfig: {},
-    runtimeNodes,
-    runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
-  });
+  const { flowResponses, flowUsages, assistantResponses, runTimes, toolResponses } =
+    await dispatchWorkFlow({
+      ...props,
+      runningAppInfo: {
+        id: String(plugin.id),
+        teamId: plugin.teamId || '',
+        tmbId: pluginData?.tmbId || ''
+      },
+      variables: runtimeVariables,
+      query: getPluginRunUserQuery(plugin.nodes, runtimeVariables).value,
+      chatConfig: {},
+      runtimeNodes,
+      runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
+    });
 
   const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
+  const terminateToolResponse =
+    toolResponses && typeof toolResponses === 'object' ? toolResponses : undefined;
 
   if (output) {
     output.moduleLogo = plugin.avatar;
   }
 
-  const isError = !!output?.pluginOutput?.error;
+  const isError = !!(output?.pluginOutput?.error || terminateToolResponse?.error);
   const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
+  const pluginOutput = output?.pluginOutput || terminateToolResponse;
 
   return {
     assistantResponses,
@@ -96,7 +100,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
       totalPoints: usagePoints,
-      pluginOutput: output?.pluginOutput,
+      pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === runningAppInfo.teamId
           ? flowResponses.filter((item) => {
@@ -112,7 +116,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         tokens: 0
       }
     ],
-    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput ? output.pluginOutput : {},
-    ...(output ? output.pluginOutput : {})
+    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput || {},
+    ...(pluginOutput || {})
   };
 };

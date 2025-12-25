@@ -56,7 +56,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode')),
   [FlowNodeTypeEnum.userSelect]: dynamic(() => import('./nodes/NodeUserSelect')),
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
-  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool'))
+  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool')),
+  [FlowNodeTypeEnum.terminateWorkflow]: NodeSimple
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge

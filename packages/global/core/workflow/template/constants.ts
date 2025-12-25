@@ -32,6 +32,7 @@ import { ToolSetNode } from './system/toolSet';
 import { RunToolNode } from './system/runTool';
 import { DatabaseConnectorModule } from './system/databaseConnector';
 import { NL2SQLModule } from './system/nl2sql';
+import { TerminateWorkflowModule } from './system/terminateWorkflow';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -51,7 +52,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   AiQueryExtension,
   IfElseNode,
   VariableUpdateNode,
-  CodeNode
+  CodeNode,
+  TerminateWorkflowModule
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [

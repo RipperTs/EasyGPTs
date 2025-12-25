@@ -195,6 +195,7 @@ export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
+  [DispatchNodeResponseKeyEnum.workflowStop]?: boolean;
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
 } & T;
 

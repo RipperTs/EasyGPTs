@@ -219,7 +219,10 @@ export enum NodeInputKeyEnum {
   fileUrlList = 'fileUrlList',
 
   // user select
-  userSelectOptions = 'userSelectOptions'
+  userSelectOptions = 'userSelectOptions',
+
+  // terminate workflow
+  terminateError = 'terminateError'
 }
 
 // AI 推理强度等级

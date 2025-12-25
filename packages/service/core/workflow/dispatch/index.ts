@@ -70,6 +70,7 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { dispatchRunAppNode } from './plugin/runApp';
+import { dispatchTerminateWorkflow } from './tools/terminateWorkflow';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -99,6 +100,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
   [FlowNodeTypeEnum.tool]: dispatchRunTool,
   [FlowNodeTypeEnum.toolSet]: dispatchRunToolSet,
+  [FlowNodeTypeEnum.terminateWorkflow]: dispatchTerminateWorkflow,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -176,6 +178,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let chatNodeUsages: ChatNodeUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType;
   let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
+  let workflowStopped = false;
   // 记录交互节点，交互节点需要在工作流完全结束后再进行计算
   let workflowInteractiveResponse:
     | {
@@ -373,9 +376,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     node: RuntimeNodeItemType,
     skippedNodeIdList = new Set<string>()
   ): Promise<RuntimeNodeItemType[]> {
-    if (res?.closed || props.maxRunTimes <= 0) return [];
+    if (workflowStopped || res?.closed || props.maxRunTimes <= 0) return [];
     // Thread avoidance
     await surrenderProcess();
+    if (workflowStopped || res?.closed || props.maxRunTimes <= 0) return [];
 
     addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, appId: props.runningAppInfo.id });
 
@@ -408,6 +412,49 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         entryNodeIds: [nodeRunResult.node.nodeId],
         interactiveResponse
       };
+      return [];
+    }
+
+    // Stop the workflow immediately (throws-like)
+    if (nodeRunResult.result?.[DispatchNodeResponseKeyEnum.workflowStop]) {
+      workflowStopped = true;
+
+      // store response and toolResponses
+      pushStore(nodeRunResult.node, nodeRunResult.result);
+
+      // Ensure plugin run output exists even if pluginOutput node didn't run
+      const pluginOutputNode = runtimeNodes.find(
+        (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
+      );
+      const stopToolResponses = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.toolResponses];
+      if (
+        pluginOutputNode &&
+        stopToolResponses &&
+        !chatResponses.some((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)
+      ) {
+        chatResponses.push({
+          id: getNanoid(),
+          nodeId: pluginOutputNode.nodeId,
+          moduleName: pluginOutputNode.name,
+          moduleType: pluginOutputNode.flowNodeType,
+          runningTime: 0,
+          pluginOutput: stopToolResponses
+        });
+      }
+
+      // prevent showing active edges after stop
+      runtimeEdges.forEach((edge) => {
+        if (edge.source === nodeRunResult.node.nodeId) {
+          edge.status = 'skipped';
+        }
+      });
+
+      // update output value
+      nodeRunResult.node.outputs.forEach((outputItem) => {
+        if (nodeRunResult.result[outputItem.key] === undefined) return;
+        outputItem.value = nodeRunResult.result[outputItem.key];
+      });
+
       return [];
     }
 
@@ -600,7 +647,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   const pluginOutputModule = runtimeNodes.find(
     (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
   );
-  if (pluginOutputModule && props.mode !== 'debug') {
+  if (pluginOutputModule && props.mode !== 'debug' && !workflowStopped) {
     await nodeRunWithActive(pluginOutputModule);
   }
 

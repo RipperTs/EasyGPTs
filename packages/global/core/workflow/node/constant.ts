@@ -128,6 +128,7 @@ export enum FlowNodeTypeEnum {
   customFeedback = 'customFeedback',
   readFiles = 'readFiles',
   userSelect = 'userSelect',
+  terminateWorkflow = 'terminateWorkflow',
   // mcp toolset
   tool = 'tool',
   toolSet = 'toolSet'
