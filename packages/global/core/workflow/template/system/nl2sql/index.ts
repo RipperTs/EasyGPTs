@@ -30,7 +30,7 @@ export const NL2SQLModule: FlowNodeTemplateType = {
   intro: '将用户的自然语言问题转换为对应的SQL查询语句，支持多种数据库类型。',
   showStatus: true,
   isTool: true,
-  version: '481',
+  version: '482',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -69,6 +69,17 @@ export const NL2SQLModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       description: '可选：补充表之间的关联字段/Join 关系说明。',
       placeholder: '例如：orders.user_id = users.id'
+    },
+    {
+      key: NodeInputKeyEnum.nl2sqlMaxRetry,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      valueType: WorkflowIOValueTypeEnum.number,
+      label: '自动重试次数',
+      description: '当 SQL 生成失败（空 SQL、非 SQL、模型异常等）时自动重试的最大次数，默认 3 次。',
+      required: true,
+      min: 1,
+      max: 10,
+      value: 3
     },
     {
       ...Input_Template_UserChatInput,

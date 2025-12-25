@@ -174,6 +174,7 @@ export enum NodeInputKeyEnum {
   nl2sqlDatabaseSchema = 'nl2sqlDatabaseSchema',
   nl2sqlRelationFields = 'nl2sqlRelationFields',
   nl2sqlUserPrompt = 'nl2sqlUserPrompt',
+  nl2sqlMaxRetry = 'nl2sqlMaxRetry',
 
   // database connector
   databaseType = 'system_databaseType',

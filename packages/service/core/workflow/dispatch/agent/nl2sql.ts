@@ -20,6 +20,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nl2sqlUserPrompt]?: string;
   [NodeInputKeyEnum.nl2sqlDatabaseSchema]: string;
   [NodeInputKeyEnum.nl2sqlRelationFields]?: string;
+  [NodeInputKeyEnum.nl2sqlMaxRetry]?: number;
   [NodeInputKeyEnum.userChatInput]: string;
 }>;
 
@@ -82,6 +83,32 @@ const formatDateYYYYMMDD = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const parseRetryTimes = (value: unknown, defaultValue = 3) => {
+  const num =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : defaultValue;
+
+  if (!Number.isFinite(num)) return defaultValue;
+
+  const rounded = Math.round(num);
+  return Math.min(Math.max(rounded, 1), 10);
+};
+
+const isSqlGenerationFailure = (sql: string) => {
+  const text = sql.trim();
+  if (!text) return true;
+
+  const normalized = text.toLowerCase();
+  if (normalized === 'i do not know' || normalized.startsWith('i do not know')) return true;
+
+  return !/^(select|with|insert|update|delete|create|drop|alter|pragma|show|explain|describe)\b/i.test(
+    text
+  );
+};
+
 const PROMPT_NL2SQL_TIME_RANGE_RULES_EN = `Time range interpretation rules (when the user question contains fuzzy/relative time expressions, you MUST convert them into explicit dates or date ranges before writing SQL; date format MUST be YYYY-MM-DD). Use the "current date" provided in the prompt as the reference date:
 - "最近" = last 1 month (treat as past 30 days, inclusive of today)
 - "本周" = current week (Monday to Sunday)
@@ -109,6 +136,7 @@ export async function dispatchNL2SQL({
     nl2sqlUserPrompt,
     nl2sqlDatabaseSchema,
     nl2sqlRelationFields,
+    nl2sqlMaxRetry,
     userChatInput
   }
 }: Props): Promise<Response> {
@@ -130,6 +158,7 @@ export async function dispatchNL2SQL({
   const currentDate = formatDateYYYYMMDD(now);
   const baseSystemPrompt = (systemPrompt?.trim() || PROMPT_NL2SQL_SYSTEM).trim();
   const finalSystemPrompt = `${baseSystemPrompt}\n\n${PROMPT_NL2SQL_TIME_RANGE_RULES_EN}\n`;
+  const maxAttempts = parseRetryTimes(nl2sqlMaxRetry, 3);
 
   const extraRules = nl2sqlUserPrompt?.trim();
   const relationFields = nl2sqlRelationFields?.trim();
@@ -165,118 +194,126 @@ The following SQL query best answers the question: \`${userChatInput}\`:
     timeout: 480000
   });
 
-  let tokens = 0;
-  try {
-    const response = await ai.chat.completions.create({
-      model: llmModel.model,
-      temperature: 0.01,
-      messages: messages as SdkChatCompletionMessageParam[],
-      stream: false
-    });
+  let totalTokens = 0;
+  let fallbackTokens: number | undefined;
+  let lastRaw = '';
+  let lastErrText = '';
 
-    tokens = response.usage?.total_tokens ?? (await countGptMessagesTokens(messages));
-
-    const raw = response.choices?.[0]?.message?.content || '';
-    const sql = extractSqlFromModelOutput(raw);
-
-    if (!sql) {
-      return buildErrorResponse('Empty SQL output', {
-        query: userChatInput,
-        pluginOutput: { sql: '', error: 'Empty SQL output', userPrompt },
-        nodeInputs: {
-          systemPrompt: finalSystemPrompt,
-          userPrompt,
-          databaseSchema: nl2sqlDatabaseSchema,
-          relationFields
-        },
-        nodeOutputs: {
-          model: llmModel.model,
-          tokens,
-          rawResponse: raw
-        }
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await ai.chat.completions.create({
+        model: llmModel.model,
+        temperature: 0.01,
+        messages: messages as SdkChatCompletionMessageParam[],
+        stream: false
       });
-    }
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: llmModel.model,
-      tokens,
-      modelType: ModelTypeEnum.llm
-    });
+      let attemptTokens = response.usage?.total_tokens;
+      if (attemptTokens === undefined) {
+        if (fallbackTokens === undefined) {
+          fallbackTokens = await countGptMessagesTokens(messages);
+        }
+        attemptTokens = fallbackTokens;
+      }
+      totalTokens += attemptTokens;
 
-    const pluginOutput = { sql, error: '', userPrompt };
+      lastRaw = response.choices?.[0]?.message?.content || '';
+      const sql = extractSqlFromModelOutput(lastRaw);
 
-    return {
-      [NodeOutputKeyEnum.sql]: sql,
-      [NodeOutputKeyEnum.error]: '',
-      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
-        model: modelName,
-        tokens,
-        query: userChatInput,
-        nodeInputs: {
-          systemPrompt: finalSystemPrompt,
-          userPrompt,
-          databaseSchema: nl2sqlDatabaseSchema,
-          relationFields
-        },
-        nodeOutputs: {
-          rawResponse: raw
-        },
-        pluginOutput,
-        textOutput: sql
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: node.name,
+      if (!sql || isSqlGenerationFailure(sql)) {
+        lastErrText = !sql ? 'Empty SQL output' : 'SQL generation failed';
+        continue;
+      }
+
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: llmModel.model,
+        tokens: totalTokens,
+        modelType: ModelTypeEnum.llm
+      });
+
+      const pluginOutput = { sql, error: '', userPrompt };
+
+      return {
+        [NodeOutputKeyEnum.sql]: sql,
+        [NodeOutputKeyEnum.error]: '',
+        [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
           totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
           model: modelName,
-          tokens
-        }
-      ]
-    };
-  } catch (error) {
-    const errText = getErrText(error, 'NL2SQL error');
-
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: llmModel.model,
-      tokens,
-      modelType: ModelTypeEnum.llm
-    });
-
-    const pluginOutput = { sql: '', error: errText, userPrompt };
-
-    return {
-      [NodeOutputKeyEnum.sql]: '',
-      [NodeOutputKeyEnum.error]: errText,
-      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
-        model: modelName,
-        tokens,
-        query: userChatInput,
-        errorText: errText,
-        error: { message: errText },
-        nodeInputs: {
-          systemPrompt: finalSystemPrompt,
-          userPrompt,
-          databaseSchema: nl2sqlDatabaseSchema,
-          relationFields
+          tokens: totalTokens,
+          query: userChatInput,
+          nodeInputs: {
+            systemPrompt: finalSystemPrompt,
+            userPrompt,
+            databaseSchema: nl2sqlDatabaseSchema,
+            relationFields,
+            maxRetry: maxAttempts
+          },
+          nodeOutputs: {
+            rawResponse: lastRaw,
+            attempts: attempt
+          },
+          pluginOutput,
+          textOutput: sql
         },
-        pluginOutput,
-        textOutput: errText
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
-        tokens > 0
-          ? [
-              {
-                moduleName: node.name,
-                totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
-                model: modelName,
-                tokens
-              }
-            ]
-          : []
-    };
+        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+          {
+            moduleName: node.name,
+            totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+            model: modelName,
+            tokens: totalTokens
+          }
+        ]
+      };
+    } catch (error) {
+      lastErrText = getErrText(error, 'NL2SQL error');
+    }
   }
+
+  const finalErrText = lastErrText || 'NL2SQL error';
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: llmModel.model,
+    tokens: totalTokens,
+    modelType: ModelTypeEnum.llm
+  });
+
+  const pluginOutput = { sql: '', error: finalErrText, userPrompt };
+
+  return {
+    [NodeOutputKeyEnum.sql]: '',
+    [NodeOutputKeyEnum.error]: finalErrText,
+    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      model: modelName,
+      tokens: totalTokens,
+      query: userChatInput,
+      errorText: finalErrText,
+      error: { message: finalErrText },
+      nodeInputs: {
+        systemPrompt: finalSystemPrompt,
+        userPrompt,
+        databaseSchema: nl2sqlDatabaseSchema,
+        relationFields,
+        maxRetry: maxAttempts
+      },
+      nodeOutputs: {
+        rawResponse: lastRaw,
+        attempts: maxAttempts
+      },
+      pluginOutput,
+      textOutput: finalErrText
+    },
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
+      totalTokens > 0
+        ? [
+            {
+              moduleName: node.name,
+              totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+              model: modelName,
+              tokens: totalTokens
+            }
+          ]
+        : []
+  };
 }
