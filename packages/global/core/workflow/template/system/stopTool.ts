@@ -6,7 +6,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 
 export const StopToolNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.stopTool,
-  templateType: FlowNodeTemplateTypeEnum.ai,
+  templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.stopTool,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, true, true, true),
