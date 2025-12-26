@@ -51,6 +51,16 @@ type RawResponse = {
   summaryResponse?: string;
 };
 
+// Task Analyzer result type
+type TaskAnalysisResult = {
+  complexity: 'simple' | 'complex';
+  reason: string;
+  tokens: number;
+};
+
+// Task type for Summarizer adaptation
+type TaskType = 'code' | 'research' | 'data' | 'general';
+
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.reasoningText]?: string;
@@ -183,13 +193,51 @@ const parseStepsFromModelText = (text: string, maxSteps: number): string[] => {
   return [];
 };
 
-// Planner 偶发会把“总结/最终答复”写进 steps，但它不应作为 Executor 的可执行子任务（最终交付应由 Replanner/Reply 层生成）
+// Planner may include "summary/final reply" steps, but these should not be executable sub-tasks
 const isReplyLikeStep = (step: string) => {
-  const s = normalizeStepText(step);
+  const s = normalizeStepText(step).toLowerCase();
   if (!s) return false;
-  return /(回复用户|面向用户|总结以上|汇总以上|整理以上|(?:输出|给出|生成|整理|撰写|形成).*(?:最终)?.*(?:答复|回复|回答|答案|结果|总结|方案|报告|行程|计划)|最终.*(?:答复|回复|回答|答案|结果|总结|输出))/.test(
-    s
-  );
+  // Chinese patterns
+  const chinesePattern =
+    /(回复用户|面向用户|总结以上|汇总以上|整理以上|(?:输出|给出|生成|整理|撰写|形成).*(?:最终)?.*(?:答复|回复|回答|答案|结果|总结|方案|报告|行程|计划)|最终.*(?:答复|回复|回答|答案|结果|总结|输出))/;
+  // English patterns
+  const englishPattern =
+    /(summarize|summarise|summary|conclude|conclusion|final\s*(answer|response|reply)|respond\s*to\s*user|present\s*(findings|results)|compile\s*results)/i;
+  return chinesePattern.test(s) || englishPattern.test(s);
+};
+
+// Infer task type from goal for Summarizer adaptation
+const inferTaskType = (goal: string): TaskType => {
+  const lowerGoal = goal.toLowerCase();
+
+  // Code/Engineering patterns
+  if (
+    /code|implement|fix|bug|develop|api|function|class|module|build|deploy|代码|编程|实现|开发|功能|接口/.test(
+      lowerGoal
+    )
+  ) {
+    return 'code';
+  }
+
+  // Research patterns
+  if (
+    /research|investigate|explore|study|compare|review|analyze\s+.*\s+(?:options|approaches)|研究|调查|了解|查找|搜索/.test(
+      lowerGoal
+    )
+  ) {
+    return 'research';
+  }
+
+  // Data patterns
+  if (
+    /data|statistics|numbers|calculate|trend|metric|analytics|report|chart|数据|分析|统计|查询|计算/.test(
+      lowerGoal
+    )
+  ) {
+    return 'data';
+  }
+
+  return 'general';
 };
 
 const normalizePlannerSteps = (steps: string[], maxPlanSteps: number) =>
@@ -237,7 +285,96 @@ const buildStepResultSynthesisPrompt = (params: {
   toolText: string;
 }) => {
   const { goal, step, toolText } = params;
-  return `用户目标：${goal}\n\n当前步骤：${step}\n\n工具调用结果（节选）：\n${toolText || '（无）'}\n\n请输出“本步骤的最终结果”（中文，1~4 句，必须有内容，不要输出思考过程/计划/JSON/代码块）：`;
+  return `Goal: ${goal}\n\nCurrent step: ${step}\n\nTool results (excerpt):\n${toolText || '(None)'}\n\nOutput the result of this step (1-4 sentences, concrete facts only, no JSON/code blocks):`;
+};
+
+// Task Analyzer: Determine if task is simple (direct answer) or complex (needs planning)
+const callTaskAnalyzer = async (params: {
+  modelKey: string;
+  goal: string;
+  toolNodes: RuntimeNodeItemType[];
+}): Promise<TaskAnalysisResult> => {
+  const { modelKey, goal, toolNodes } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) return { complexity: 'simple', reason: 'No model available', tokens: 0 };
+
+  const toolsText =
+    toolNodes.length === 0
+      ? '(No tools available)'
+      : toolNodes
+          .map((t, i) => `${i + 1}. ${t.name || t.nodeId}: ${t.intro || 'No description'}`)
+          .join('\n');
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `You are a Task Complexity Analyzer. Analyze if a user's goal requires simple or complex planning.
+
+**SIMPLE tasks** (output: "simple"):
+- Direct questions with clear, immediate answers
+- Single-step operations or lookups
+- Questions answerable with general knowledge alone
+- Tasks requiring only ONE tool call
+
+**COMPLEX tasks** (output: "complex"):
+- Multi-step reasoning or sequential operations
+- Multiple tools or data sources needed
+- Tasks with dependencies between steps
+- Comparative analysis or synthesis required
+
+Output JSON only: {"complexity": "simple"|"complex", "reason": "brief explanation"}`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `## User Goal
+${goal}
+
+## Available Tools
+${toolsText}
+
+Analyze complexity and output JSON:`
+    }
+  ];
+
+  const ai = getAIApi({ timeout: 60000 });
+  const requestBody: Record<string, unknown> = {
+    ...model.defaultConfig,
+    model: model.model,
+    temperature: 0,
+    max_tokens: 150,
+    stream: false,
+    messages
+  };
+
+  try {
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+
+    const content = resp.choices?.[0]?.message?.content || '';
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+
+    const jsonStr = extractFirstJsonValue(content) || content.trim();
+    const parsed = json5.parse(jsonStr) as unknown;
+
+    if (parsed && typeof parsed === 'object') {
+      const obj = parsed as { complexity?: unknown; reason?: unknown };
+      return {
+        complexity: obj.complexity === 'complex' ? 'complex' : 'simple',
+        reason: typeof obj.reason === 'string' ? obj.reason : '',
+        tokens
+      };
+    }
+  } catch {
+    // Default to simple on parse failure
+  }
+
+  return { complexity: 'simple', reason: 'Analysis failed, defaulting to simple', tokens: 0 };
 };
 
 const callStepResultSynthesis = async (params: {
@@ -319,27 +456,85 @@ const callStepResultSynthesis = async (params: {
 
 const buildSummarizerUserPrompt = (params: {
   goal: string;
+  taskType: TaskType;
   baseResponse: string;
   pastSteps: { step: string; result: string }[];
 }) => {
-  const { goal, baseResponse, pastSteps } = params;
+  const { goal, taskType, baseResponse, pastSteps } = params;
+
   const pastText =
     pastSteps.length === 0
-      ? '（无）'
+      ? '(No execution steps)'
       : pastSteps
-          .map(
-            (p, i) =>
-              `#${i + 1} ${normalizeStepText(p.step)}\n结果：${truncateText(p.result, 1200) || '（无）'}`
-          )
+          .map((p, i) => {
+            const truncatedResult = truncateText(p.result, 800);
+            return `**Step ${i + 1}**: ${normalizeStepText(p.step)}\n${truncatedResult || '(No result)'}`;
+          })
           .join('\n\n');
 
-  return `用户问题：${goal}\n\n子任务执行结果：\n${pastText}\n\n当前已给出的答复：\n${truncateText(baseResponse, 2000)}\n\n请基于“用户问题 + 子任务结果 + 当前答复”，输出一份更专业、更结构化的总结回复（中文）。要求：\n- 不要输出待办清单、JSON、代码块\n- 不要杜撰事实；信息不足要明确说明缺口\n- 重点包括：结论/建议、关键依据、下一步（如需要）`;
+  const formatGuidance: Record<TaskType, string> = {
+    code: `**Code/Engineering Task Guidelines**:
+- What changed: files/modules modified, core changes
+- Technical approach: stack, patterns, key implementation details
+- Verification: how to test/run, expected behavior
+- Caveats: deployment requirements, risks, future improvements`,
+
+    research: `**Research/Investigation Task Guidelines**:
+- Key findings: important facts and discoveries
+- Source reliability: authority and credibility of sources
+- Multiple perspectives: compare different viewpoints
+- Recommendations: actionable suggestions based on research`,
+
+    data: `**Data Analysis Task Guidelines**:
+- Core insights: key numbers, trends, anomalies
+- Analysis conclusions: what the data tells us
+- Data quality: reliability and timeliness notes
+- Limitations: scope, data constraints, uncertainties`,
+
+    general: `**General Task Guidelines**:
+- Core answer: direct response to user's question
+- Key evidence: main supporting facts and reasoning
+- Additional context: relevant background or suggestions
+- Limitations: note any information gaps`
+  };
+
+  return `You are a Response Synthesizer. Transform execution results into a polished, user-facing response.
+
+## User's Original Question
+${goal}
+
+## Task Type
+${taskType.toUpperCase()}
+
+${formatGuidance[taskType]}
+
+## Execution Details
+${pastText}
+
+## Preliminary Response
+${truncateText(baseResponse, 1200)}
+
+## Synthesis Requirements
+
+1. **User-Centric**: Write for the user, not as an execution report
+2. **Information Hierarchy**: Lead with core answer, follow with supporting details
+3. **No Repetition**: Don't restate the question or echo step-by-step narrative
+4. **Appropriate Length**: 200-500 words (adjust based on complexity)
+
+## Prohibited
+- JSON output or code blocks (unless user specifically requested code)
+- To-do lists or execution plans
+- Using H1 markdown headers (#)
+- Repeating the preliminary response verbatim
+
+Synthesize a professional response:`;
 };
 
 const callSummarizer = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
+  taskType: TaskType;
   baseResponse: string;
   pastSteps: { step: string; result: string }[];
   enableReasoning: boolean;
@@ -351,6 +546,7 @@ const callSummarizer = async (params: {
     modelKey,
     systemPrompt,
     goal,
+    taskType,
     baseResponse,
     pastSteps,
     enableReasoning,
@@ -365,11 +561,23 @@ const callSummarizer = async (params: {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个总结器（Summarizer）。你的任务是基于“用户问题 + 已执行步骤结果 + 当前答复”整理出一份更专业的总结回复。`
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Response Synthesizer for a Plan-and-Execute agent. Your role is to transform execution results into a polished, user-facing response.
+
+## Core Capabilities
+1. **Information Distillation**: Extract core value from execution details
+2. **Logical Restructuring**: Reorganize information to match user's mental model
+3. **Adaptive Expression**: Adjust style and focus based on task type
+4. **Objective Accuracy**: Don't add unverified information, acknowledge limitations
+
+## Synthesis Principles
+- **User Perspective**: Provide decision support from user's viewpoint
+- **Value First**: Highlight the most valuable information and recommendations
+- **Professional Brevity**: Avoid redundancy and jargon
+- **Honest Transparency**: Clearly state when information is incomplete`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: buildSummarizerUserPrompt({ goal, baseResponse, pastSteps })
+      content: buildSummarizerUserPrompt({ goal, taskType, baseResponse, pastSteps })
     }
   ];
 
@@ -458,6 +666,7 @@ const callPlanner = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
+  complexity: 'simple' | 'complex';
   maxPlanSteps: number;
   toolNodes: RuntimeNodeItemType[];
   enableReasoning: boolean;
@@ -467,6 +676,7 @@ const callPlanner = async (params: {
     modelKey,
     systemPrompt,
     goal,
+    complexity,
     maxPlanSteps,
     toolNodes,
     enableReasoning,
@@ -476,28 +686,65 @@ const callPlanner = async (params: {
   const model = getLLMModel(modelKey);
   if (!model) return { steps: [], tokens: 0 };
 
+  // Build detailed tool descriptions
   const toolsText =
     toolNodes.length === 0
-      ? '（无）'
+      ? '(No tools available - plan based on general knowledge)'
       : toolNodes
-          .map((t, i) => `${i + 1}. ${t.name || t.nodeId}${t.intro ? `：${t.intro}` : ''}`)
+          .map((t, i) => {
+            const toolName = t.name || t.nodeId;
+            const toolIntro = t.intro || '';
+            return `${i + 1}. **${toolName}**${toolIntro ? `: ${toolIntro}` : ''}`;
+          })
           .join('\n');
+
+  // Adaptive step limits based on complexity
+  const stepRange = complexity === 'simple' ? '1-2' : `2-${Math.min(maxPlanSteps, 6)}`;
 
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个规划器（Planner）。请把用户目标拆成可执行的多步计划，便于后续逐步调用工具完成。
-要求：
-- 只输出严格 JSON，不要输出其它文字
-- JSON 格式：{"steps":["..."]}
-- 步骤用中文，一步一句，尽量具体、可执行
-- 步数 1~${maxPlanSteps}，优先 3~${Math.min(maxPlanSteps, 6)} 步
-- 不要重复同一句步骤（步骤需要去重）
-- 不要包含任何“收尾/成文/面向用户输出”的步骤，例如：总结以上信息、汇总成最终答复、输出最终答案、回复用户等（最终交付由后续 Reply+总结层负责）`
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are an Advanced Task Planner. Your role is to decompose user goals into clear, actionable execution steps.
+
+## Planning Principles
+
+1. **Tool-Aware Planning**: Match each step to available tool capabilities. If a tool can accomplish the step, reference it explicitly.
+
+2. **Dependency Analysis**: Identify which steps depend on outputs from previous steps. Ensure logical ordering.
+
+3. **Adaptive Granularity**:
+   - SIMPLE tasks: ${stepRange} steps maximum
+   - Each step should be atomic and executable
+
+4. **Actionable Steps**: Each step must:
+   - Start with an action verb (搜索, 查询, 计算, 对比, 提取, 分析, etc.)
+   - Specify the target data or operation clearly
+   - Be self-contained with necessary context
+
+## Anti-patterns to AVOID
+- "总结结果" / "回复用户" / "汇总发现" (handled by system)
+- Redundant steps that repeat earlier work
+- Overly granular steps that should be combined
+- Steps without clear actions or outputs
+
+## Language Requirement
+**IMPORTANT: All step descriptions MUST be written in Chinese (简体中文).**
+
+## Output Format
+Respond with JSON only: {"steps": ["步骤1描述", "步骤2描述", ...]}`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `用户目标：${goal}\n\n可用工具：\n${toolsText}\n\n请输出 JSON：`
+      content: `## 用户目标
+${goal}
+
+## 任务复杂度
+${complexity.toUpperCase()} - 相应规划 (${stepRange} 步)
+
+## 可用工具
+${toolsText}
+
+生成执行计划 (仅输出JSON，步骤描述必须使用中文):`
     }
   ];
 
@@ -535,14 +782,22 @@ const callPlanner = async (params: {
   };
 };
 
+// Simplified Replanner: only 2 decisions (respond or continue)
 type ReplanResult =
-  | { action: 'response'; response: string; tokens: number; reasoningText?: string }
-  | { action: 'plan'; steps: string[]; tokens: number; reasoningText?: string };
+  | { action: 'respond'; response: string; tokens: number; reasoningText?: string }
+  | {
+      action: 'continue';
+      steps: string[];
+      progress: string;
+      tokens: number;
+      reasoningText?: string;
+    };
 
 const callReplanner = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
+  originalPlan: string[];
   currentPlan: string[];
   pastSteps: { step: string; result: string }[];
   maxPlanSteps: number;
@@ -553,6 +808,7 @@ const callReplanner = async (params: {
     modelKey,
     systemPrompt,
     goal,
+    originalPlan,
     currentPlan,
     pastSteps,
     maxPlanSteps,
@@ -563,38 +819,83 @@ const callReplanner = async (params: {
   const model = getLLMModel(modelKey);
   if (!model) {
     return {
-      action: 'response',
+      action: 'respond',
       response: pastSteps[pastSteps.length - 1]?.result || '',
       tokens: 0
     };
   }
 
+  // Calculate progress
+  const completionRate =
+    originalPlan.length > 0
+      ? Math.round((pastSteps.length / originalPlan.length) * 100)
+      : pastSteps.length > 0
+        ? 100
+        : 0;
+
   const pastText =
     pastSteps.length === 0
-      ? '（无）'
-      : pastSteps.map((p, i) => `#${i + 1} 步骤：${p.step}\n结果：${p.result}`).join('\n\n');
+      ? '(No completed steps)'
+      : pastSteps
+          .map((p, i) => `✓ Step ${i + 1}: ${p.step}\n   Result: ${truncateText(p.result, 500)}`)
+          .join('\n\n');
 
   const planText =
-    currentPlan.length === 0 ? '（无）' : currentPlan.map((s, i) => `${i + 1}. ${s}`).join('\n');
+    currentPlan.length === 0
+      ? '(All planned steps complete)'
+      : currentPlan.map((s, i) => `○ ${i + 1}. ${s}`).join('\n');
 
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个 Replanner/Responder。根据目标、剩余计划、已完成步骤的结果，决定下一步。
-	你必须二选一输出（只输出严格 JSON，不要输出其它文字）：
-	1) {"action":"response","response":"..."}：已经可以直接回答用户
-	2) {"action":"plan","steps":["..."]}：还需要继续执行；steps 只包含“剩余需要做的步骤”，不要重复已完成的步骤；步数 1~${maxPlanSteps}
-	重要规则：
-	- 只有当“当前剩余计划”为（无）时，你才允许输出 action=response；否则必须输出 action=plan。
-	- 当 action=response 时，response 输出“最终交付说明”：
-	  - 必须包含：面向用户的最终答复
-	  - 需要包含：关键依据（精简）
-	  - 若目标是工程/代码类：补充改动点概述、如何运行/验证、风险与注意事项
-	  - 禁止输出 JSON、代码块、Markdown 标题、以及任何以 { 或 [ 开头的内容。`
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Progress Evaluator for a Plan-and-Execute agent. After each step, decide whether to RESPOND to the user or CONTINUE execution.
+
+## Decision Framework
+
+### Choose "respond" when:
+- The user's question has been FULLY answered
+- Sufficient information has been gathered for a complete response
+- All critical steps are complete AND goal is achieved
+- Continuing would provide diminishing returns
+
+### Choose "continue" when:
+- Critical information is still missing
+- More steps are needed to achieve the goal
+- Current results are incomplete or insufficient
+- Plan needs adjustment based on new findings
+
+## Output Format (JSON only)
+
+**To respond to user:**
+{"action": "respond", "response": "Your complete, user-facing answer..."}
+
+**To continue execution:**
+{"action": "continue", "steps": ["Remaining or adjusted steps..."], "progress": "X% complete, need Y"}
+
+## Critical Rules
+- "response" must be a direct, user-facing answer (NOT JSON, NOT code blocks unless requested)
+- "steps" should only contain REMAINING steps, never completed ones
+- If "steps" array is empty but action is "continue", use the original remaining plan
+- Evaluate "can we answer the user NOW?" not "have we completed all steps?"`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `用户目标：${goal}\n\n当前剩余计划：\n${planText}\n\n已完成步骤：\n${pastText}\n\n请输出 JSON：`
+      content: `## User Goal
+${goal}
+
+## Execution Progress (${completionRate}% of plan complete)
+
+### Completed Steps
+${pastText}
+
+### Remaining Steps
+${planText}
+
+## Decision Required
+Based on the completed steps, can you provide a satisfactory answer to the user?
+Or is more execution needed?
+
+Output your decision (JSON only):`
     }
   ];
 
@@ -634,61 +935,232 @@ const callReplanner = async (params: {
         response?: unknown;
         steps?: unknown;
         plan?: unknown;
+        progress?: unknown;
       };
       const action = typeof obj.action === 'string' ? obj.action : '';
-      if (action === 'response' && typeof obj.response === 'string') {
+
+      if (action === 'respond' && typeof obj.response === 'string') {
         return {
-          action: 'response',
+          action: 'respond',
           response: obj.response.trim(),
           tokens,
           reasoningText: reasoning
         };
       }
-      if (action === 'plan') {
+
+      if (action === 'continue') {
         const steps = normalizeSteps(obj.steps ?? obj.plan, maxPlanSteps);
-        return { action: 'plan', steps, tokens, reasoningText: reasoning };
+        const progress =
+          typeof obj.progress === 'string' ? obj.progress : `${completionRate}% complete`;
+        return { action: 'continue', steps, progress, tokens, reasoningText: reasoning };
       }
     }
   } catch {}
 
-  // 解析失败时，不把原始内容透传给用户（很可能是半截 JSON / 杂质文本），直接继续执行
-  return { action: 'plan', steps: [], tokens, reasoningText: reasoning };
+  // Parse failure: default to continue with current plan
+  return {
+    action: 'continue',
+    steps: [],
+    progress: `${completionRate}% complete`,
+    tokens,
+    reasoningText: reasoning
+  };
+};
+
+type CriticResult = {
+  score: number; // 0-10 score for execution quality
+  issues: string[]; // List of identified issues
+  suggestion: string; // Improvement suggestion
+  tokens: number;
+};
+
+// Critic: Critical evaluation of step execution quality
+const callCritic = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  step: string;
+  result: string;
+  toolText: string;
+}): Promise<CriticResult> => {
+  const { modelKey, systemPrompt, goal, step, result, toolText } = params;
+
+  const model = getLLMModel(modelKey);
+  if (!model) return { score: 5, issues: [], suggestion: '', tokens: 0 };
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Critical Evaluator (Critic). Your role is to assess the quality of task execution.
+
+## Evaluation Criteria
+
+1. **Completeness**: Did it accomplish everything the step required?
+2. **Accuracy**: Is the information accurate and reliable? Any obvious errors?
+3. **Relevance**: Is the result relevant to the user's goal and current step?
+4. **Usefulness**: Does it contain enough detail to support subsequent decisions?
+
+## Output Format (JSON only)
+{
+  "score": 0-10,
+  "issues": ["Issue 1", "Issue 2"],
+  "suggestion": "Improvement suggestion"
+}
+
+## Scoring Guide
+- 9-10: Excellent execution, complete and accurate, no issues
+- 7-8: Good execution, minor flaws but doesn't affect overall quality
+- 5-6: Basic completion, but has notable gaps or missing information
+- 3-4: Poor execution, low quality results or off-target
+- 0-2: Failed execution, no valid results or serious errors`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `## User Goal
+${goal}
+
+## Current Step
+${step}
+
+## Execution Result
+${truncateText(result, 800)}
+
+## Tool Usage
+${toolText || '(No tools used)'}
+
+## Task
+Evaluate the quality of this step's execution. Output JSON only:`
+    }
+  ];
+
+  try {
+    const ai = getAIApi({ timeout: 480000 });
+    const requestBody: Record<string, unknown> = {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: computedTemperature({ model, temperature: 0.1 }),
+      max_tokens: computedMaxToken({ model, maxToken: 400 }),
+      stream: false,
+      messages
+    };
+
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+
+    const content = resp.choices?.[0]?.message?.content || '';
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+
+    const jsonStr = extractFirstJsonValue(content) || content.trim();
+    const parsed = json5.parse(jsonStr) as unknown;
+
+    if (parsed && typeof parsed === 'object') {
+      const obj = parsed as {
+        score?: unknown;
+        issues?: unknown;
+        suggestion?: unknown;
+      };
+
+      const score =
+        typeof obj.score === 'number'
+          ? Math.max(0, Math.min(10, obj.score))
+          : typeof obj.score === 'string'
+            ? Math.max(0, Math.min(10, parseFloat(obj.score) || 5))
+            : 5;
+
+      const issues = Array.isArray(obj.issues)
+        ? obj.issues.filter((i): i is string => typeof i === 'string')
+        : [];
+
+      const suggestion = typeof obj.suggestion === 'string' ? obj.suggestion.trim() : '';
+
+      return { score, issues, suggestion, tokens };
+    }
+  } catch {
+    // If evaluation fails, return default medium score
+    return { score: 5, issues: [], suggestion: '', tokens: 0 };
+  }
+
+  return { score: 5, issues: [], suggestion: '', tokens: 0 };
 };
 
 const buildExecutorPrompt = (params: {
   goal: string;
   step: string;
+  stepNumber: number;
+  totalSteps: number;
   remainingPlan: string[];
   pastSteps: { step: string; result: string }[];
 }) => {
-  const { goal, step, remainingPlan, pastSteps } = params;
+  const { goal, step, stepNumber, totalSteps, remainingPlan, pastSteps } = params;
 
   const remainingText =
     remainingPlan.length === 0
-      ? '（无）'
+      ? '(This is the final step)'
       : remainingPlan.map((s, i) => `${i + 1}. ${s}`).join('\n');
-  const pastForPrompt = pastSteps.slice(-6);
+
+  const pastForPrompt = pastSteps.slice(-4);
   const pastText =
     pastForPrompt.length === 0
-      ? '（无）'
+      ? '(None)'
       : pastForPrompt
           .map(
-            (p, i) => `#${i + 1} ${p.step}\n结果：${truncateText(p.result || '', 1200) || '（无）'}`
+            (p, i) =>
+              `✓ Step ${i + 1}: ${p.step}\n   Result: ${truncateText(p.result || '', 800) || '(No result)'}`
           )
           .join('\n\n');
 
-  return `你是一个执行器（Executor），只需要完成“当前步骤”，必要时可以调用工具。请用简洁中文输出本步骤结果（建议 <=200 字），不要输出计划本身。
+  return `You are a Task Executor within a Plan-and-Execute agent. Complete the current step efficiently and accurately.
 
-用户目标：${goal}
+## Execution Rules
 
-已完成步骤：
+1. **Tool-First Approach**:
+   - ALWAYS use available tools when they can provide accurate information
+   - NEVER guess or fabricate data that tools could retrieve
+   - If unsure, use tools to verify before responding
+
+2. **Step Focus**:
+   - Complete ONLY the current step, not future steps
+   - Use context from past steps, but don't repeat their work
+   - Stay within the scope of this step's objective
+
+3. **Self-Verification**:
+   - Validate tool outputs before accepting them
+   - If tool returns empty/error, report clearly
+   - Cross-check data when multiple sources available
+
+4. **Clear Reporting**:
+   - State what was accomplished with specific data
+   - Include key numbers, facts, or findings
+   - Keep response focused (under 300 words unless complex data)
+   - Report failures honestly with specifics
+
+## Context
+
+**Overall Goal**: ${goal}
+
+**Progress**: Step ${stepNumber} of ${totalSteps}
+
+**Completed Steps**:
 ${pastText}
 
-剩余计划：
+**Remaining Steps**:
 ${remainingText}
 
-当前步骤：${step}
-`;
+## Current Step (EXECUTE THIS)
+${step}
+
+## Output Requirements
+- Provide concrete results, not just "completed" or "done"
+- Include relevant data points and facts discovered
+- If blocked, explain exactly what went wrong
+
+Execute the current step now:`;
 };
 
 const renderTodoMarkdown = (params: {
@@ -812,28 +1284,127 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     .map((id) => runtimeNodes.find((n) => n.nodeId === id))
     .filter((n): n is RuntimeNodeItemType => !!n);
 
-  // planner
+  // Infer task type for Summarizer
+  const taskType = inferTaskType(userChatInput);
+
+  // Step 1: Analyze task complexity
+  const analysis = await callTaskAnalyzer({
+    modelKey,
+    goal: userChatInput,
+    toolNodes
+  });
+
+  let totalTokens = analysis.tokens;
+  let totalRunTimes = 1;
+  let reasoningText = '';
+
+  // For SIMPLE tasks, directly execute without full plan-execute loop
+  if (analysis.complexity === 'simple') {
+    const simpleResult = await dispatchRunTools({
+      ...props,
+      params: {
+        model: modelKey,
+        temperature: props.params.temperature,
+        maxToken: props.params.maxToken,
+        aiChatVision: props.params.aiChatVision,
+        aiChatReasoning: props.params.aiChatReasoning,
+        aiChatReasoningEffort: props.params.aiChatReasoningEffort,
+        history,
+        systemPrompt: systemPrompt || '',
+        userChatInput
+      },
+      histories
+    });
+
+    const simpleAnswer = (simpleResult[NodeOutputKeyEnum.answerText] || '').trim();
+    const simpleReasoning = simpleResult[NodeOutputKeyEnum.reasoningText] || '';
+    const simpleNodeResponse = simpleResult[DispatchNodeResponseKeyEnum.nodeResponse];
+    const simpleUsages = simpleResult[DispatchNodeResponseKeyEnum.nodeDispatchUsages] || [];
+
+    totalTokens += simpleNodeResponse?.toolCallTokens || 0;
+    totalRunTimes += simpleResult[DispatchNodeResponseKeyEnum.runTimes] || 1;
+
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelKey,
+      tokens: totalTokens,
+      modelType: ModelTypeEnum.llm
+    });
+
+    const simpleAssistant = simpleResult[DispatchNodeResponseKeyEnum.assistantResponses] || [];
+    const previewToolItems = filterToolResponseToPreview(pickToolItems(simpleAssistant));
+
+    const finalAssistantResponses: AIChatItemValueItemType[] = [
+      ...(simpleReasoning
+        ? [
+            {
+              type: ChatItemValueTypeEnum.reasoning as AIChatItemValueItemType['type'],
+              reasoning: { content: simpleReasoning }
+            }
+          ]
+        : []),
+      ...previewToolItems,
+      {
+        type: ChatItemValueTypeEnum.text as AIChatItemValueItemType['type'],
+        text: { content: simpleAnswer }
+      }
+    ];
+
+    return {
+      [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
+      [NodeOutputKeyEnum.answerText]: simpleAnswer,
+      [NodeOutputKeyEnum.reasoningText]: simpleReasoning,
+      [NodeOutputKeyEnum.rawResponse]: {
+        plan: [],
+        pastSteps: [{ step: userChatInput, result: simpleAnswer }],
+        finalDecision: 'response'
+      },
+      [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints,
+        toolCallTokens: totalTokens,
+        model: modelName,
+        query: userChatInput,
+        toolDetail: simpleNodeResponse?.toolDetail || []
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+        {
+          moduleName: name,
+          totalPoints,
+          model: modelName,
+          tokens: totalTokens
+        },
+        ...simpleUsages.slice(1)
+      ]
+    };
+  }
+
+  // Step 2: For COMPLEX tasks, use full plan-execute loop
+  // Adaptive step limits based on complexity
+  const adaptiveMaxSteps = Math.min(6, maxPlanSteps);
+
   const planner = await callPlanner({
     modelKey,
     systemPrompt,
     goal: userChatInput,
-    maxPlanSteps,
+    complexity: analysis.complexity,
+    maxPlanSteps: adaptiveMaxSteps,
     toolNodes,
     enableReasoning,
     reasoningEffort
   });
 
+  totalTokens += planner.tokens;
+  totalRunTimes += 1;
+  reasoningText = (planner.reasoningText || '').trim();
+
   const initialPlanRaw = planner.steps.length > 0 ? planner.steps : [userChatInput];
-  let todoAllSteps = normalizePlannerSteps(initialPlanRaw, maxPlanSteps);
+  let todoAllSteps = normalizePlannerSteps(initialPlanRaw, adaptiveMaxSteps);
   if (todoAllSteps.length === 0) {
     todoAllSteps = [normalizeStepText(userChatInput)].filter(Boolean);
   }
+  const originalPlan = [...todoAllSteps]; // Keep original plan for progress tracking
   let planQueue = [...todoAllSteps];
   const pastSteps: { step: string; result: string }[] = [];
-
-  let totalTokens = planner.tokens;
-  let totalRunTimes = 1;
-  let reasoningText = (planner.reasoningText || '').trim();
 
   let todoContent = '';
   const getRemainingTodoSteps = () => {
@@ -886,6 +1457,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const stepPrompt = buildExecutorPrompt({
       goal: userChatInput,
       step,
+      stepNumber: pastSteps.length + 1,
+      totalSteps: originalPlan.length,
       remainingPlan: planQueue,
       pastSteps
     });
@@ -927,9 +1500,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     totalRunTimes += stepResult[DispatchNodeResponseKeyEnum.runTimes] || 1;
     totalTokens += stepNodeResponse?.toolCallTokens || 0;
 
-    // 防御：部分推理模型可能只输出 reasoning_content 导致 answerText 为空，这里基于工具结果补一段“本步骤最终结果”
+    // Extract tool preview text for synthesis and critic evaluation
+    const toolText = extractToolPreviewText(stepAssistant);
+
+    // 防御：部分推理模型可能只输出 reasoning_content 导致 answerText 为空，这里基于工具结果补一段"本步骤最终结果"
     if (!stepAnswer) {
-      const toolText = extractToolPreviewText(stepAssistant);
       if (toolText) {
         const synthesized = await callStepResultSynthesis({
           modelKey,
@@ -961,6 +1536,34 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     pastSteps.push({ step, result: stepAnswer });
 
+    // Critic: Evaluate step execution quality
+    const criticResult = await callCritic({
+      modelKey,
+      systemPrompt,
+      goal: userChatInput,
+      step,
+      result: stepAnswer,
+      toolText
+    });
+    totalTokens += criticResult.tokens;
+    totalRunTimes += 1;
+
+    // Output quality warning if score is low
+    if (criticResult.score < 6 && stream) {
+      const qualityNote =
+        criticResult.issues.length > 0
+          ? `⚠️ Quality: ${criticResult.score}/10 - ${criticResult.issues.slice(0, 2).join('; ')}`
+          : `⚠️ Quality: ${criticResult.score}/10`;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
+        data: textAdaptGptResponse({
+          text: `\n${qualityNote}\n`,
+          reasoning_content: '',
+          model: model.model
+        })
+      });
+    }
+
     if (stream) {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
@@ -977,6 +1580,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       modelKey,
       systemPrompt,
       goal: userChatInput,
+      originalPlan,
       currentPlan: planQueue,
       pastSteps,
       maxPlanSteps,
@@ -992,18 +1596,19 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         : decision.reasoningText;
     }
 
-    // 强制：只要 todo 还有未完成，就不允许结束（哪怕模型说 response）
+    // 强制：只要 todo 还有未完成，就不允许结束（哪怕模型说 respond）
     const remainingTodo = getRemainingTodoSteps();
-    if (decision.action === 'response' && remainingTodo.length > 0) {
+    if (decision.action === 'respond' && remainingTodo.length > 0) {
       decision = {
-        action: 'plan',
+        action: 'continue',
         steps: mergeRemainingPlan({ current: remainingTodo, suggested: [] }),
+        progress: `${pastSteps.length}/${originalPlan.length} completed`,
         tokens: decision.tokens,
         reasoningText: decision.reasoningText
-      };
+      } as ReplanResult;
     }
 
-    if (decision.action === 'response') {
+    if (decision.action === 'respond') {
       // 结束前补一次最终 todo 快照（确保最后一项被勾选）
       pushTodoSnapshot();
 
@@ -1042,6 +1647,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
             modelKey,
             systemPrompt,
             goal: userChatInput,
+            taskType,
             baseResponse: baseAnswer,
             pastSteps,
             enableReasoning,
@@ -1074,6 +1680,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
             modelKey,
             systemPrompt,
             goal: userChatInput,
+            taskType,
             baseResponse: baseAnswer,
             pastSteps,
             enableReasoning,
@@ -1183,7 +1790,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       };
     }
 
-    if (decision.action === 'plan') {
+    if (decision.action === 'continue') {
       // 只允许追加新步骤（受 maxPlanSteps 限制），执行顺序始终以待办清单顺序为准
       if (decision.steps.length > 0) {
         todoAllSteps = applyReplannerPlanUpdate({
