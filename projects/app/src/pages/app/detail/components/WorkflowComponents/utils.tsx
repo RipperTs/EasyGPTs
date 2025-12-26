@@ -93,9 +93,16 @@ export const getEditorVariables = ({
 
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
-    .map((item) => ({
+    .map((item, index) => ({
       key: item.key,
-      label: t((item.label as any) || ''),
+      label:
+        item.label === 'workflow:quote_num'
+          ? t('workflow:quote_num', { num: index + 1 })
+          : typeof item.label === 'string' && item.label.startsWith('workflow:quote_num')
+            ? t('workflow:quote_num', {
+                num: Number(item.label.match(/num\\s*:\\s*(\\d+)/)?.[1] || index + 1)
+              })
+            : t((item.label as any) || ''),
       parent: {
         id: currentNode.nodeId,
         label: t(currentNode.name as any),

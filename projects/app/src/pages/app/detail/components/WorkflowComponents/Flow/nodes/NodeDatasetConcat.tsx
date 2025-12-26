@@ -105,9 +105,9 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               </Button>
             </HStack>
             <Box mt={2}>
-              {quoteList.map((children) => (
+              {quoteList.map((children, index) => (
                 <Box key={children.key} _notLast={{ mb: 3 }}>
-                  <Reference nodeId={nodeId} inputChildren={children} />
+                  <Reference nodeId={nodeId} inputChildren={children} index={index + 1} />
                 </Box>
               ))}
             </Box>
@@ -134,10 +134,12 @@ export default React.memo(NodeDatasetConcat);
 
 function Reference({
   nodeId,
-  inputChildren
+  inputChildren,
+  index
 }: {
   nodeId: string;
   inputChildren: FlowNodeInputItemType;
+  index: number;
 }) {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -183,7 +185,9 @@ function Reference({
   return (
     <>
       <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
+        <FormLabel required={inputChildren.required}>
+          {t('workflow:quote_num', { num: index })}
+        </FormLabel>
         {/* value */}
         <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
