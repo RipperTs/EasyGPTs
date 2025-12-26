@@ -26,9 +26,10 @@ export const AgentChatModule: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   sourceHandle: getHandleConfig(true, true, false, true),
   targetHandle: getHandleConfig(true, true, false, true),
-  avatar: 'core/workflow/template/toolCall',
+  avatar: 'core/workflow/template/aiAgent',
   name: 'Agent 对话',
-  intro: 'Plan-and-Execute：先规划再逐步执行（支持工具调用与重规划）',
+  intro:
+    'Plan-and-Execute 对话模式：先规划再逐步执行（支持工具调用与重规划），十分适合复杂任务处理。',
   showStatus: true,
   isTool: true,
   version: '481',

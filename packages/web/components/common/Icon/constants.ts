@@ -276,6 +276,7 @@ export const iconPaths = {
   'core/workflow/template/textConcat': () =>
     import('./icons/core/workflow/template/textConcat.svg'),
   'core/workflow/template/toolCall': () => import('./icons/core/workflow/template/toolCall.svg'),
+  'core/workflow/template/aiAgent': () => import('./icons/core/workflow/template/aiAgent.svg'),
   'core/workflow/template/userSelect': () =>
     import('./icons/core/workflow/template/userSelect.svg'),
   'core/workflow/template/variable': () => import('./icons/core/workflow/template/variable.svg'),
