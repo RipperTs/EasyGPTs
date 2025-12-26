@@ -108,14 +108,35 @@ export function responseWriteController({
   res: NextApiResponse;
   readStream: any;
 }) {
-  res.on('drain', () => {
-    readStream?.resume?.();
-  });
+  const anyRes = res as NextApiResponse & {
+    __fastgptDrainStreams?: Set<any>;
+    __fastgptDrainInited?: boolean;
+  };
+  if (!anyRes.__fastgptDrainStreams) {
+    anyRes.__fastgptDrainStreams = new Set<any>();
+  }
+  const drainStreams = anyRes.__fastgptDrainStreams;
+
+  // 只绑定一次 drain，避免在多轮流式/递归工具调用中触发 MaxListenersExceededWarning
+  if (!anyRes.__fastgptDrainInited) {
+    anyRes.__fastgptDrainInited = true;
+    res.on('drain', () => {
+      for (const stream of drainStreams) {
+        try {
+          stream?.resume?.();
+        } catch {}
+      }
+      drainStreams.clear();
+    });
+  }
 
   return (text: string | Buffer) => {
     const writeResult = res.write(text);
     if (!writeResult) {
-      readStream?.pause?.();
+      try {
+        readStream?.pause?.();
+        drainStreams.add(readStream);
+      } catch {}
     }
   };
 }
