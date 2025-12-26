@@ -1,6 +1,6 @@
 {
   "author": "",
-  "version": "4811",
+  "version": "4812",
   "name": "Redis数据库",
   "avatar": "core/workflow/template/Redis",
   "intro": "可对Redis数据库进行操作",
@@ -8,7 +8,7 @@
   "weight": 10,
 
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "database",
 
   "workflow": {
     "nodes": [
@@ -27,6 +27,7 @@
         "inputs": [
           {
             "renderTypeList": [
+              "reference",
               "input"
             ],
             "selectedTypeIndex": 0,
@@ -46,7 +47,8 @@
           },
           {
             "renderTypeList": [
-              "numberInput"
+              "numberInput",
+              "reference"
             ],
             "selectedTypeIndex": 0,
             "valueType": "number",
@@ -65,7 +67,8 @@
           },
           {
             "renderTypeList": [
-              "numberInput"
+              "numberInput",
+              "reference"
             ],
             "selectedTypeIndex": 0,
             "valueType": "number",
@@ -84,6 +87,7 @@
           },
           {
             "renderTypeList": [
+              "reference",
               "input"
             ],
             "selectedTypeIndex": 0,
@@ -103,7 +107,8 @@
           },
           {
             "renderTypeList": [
-              "reference"
+              "reference",
+              "input"
             ],
             "selectedTypeIndex": 0,
             "valueType": "string",
@@ -164,7 +169,8 @@
           },
           {
             "renderTypeList": [
-              "reference"
+              "reference",
+              "input"
             ],
             "selectedTypeIndex": 0,
             "valueType": "string",

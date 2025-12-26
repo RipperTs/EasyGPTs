@@ -39,6 +39,21 @@ export default function VariableLabelPickerPlugin({
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const highlightedItemRef = useRef<any>(null);
 
+  const displayVariables = React.useMemo(() => {
+    return variables.map((item) => ({
+      ...item,
+      label: item.label ? t(item.label) : item.label,
+      parent: {
+        ...item.parent,
+        label: item.parent.label ? t(item.parent.label) : item.parent.label
+      }
+    }));
+  }, [t, variables]);
+
+  const filteredVariables = React.useMemo(() => {
+    return variableFilter(displayVariables, queryString || '');
+  }, [displayVariables, queryString]);
+
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
   });
@@ -76,7 +91,7 @@ export default function VariableLabelPickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variableFilter(variables, queryString || '')}
+      options={filteredVariables}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp }) => {
         if (anchorElementRef.current == null) {
           return null;
@@ -84,7 +99,7 @@ export default function VariableLabelPickerPlugin({
         if (currentIndex !== selectedIndex) {
           setCurrentIndex(selectedIndex || 0);
         }
-        return anchorElementRef.current && variables.length && isFocus
+        return anchorElementRef.current && displayVariables.length && isFocus
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
@@ -99,11 +114,11 @@ export default function VariableLabelPickerPlugin({
                 overflow={'auto'}
                 zIndex={99999}
               >
-                {variableFilter(variables, queryString || '').length === variables.length && (
+                {filteredVariables.length === displayVariables.length && (
                   <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
-                {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
+                {filteredVariables.length > 0 ? (
+                  transformVariables(filteredVariables).map((item) => {
                     return (
                       <Flex
                         key={item.id}

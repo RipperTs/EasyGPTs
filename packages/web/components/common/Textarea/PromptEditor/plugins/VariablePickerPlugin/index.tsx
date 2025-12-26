@@ -19,6 +19,13 @@ export default function VariablePickerPlugin({
   const [queryString, setQueryString] = useState<string | null>(null);
   const { t } = useTranslation();
 
+  const displayVariables = React.useMemo(() => {
+    return variables.map((item) => ({
+      ...item,
+      label: item.label ? t(item.label) : item.label
+    }));
+  }, [t, variables]);
+
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0
   });
@@ -45,7 +52,7 @@ export default function VariablePickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables as any[]}
+      options={displayVariables as any[]}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -53,7 +60,7 @@ export default function VariablePickerPlugin({
         if (anchorElementRef.current == null) {
           return null;
         }
-        return anchorElementRef.current && variables.length
+        return anchorElementRef.current && displayVariables.length
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
@@ -68,7 +75,7 @@ export default function VariablePickerPlugin({
                 maxH={'300px'}
                 overflow={'auto'}
               >
-                {variables.map((item, index) => (
+                {displayVariables.map((item, index) => (
                   <Flex
                     alignItems={'center'}
                     as={'li'}

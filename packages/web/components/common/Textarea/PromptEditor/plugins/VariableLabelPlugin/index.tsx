@@ -6,6 +6,7 @@ import { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
+import { useTranslation } from 'next-i18next';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
@@ -14,21 +15,29 @@ export default function VariableLabelPlugin({
 }: {
   variables: EditorVariableLabelPickerType[];
 }) {
+  const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableLabelNode]))
       throw new Error('VariableLabelPlugin: VariableLabelPlugin not registered on editor');
   }, [editor]);
 
-  const createVariableLabelPlugin = useCallback((textNode: TextNode): VariableLabelNode => {
-    const [parentKey, childrenKey] = textNode.getTextContent().slice(3, -3).split('.');
-    const currentVariable = variables.find(
-      (item) => item.parent.id === parentKey && item.key === childrenKey
-    );
-    const variableLabel = `${currentVariable && currentVariable.parent?.label}.${currentVariable?.label}`;
-    const nodeAvatar = currentVariable?.parent?.avatar || '';
-    return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
-  }, []);
+  const createVariableLabelPlugin = useCallback(
+    (textNode: TextNode): VariableLabelNode => {
+      const [parentKey, childrenKey] = textNode.getTextContent().slice(3, -3).split('.');
+      const currentVariable = variables.find(
+        (item) => item.parent.id === parentKey && item.key === childrenKey
+      );
+      const parentLabel = currentVariable?.parent?.label
+        ? t(currentVariable.parent.label)
+        : parentKey;
+      const childLabel = currentVariable?.label ? t(currentVariable.label) : childrenKey;
+      const variableLabel = `${parentLabel}.${childLabel}`;
+      const nodeAvatar = currentVariable?.parent?.avatar || '';
+      return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
+    },
+    [t, variables]
+  );
 
   const getVariableMatch = useCallback((text: string) => {
     const matches = REGEX.exec(text);
