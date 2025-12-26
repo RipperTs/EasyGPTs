@@ -47,8 +47,6 @@ type RawResponse = {
   plan: string[];
   pastSteps: { step: string; result: string }[];
   finalDecision: 'response' | 'fallback';
-  baseResponse?: string;
-  summaryResponse?: string;
 };
 
 // Task Analyzer result type
@@ -57,9 +55,6 @@ type TaskAnalysisResult = {
   reason: string;
   tokens: number;
 };
-
-// Task type for Summarizer adaptation
-type TaskType = 'code' | 'research' | 'data' | 'general';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -96,7 +91,6 @@ const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
 // 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
 const SUMMARY_SEPARATOR = '\n\n---\n\n';
 const TASK_PREFIX = '\n> Task: ';
-const SUMMARY_START_HINT = '\n\n> 总结\n';
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -204,40 +198,6 @@ const isReplyLikeStep = (step: string) => {
   const englishPattern =
     /(summarize|summarise|summary|conclude|conclusion|final\s*(answer|response|reply)|respond\s*to\s*user|present\s*(findings|results)|compile\s*results)/i;
   return chinesePattern.test(s) || englishPattern.test(s);
-};
-
-// Infer task type from goal for Summarizer adaptation
-const inferTaskType = (goal: string): TaskType => {
-  const lowerGoal = goal.toLowerCase();
-
-  // Code/Engineering patterns
-  if (
-    /code|implement|fix|bug|develop|api|function|class|module|build|deploy|代码|编程|实现|开发|功能|接口/.test(
-      lowerGoal
-    )
-  ) {
-    return 'code';
-  }
-
-  // Research patterns
-  if (
-    /research|investigate|explore|study|compare|review|analyze\s+.*\s+(?:options|approaches)|研究|调查|了解|查找|搜索/.test(
-      lowerGoal
-    )
-  ) {
-    return 'research';
-  }
-
-  // Data patterns
-  if (
-    /data|statistics|numbers|calculate|trend|metric|analytics|report|chart|数据|分析|统计|查询|计算/.test(
-      lowerGoal
-    )
-  ) {
-    return 'data';
-  }
-
-  return 'general';
 };
 
 const normalizePlannerSteps = (steps: string[], maxPlanSteps: number) =>
@@ -452,208 +412,6 @@ const callStepResultSynthesis = async (params: {
   const tokens = await countGptMessagesTokens(messages.concat(assistantMsg));
 
   return { text: text.trim(), tokens };
-};
-
-const buildSummarizerUserPrompt = (params: {
-  goal: string;
-  taskType: TaskType;
-  baseResponse: string;
-  pastSteps: { step: string; result: string }[];
-}) => {
-  const { goal, taskType, baseResponse, pastSteps } = params;
-
-  const pastText =
-    pastSteps.length === 0
-      ? '(No execution steps)'
-      : pastSteps
-          .map((p, i) => {
-            const truncatedResult = truncateText(p.result, 800);
-            return `**Step ${i + 1}**: ${normalizeStepText(p.step)}\n${truncatedResult || '(No result)'}`;
-          })
-          .join('\n\n');
-
-  const formatGuidance: Record<TaskType, string> = {
-    code: `**Code/Engineering Task Guidelines**:
-- What changed: files/modules modified, core changes
-- Technical approach: stack, patterns, key implementation details
-- Verification: how to test/run, expected behavior
-- Caveats: deployment requirements, risks, future improvements`,
-
-    research: `**Research/Investigation Task Guidelines**:
-- Key findings: important facts and discoveries
-- Source reliability: authority and credibility of sources
-- Multiple perspectives: compare different viewpoints
-- Recommendations: actionable suggestions based on research`,
-
-    data: `**Data Analysis Task Guidelines**:
-- Core insights: key numbers, trends, anomalies
-- Analysis conclusions: what the data tells us
-- Data quality: reliability and timeliness notes
-- Limitations: scope, data constraints, uncertainties`,
-
-    general: `**General Task Guidelines**:
-- Core answer: direct response to user's question
-- Key evidence: main supporting facts and reasoning
-- Additional context: relevant background or suggestions
-- Limitations: note any information gaps`
-  };
-
-  return `You are a Response Synthesizer. Transform execution results into a polished, user-facing response.
-
-## User's Original Question
-${goal}
-
-## Task Type
-${taskType.toUpperCase()}
-
-${formatGuidance[taskType]}
-
-## Execution Details
-${pastText}
-
-## Preliminary Response
-${truncateText(baseResponse, 1200)}
-
-## Synthesis Requirements
-
-1. **User-Centric**: Write for the user, not as an execution report
-2. **Information Hierarchy**: Lead with core answer, follow with supporting details
-3. **No Repetition**: Don't restate the question or echo step-by-step narrative
-4. **Appropriate Length**: 200-500 words (adjust based on complexity)
-
-## Prohibited
-- JSON output or code blocks (unless user specifically requested code)
-- To-do lists or execution plans
-- Using H1 markdown headers (#)
-- Repeating the preliminary response verbatim
-
-Synthesize a professional response:`;
-};
-
-const callSummarizer = async (params: {
-  modelKey: string;
-  systemPrompt?: string;
-  goal: string;
-  taskType: TaskType;
-  baseResponse: string;
-  pastSteps: { step: string; result: string }[];
-  enableReasoning: boolean;
-  reasoningEffort?: string;
-  stream: boolean;
-  workflowStreamResponse?: Props['workflowStreamResponse'];
-}): Promise<{ summary: string; tokens: number; reasoningText?: string }> => {
-  const {
-    modelKey,
-    systemPrompt,
-    goal,
-    taskType,
-    baseResponse,
-    pastSteps,
-    enableReasoning,
-    reasoningEffort,
-    stream,
-    workflowStreamResponse
-  } = params;
-
-  const model = getLLMModel(modelKey);
-  if (!model) return { summary: '', tokens: 0 };
-
-  const messages: ChatCompletionMessageParam[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Response Synthesizer for a Plan-and-Execute agent. Your role is to transform execution results into a polished, user-facing response.
-
-## Core Capabilities
-1. **Information Distillation**: Extract core value from execution details
-2. **Logical Restructuring**: Reorganize information to match user's mental model
-3. **Adaptive Expression**: Adjust style and focus based on task type
-4. **Objective Accuracy**: Don't add unverified information, acknowledge limitations
-
-## Synthesis Principles
-- **User Perspective**: Provide decision support from user's viewpoint
-- **Value First**: Highlight the most valuable information and recommendations
-- **Professional Brevity**: Avoid redundancy and jargon
-- **Honest Transparency**: Clearly state when information is incomplete`
-    },
-    {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: buildSummarizerUserPrompt({ goal, taskType, baseResponse, pastSteps })
-    }
-  ];
-
-  const ai = getAIApi({ timeout: 480000 });
-  const requestBody: Record<string, unknown> = {
-    ...model.defaultConfig,
-    model: model.model,
-    temperature: computedTemperature({ model, temperature: 0.2 }),
-    max_tokens: computedMaxToken({ model, maxToken: 1200 }),
-    stream,
-    messages,
-    ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
-  };
-
-  const resp = (await ai.chat.completions.create(
-    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
-  )) as unknown;
-
-  if (!stream) {
-    const unStreamResponse = resp as ChatCompletion;
-    const summary = (unStreamResponse.choices?.[0]?.message?.content || '').trim();
-    const reasoningText = enableReasoning
-      ? // @ts-ignore
-        (unStreamResponse.choices?.[0]?.message?.reasoning_content || '').trim()
-      : '';
-    const assistantMsg: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: summary
-    };
-    const tokens =
-      unStreamResponse.usage?.total_tokens ??
-      (await countGptMessagesTokens(messages.concat(assistantMsg)));
-    return { summary, tokens, reasoningText };
-  }
-
-  const streamResp = resp as StreamChatType;
-  let summary = '';
-  let reasoningText = '';
-
-  for await (const part of streamResp) {
-    const delta = part.choices?.[0]?.delta?.content || '';
-    // @ts-ignore
-    const deltaReasoning = enableReasoning ? part.choices?.[0]?.delta?.reasoning_content || '' : '';
-
-    if (deltaReasoning) {
-      reasoningText += deltaReasoning;
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: '',
-          reasoning_content: deltaReasoning,
-          model: model.model
-        })
-      });
-    }
-
-    if (delta) {
-      summary += delta;
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: delta,
-          reasoning_content: '',
-          model: model.model
-        })
-      });
-    }
-  }
-
-  const assistantMsg: ChatCompletionMessageParam = {
-    role: ChatCompletionRequestMessageRoleEnum.Assistant,
-    content: summary
-  };
-  const tokens = await countGptMessagesTokens(messages.concat(assistantMsg));
-
-  return { summary: summary.trim(), tokens, reasoningText: reasoningText.trim() };
 };
 
 type PlannerResult = {
@@ -1284,9 +1042,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     .map((id) => runtimeNodes.find((n) => n.nodeId === id))
     .filter((n): n is RuntimeNodeItemType => !!n);
 
-  // Infer task type for Summarizer
-  const taskType = inferTaskType(userChatInput);
-
   // Step 1: Analyze task complexity
   const analysis = await callTaskAnalyzer({
     modelKey,
@@ -1612,98 +1367,19 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       // 结束前补一次最终 todo 快照（确保最后一项被勾选）
       pushTodoSnapshot();
 
-      const baseAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
+      const finalAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
 
-      // 当 todo 全部完成后，追加“总结层”输出更专业的总结回复，并用分隔符区分
-      let summaryResponse = '';
       if (stream) {
         workflowStreamResponse?.({
           event: SseResponseEventEnum.fastAnswer,
           data: textAdaptGptResponse({
-            text: baseAnswer,
+            text: finalAnswer,
             reasoning_content: reasoningText,
             model: model.model
           })
         });
-        try {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: SUMMARY_START_HINT,
-              reasoning_content: '',
-              model: model.model
-            })
-          });
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: SUMMARY_SEPARATOR,
-              reasoning_content: '',
-              model: model.model
-            })
-          });
-
-          const summarizer = await callSummarizer({
-            modelKey,
-            systemPrompt,
-            goal: userChatInput,
-            taskType,
-            baseResponse: baseAnswer,
-            pastSteps,
-            enableReasoning,
-            reasoningEffort,
-            stream: true,
-            workflowStreamResponse
-          });
-          summaryResponse = summarizer.summary;
-          if (summarizer.reasoningText) {
-            reasoningText = reasoningText
-              ? `${reasoningText}\n${summarizer.reasoningText}`
-              : summarizer.reasoningText;
-          }
-          totalTokens += summarizer.tokens;
-          totalRunTimes += 1;
-        } catch (err) {
-          summaryResponse = '（总结生成失败，可重试）';
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: summaryResponse,
-              reasoning_content: '',
-              model: model.model
-            })
-          });
-        }
-      } else {
-        try {
-          const summarizer = await callSummarizer({
-            modelKey,
-            systemPrompt,
-            goal: userChatInput,
-            taskType,
-            baseResponse: baseAnswer,
-            pastSteps,
-            enableReasoning,
-            reasoningEffort,
-            stream: false,
-            workflowStreamResponse
-          });
-          summaryResponse = summarizer.summary;
-          if (summarizer.reasoningText) {
-            reasoningText = reasoningText
-              ? `${reasoningText}\n${summarizer.reasoningText}`
-              : summarizer.reasoningText;
-          }
-          totalTokens += summarizer.tokens;
-          totalRunTimes += 1;
-        } catch {
-          summaryResponse = '';
-        }
       }
 
-      const finalAnswer = summaryResponse
-        ? `${baseAnswer}${SUMMARY_START_HINT}${SUMMARY_SEPARATOR}${summaryResponse}`
-        : baseAnswer;
       const { totalPoints, modelName } = formatModelChars2Points({
         model: modelKey,
         tokens: totalTokens,
@@ -1746,9 +1422,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         [NodeOutputKeyEnum.rawResponse]: {
           plan: planQueue,
           pastSteps,
-          finalDecision: 'response',
-          baseResponse: baseAnswer,
-          summaryResponse
+          finalDecision: 'response'
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
