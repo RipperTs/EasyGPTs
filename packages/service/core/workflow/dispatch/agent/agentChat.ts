@@ -86,6 +86,7 @@ const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
 // 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
 const SUMMARY_SEPARATOR = '\n\n---\n\n';
 const TASK_PREFIX = '\n> Task: ';
+const SUMMARY_START_HINT = '\n> 总结\n';
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -186,7 +187,7 @@ const parseStepsFromModelText = (text: string, maxSteps: number): string[] => {
 const isReplyLikeStep = (step: string) => {
   const s = normalizeStepText(step);
   if (!s) return false;
-  return /(输出.*(答复|回复|回答)|给出.*(答复|回复|回答)|总结.*(答复|回复|回答)|汇总.*(答复|回复|回答)|最终.*(答复|回复|回答))/.test(
+  return /(回复用户|面向用户|总结以上|汇总以上|整理以上|(?:输出|给出|生成|整理|撰写|形成).*(?:最终)?.*(?:答复|回复|回答|答案|结果|总结|方案|报告|行程|计划)|最终.*(?:答复|回复|回答|答案|结果|总结|输出))/.test(
     s
   );
 };
@@ -227,11 +228,22 @@ const callSummarizer = async (params: {
   goal: string;
   baseResponse: string;
   pastSteps: { step: string; result: string }[];
+  enableReasoning: boolean;
+  reasoningEffort?: string;
   stream: boolean;
   workflowStreamResponse?: Props['workflowStreamResponse'];
-}): Promise<{ summary: string; tokens: number }> => {
-  const { modelKey, systemPrompt, goal, baseResponse, pastSteps, stream, workflowStreamResponse } =
-    params;
+}): Promise<{ summary: string; tokens: number; reasoningText?: string }> => {
+  const {
+    modelKey,
+    systemPrompt,
+    goal,
+    baseResponse,
+    pastSteps,
+    enableReasoning,
+    reasoningEffort,
+    stream,
+    workflowStreamResponse
+  } = params;
 
   const model = getLLMModel(modelKey);
   if (!model) return { summary: '', tokens: 0 };
@@ -254,7 +266,8 @@ const callSummarizer = async (params: {
     temperature: computedTemperature({ model, temperature: 0.2 }),
     max_tokens: computedMaxToken({ model, maxToken: 1200 }),
     stream,
-    messages
+    messages,
+    ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
   };
 
   const resp = (await ai.chat.completions.create(
@@ -264,6 +277,10 @@ const callSummarizer = async (params: {
   if (!stream) {
     const unStreamResponse = resp as ChatCompletion;
     const summary = (unStreamResponse.choices?.[0]?.message?.content || '').trim();
+    const reasoningText = enableReasoning
+      ? // @ts-ignore
+        (unStreamResponse.choices?.[0]?.message?.reasoning_content || '').trim()
+      : '';
     const assistantMsg: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       content: summary
@@ -271,24 +288,41 @@ const callSummarizer = async (params: {
     const tokens =
       unStreamResponse.usage?.total_tokens ??
       (await countGptMessagesTokens(messages.concat(assistantMsg)));
-    return { summary, tokens };
+    return { summary, tokens, reasoningText };
   }
 
   const streamResp = resp as StreamChatType;
   let summary = '';
+  let reasoningText = '';
 
   for await (const part of streamResp) {
     const delta = part.choices?.[0]?.delta?.content || '';
-    if (!delta) continue;
-    summary += delta;
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text: delta,
-        reasoning_content: '',
-        model: model.model
-      })
-    });
+    // @ts-ignore
+    const deltaReasoning = enableReasoning ? part.choices?.[0]?.delta?.reasoning_content || '' : '';
+
+    if (deltaReasoning) {
+      reasoningText += deltaReasoning;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: '',
+          reasoning_content: deltaReasoning,
+          model: model.model
+        })
+      });
+    }
+
+    if (delta) {
+      summary += delta;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: delta,
+          reasoning_content: '',
+          model: model.model
+        })
+      });
+    }
   }
 
   const assistantMsg: ChatCompletionMessageParam = {
@@ -297,7 +331,7 @@ const callSummarizer = async (params: {
   };
   const tokens = await countGptMessagesTokens(messages.concat(assistantMsg));
 
-  return { summary: summary.trim(), tokens };
+  return { summary: summary.trim(), tokens, reasoningText: reasoningText.trim() };
 };
 
 type PlannerResult = {
@@ -345,7 +379,7 @@ const callPlanner = async (params: {
 - 步骤用中文，一步一句，尽量具体、可执行
 - 步数 1~${maxPlanSteps}，优先 3~${Math.min(maxPlanSteps, 6)} 步
 - 不要重复同一句步骤（步骤需要去重）
-- 不要包含“总结/输出最终答复/回复用户/整理成答案”这类收尾步骤（最终交付由后续 Reply 层负责）`
+- 不要包含任何“收尾/成文/面向用户输出”的步骤，例如：总结以上信息、汇总成最终答复、输出最终答案、回复用户等（最终交付由后续 Reply+总结层负责）`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
@@ -866,6 +900,14 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
+              text: SUMMARY_START_HINT,
+              reasoning_content: '',
+              model: model.model
+            })
+          });
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
               text: SUMMARY_SEPARATOR,
               reasoning_content: '',
               model: model.model
@@ -878,10 +920,17 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
             goal: userChatInput,
             baseResponse: baseAnswer,
             pastSteps,
+            enableReasoning,
+            reasoningEffort,
             stream: true,
             workflowStreamResponse
           });
           summaryResponse = summarizer.summary;
+          if (summarizer.reasoningText) {
+            reasoningText = reasoningText
+              ? `${reasoningText}\n${summarizer.reasoningText}`
+              : summarizer.reasoningText;
+          }
           totalTokens += summarizer.tokens;
           totalRunTimes += 1;
         } catch (err) {
@@ -903,10 +952,17 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
             goal: userChatInput,
             baseResponse: baseAnswer,
             pastSteps,
+            enableReasoning,
+            reasoningEffort,
             stream: false,
             workflowStreamResponse
           });
           summaryResponse = summarizer.summary;
+          if (summarizer.reasoningText) {
+            reasoningText = reasoningText
+              ? `${reasoningText}\n${summarizer.reasoningText}`
+              : summarizer.reasoningText;
+          }
           totalTokens += summarizer.tokens;
           totalRunTimes += 1;
         } catch {
@@ -915,7 +971,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       }
 
       const finalAnswer = summaryResponse
-        ? `${baseAnswer}${SUMMARY_SEPARATOR}${summaryResponse}`
+        ? `${baseAnswer}${SUMMARY_START_HINT}${SUMMARY_SEPARATOR}${summaryResponse}`
         : baseAnswer;
       const { totalPoints, modelName } = formatModelChars2Points({
         model: modelKey,
