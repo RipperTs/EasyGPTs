@@ -39,16 +39,19 @@ export default function VariableLabelPickerPlugin({
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const highlightedItemRef = useRef<any>(null);
 
+  type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+  const tKey = useCallback((key: string) => (t as unknown as TranslateFn)(key), [t]);
+
   const displayVariables = React.useMemo(() => {
     return variables.map((item) => ({
       ...item,
-      label: item.label ? t(item.label) : item.label,
+      label: item.label ? tKey(item.label) : item.label,
       parent: {
         ...item.parent,
-        label: item.parent.label ? t(item.parent.label) : item.parent.label
+        label: item.parent.label ? tKey(item.parent.label) : item.parent.label
       }
     }));
-  }, [t, variables]);
+  }, [tKey, variables]);
 
   const filteredVariables = React.useMemo(() => {
     return variableFilter(displayVariables, queryString || '');

@@ -16,6 +16,8 @@ export default function VariableLabelPlugin({
   variables: EditorVariableLabelPickerType[];
 }) {
   const { t } = useTranslation();
+  type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+  const tKey = useCallback((key: string) => (t as unknown as TranslateFn)(key), [t]);
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableLabelNode]))
@@ -29,14 +31,14 @@ export default function VariableLabelPlugin({
         (item) => item.parent.id === parentKey && item.key === childrenKey
       );
       const parentLabel = currentVariable?.parent?.label
-        ? t(currentVariable.parent.label)
+        ? tKey(currentVariable.parent.label)
         : parentKey;
-      const childLabel = currentVariable?.label ? t(currentVariable.label) : childrenKey;
+      const childLabel = currentVariable?.label ? tKey(currentVariable.label) : childrenKey;
       const variableLabel = `${parentLabel}.${childLabel}`;
       const nodeAvatar = currentVariable?.parent?.avatar || '';
       return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
     },
-    [t, variables]
+    [tKey, variables]
   );
 
   const getVariableMatch = useCallback((text: string) => {
