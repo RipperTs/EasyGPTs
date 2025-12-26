@@ -168,7 +168,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
         >
           <HStack mr={2} spacing={1}>
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
-            <Box fontSize={'sm'}>思考过程</Box>
+            <Box fontSize={'sm'}>推理过程</Box>
           </HStack>
 
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
@@ -210,7 +210,7 @@ const RenderTodoContent = React.memo(function RenderTodoContent({
     }
   }, [showAnimation]);
 
-  const title = todo.total ? `待办清单（${todo.done || 0}/${todo.total}）` : '待办清单';
+  const title = todo.total ? `任务列表（${todo.done || 0}/${todo.total}）` : '任务列表';
 
   return (
     <Accordion allowToggle index={isOpen} onChange={(index) => setIsOpen(index as number)}>
@@ -230,7 +230,7 @@ const RenderTodoContent = React.memo(function RenderTodoContent({
           }}
         >
           <HStack mr={2} spacing={1}>
-            <MyIcon name={'core/chat/think'} w={'0.85rem'} />
+            <MyIcon name={'core/chat/todo'} w={'0.85rem'} />
             <Box fontSize={'sm'}>{title}</Box>
           </HStack>
 
