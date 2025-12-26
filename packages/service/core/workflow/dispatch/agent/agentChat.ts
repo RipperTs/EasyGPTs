@@ -667,10 +667,15 @@ const buildExecutorPrompt = (params: {
     remainingPlan.length === 0
       ? '（无）'
       : remainingPlan.map((s, i) => `${i + 1}. ${s}`).join('\n');
+  const pastForPrompt = pastSteps.slice(-6);
   const pastText =
-    pastSteps.length === 0
+    pastForPrompt.length === 0
       ? '（无）'
-      : pastSteps.map((p, i) => `#${i + 1} ${p.step}\n结果：${p.result}`).join('\n\n');
+      : pastForPrompt
+          .map(
+            (p, i) => `#${i + 1} ${p.step}\n结果：${truncateText(p.result || '', 1200) || '（无）'}`
+          )
+          .join('\n\n');
 
   return `你是一个执行器（Executor），只需要完成“当前步骤”，必要时可以调用工具。请用简洁中文输出本步骤结果（建议 <=200 字），不要输出计划本身。
 
@@ -894,8 +899,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         aiChatVision: props.params.aiChatVision,
         aiChatReasoning: props.params.aiChatReasoning,
         aiChatReasoningEffort: props.params.aiChatReasoningEffort,
-        // 每个子任务单独执行：不携带历史，避免上下文长度影响与“串味”
-        history: 0,
+        // 子任务共享对话历史（由卡片“历史记录”控制），增强连续性与工具调用智能
+        history,
         systemPrompt: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个 Plan-and-Execute Agent：会先规划，再逐步执行；每次只解决“当前步骤”。`,
         userChatInput: stepPrompt
       },
