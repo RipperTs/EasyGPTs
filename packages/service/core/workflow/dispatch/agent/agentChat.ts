@@ -175,6 +175,20 @@ const parseStepsFromModelText = (text: string, maxSteps: number): string[] => {
   return [];
 };
 
+// Planner 偶发会把“总结/最终答复”写进 steps，但它不应作为 Executor 的可执行子任务（最终交付应由 Replanner/Reply 层生成）
+const isReplyLikeStep = (step: string) => {
+  const s = normalizeStepText(step);
+  if (!s) return false;
+  return /(输出.*(答复|回复|回答)|给出.*(答复|回复|回答)|总结.*(答复|回复|回答)|汇总.*(答复|回复|回答)|最终.*(答复|回复|回答))/.test(
+    s
+  );
+};
+
+const normalizePlannerSteps = (steps: string[], maxPlanSteps: number) =>
+  uniqueOrderedSteps(steps)
+    .filter((s) => !isReplyLikeStep(s))
+    .slice(0, maxPlanSteps);
+
 type PlannerResult = {
   steps: string[];
   tokens: number;
@@ -219,7 +233,8 @@ const callPlanner = async (params: {
 - JSON 格式：{"steps":["..."]}
 - 步骤用中文，一步一句，尽量具体、可执行
 - 步数 1~${maxPlanSteps}，优先 3~${Math.min(maxPlanSteps, 6)} 步
-- 不要重复同一句步骤（步骤需要去重）`
+- 不要重复同一句步骤（步骤需要去重）
+- 不要包含“总结/输出最终答复/回复用户/整理成答案”这类收尾步骤（最终交付由后续 Reply 层负责）`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
@@ -255,7 +270,7 @@ const callPlanner = async (params: {
     resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
 
   return {
-    steps: parseStepsFromModelText(content, maxPlanSteps),
+    steps: normalizePlannerSteps(parseStepsFromModelText(content, maxPlanSteps), maxPlanSteps),
     tokens,
     reasoningText: reasoning
   };
@@ -312,7 +327,11 @@ const callReplanner = async (params: {
 	2) {"action":"plan","steps":["..."]}：还需要继续执行；steps 只包含“剩余需要做的步骤”，不要重复已完成的步骤；步数 1~${maxPlanSteps}
 	重要规则：
 	- 只有当“当前剩余计划”为（无）时，你才允许输出 action=response；否则必须输出 action=plan。
-	- 当 action=response 时，response 必须是简短中文纯文本（建议 <= 300 字），禁止输出 JSON、代码块、Markdown 标题、以及任何以 { 或 [ 开头的内容。`
+	- 当 action=response 时，response 输出“最终交付说明”：
+	  - 必须包含：面向用户的最终答复
+	  - 需要包含：关键依据（精简）
+	  - 若目标是工程/代码类：补充改动点概述、如何运行/验证、风险与注意事项
+	  - 禁止输出 JSON、代码块、Markdown 标题、以及任何以 { 或 [ 开头的内容。`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
@@ -463,6 +482,62 @@ const mergeRemainingPlan = (params: { current: string[]; suggested: string[] }) 
   return result;
 };
 
+const mergeRemainingPlanWithBudget = (params: {
+  current: string[];
+  suggested: string[];
+  pastSteps: { step: string }[];
+  allSteps: string[];
+  maxPlanSteps: number;
+}) => {
+  const doneSet = new Set(params.pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
+
+  const current = params.current
+    .map(normalizeStepText)
+    .filter(Boolean)
+    .filter((s) => !doneSet.has(s));
+  const suggested = params.suggested
+    .map(normalizeStepText)
+    .filter(Boolean)
+    .filter((s) => !doneSet.has(s))
+    .filter((s) => !isReplyLikeStep(s));
+
+  const allSteps = uniqueOrderedSteps(params.allSteps.map(normalizeStepText).filter(Boolean));
+  const allSet = new Set(allSteps);
+
+  const tryAddStep = (s: string) => {
+    if (!s) return false;
+    if (allSet.has(s)) return true;
+    if (allSteps.length >= params.maxPlanSteps) return false;
+    allSteps.push(s);
+    allSet.add(s);
+    return true;
+  };
+
+  const seen = new Set<string>();
+  const nextPlanQueue: string[] = [];
+
+  // 允许 replanner 插入新步骤，但严格受 maxPlanSteps 约束，避免 todo 无限增长
+  for (const s of suggested) {
+    if (!tryAddStep(s)) continue;
+    if (seen.has(s)) continue;
+    nextPlanQueue.push(s);
+    seen.add(s);
+  }
+
+  // 保留原剩余步骤，避免 replanner 漏掉导致步骤丢失
+  for (const s of current) {
+    if (!tryAddStep(s)) continue;
+    if (seen.has(s)) continue;
+    nextPlanQueue.push(s);
+    seen.add(s);
+  }
+
+  return {
+    nextPlanQueue,
+    nextAllSteps: allSteps
+  };
+};
+
 const pickToolItems = (items: AIChatItemValueItemType[]) =>
   items.filter((i) => i.type === ChatItemValueTypeEnum.tool);
 
@@ -513,7 +588,10 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   });
 
   const initialPlanRaw = planner.steps.length > 0 ? planner.steps : [userChatInput];
-  const todoAllSteps = uniqueOrderedSteps(initialPlanRaw).slice(0, maxPlanSteps);
+  let todoAllSteps = normalizePlannerSteps(initialPlanRaw, maxPlanSteps);
+  if (todoAllSteps.length === 0) {
+    todoAllSteps = [normalizeStepText(userChatInput)].filter(Boolean);
+  }
   let planQueue = [...todoAllSteps];
   const pastSteps: { step: string; result: string }[] = [];
 
@@ -522,6 +600,12 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   let reasoningText = (planner.reasoningText || '').trim();
 
   let todoContent = '';
+  const getRemainingTodoSteps = () => {
+    const doneSet = new Set(pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
+    return todoAllSteps.filter((s) => !doneSet.has(normalizeStepText(s)));
+  };
+  const getDoneCount = () => todoAllSteps.length - getRemainingTodoSteps().length;
+
   const pushTodoSnapshot = () => {
     const todo = renderTodoMarkdown({ allSteps: todoAllSteps, pastSteps });
     todoContent = todo;
@@ -531,7 +615,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         data: {
           todo: {
             content: todo,
-            done: pastSteps.length,
+            done: getDoneCount(),
             total: todoAllSteps.length
           }
         }
@@ -546,11 +630,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   let toolItems: AIChatItemValueItemType[] = [];
   let toolDetail: ChatHistoryItemResType[] = [];
   let nodeUsages: ChatNodeUsageType[] = [];
-
-  const getRemainingTodoSteps = () => {
-    const doneSet = new Set(pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
-    return todoAllSteps.filter((s) => !doneSet.has(normalizeStepText(s)));
-  };
 
   // execute + replan
   for (let loop = 0; loop < maxLoops; loop++) {
@@ -634,6 +713,9 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     }
 
     if (decision.action === 'response') {
+      // 结束前补一次最终 todo 快照（确保最后一项被勾选）
+      pushTodoSnapshot();
+
       const finalAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
       const { totalPoints, modelName } = formatModelChars2Points({
         model: modelKey,
@@ -649,7 +731,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
                 type: ChatItemValueTypeEnum.todo as AIChatItemValueItemType['type'],
                 todo: {
                   content: todoContent,
-                  done: pastSteps.length,
+                  done: getDoneCount(),
                   total: todoAllSteps.length
                 }
               }
@@ -730,11 +812,19 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     if (decision.action === 'plan') {
       const suggested = decision.steps.length > 0 ? decision.steps : planQueue;
-      planQueue = mergeRemainingPlan({ current: planQueue, suggested });
+      const merged = mergeRemainingPlanWithBudget({
+        current: planQueue,
+        suggested,
+        pastSteps,
+        allSteps: todoAllSteps,
+        maxPlanSteps
+      });
+      planQueue = merged.nextPlanQueue;
+      todoAllSteps = merged.nextAllSteps;
     }
 
     // 防御：若剩余计划意外为空但 todo 仍未全部完成，则按 todoAllSteps 补齐剩余步骤
-    if (planQueue.length === 0 && pastSteps.length < todoAllSteps.length) {
+    if (planQueue.length === 0 && getDoneCount() < todoAllSteps.length) {
       planQueue = getRemainingTodoSteps();
     }
     // 每次执行完一个 step 并完成一次 replan 后，输出更新后的 todo list（含已完成勾选 + 删除线）
@@ -760,7 +850,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
             type: ChatItemValueTypeEnum.todo as AIChatItemValueItemType['type'],
             todo: {
               content: todoContent,
-              done: pastSteps.length,
+              done: getDoneCount(),
               total: todoAllSteps.length
             }
           }
