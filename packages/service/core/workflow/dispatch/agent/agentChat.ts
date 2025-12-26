@@ -25,6 +25,7 @@ import { dispatchRunTools } from './runTool';
 import { filterToolResponseToPreview } from './runTool/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { StreamChatType } from '@fastgpt/global/core/ai/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
@@ -46,6 +47,8 @@ type RawResponse = {
   plan: string[];
   pastSteps: { step: string; result: string }[];
   finalDecision: 'response' | 'fallback';
+  baseResponse?: string;
+  summaryResponse?: string;
 };
 
 type Response = DispatchNodeResultType<{
@@ -79,6 +82,10 @@ const normalizeSteps = (value: unknown, maxSteps: number): string[] => {
 };
 
 const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
+
+// 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
+const SUMMARY_SEPARATOR = '\n\n---\n\n';
+const TASK_PREFIX = '\n> Task: ';
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -188,6 +195,110 @@ const normalizePlannerSteps = (steps: string[], maxPlanSteps: number) =>
   uniqueOrderedSteps(steps)
     .filter((s) => !isReplyLikeStep(s))
     .slice(0, maxPlanSteps);
+
+const truncateText = (text: string, maxChars: number) => {
+  const t = (text || '').trim();
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, Math.max(0, maxChars - 1))}…`;
+};
+
+const buildSummarizerUserPrompt = (params: {
+  goal: string;
+  baseResponse: string;
+  pastSteps: { step: string; result: string }[];
+}) => {
+  const { goal, baseResponse, pastSteps } = params;
+  const pastText =
+    pastSteps.length === 0
+      ? '（无）'
+      : pastSteps
+          .map(
+            (p, i) =>
+              `#${i + 1} ${normalizeStepText(p.step)}\n结果：${truncateText(p.result, 1200) || '（无）'}`
+          )
+          .join('\n\n');
+
+  return `用户问题：${goal}\n\n子任务执行结果：\n${pastText}\n\n当前已给出的答复：\n${truncateText(baseResponse, 2000)}\n\n请基于“用户问题 + 子任务结果 + 当前答复”，输出一份更专业、更结构化的总结回复（中文）。要求：\n- 不要输出待办清单、JSON、代码块\n- 不要杜撰事实；信息不足要明确说明缺口\n- 重点包括：结论/建议、关键依据、下一步（如需要）`;
+};
+
+const callSummarizer = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  baseResponse: string;
+  pastSteps: { step: string; result: string }[];
+  stream: boolean;
+  workflowStreamResponse?: Props['workflowStreamResponse'];
+}): Promise<{ summary: string; tokens: number }> => {
+  const { modelKey, systemPrompt, goal, baseResponse, pastSteps, stream, workflowStreamResponse } =
+    params;
+
+  const model = getLLMModel(modelKey);
+  if (!model) return { summary: '', tokens: 0 };
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个总结器（Summarizer）。你的任务是基于“用户问题 + 已执行步骤结果 + 当前答复”整理出一份更专业的总结回复。`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: buildSummarizerUserPrompt({ goal, baseResponse, pastSteps })
+    }
+  ];
+
+  const ai = getAIApi({ timeout: 480000 });
+  const requestBody: Record<string, unknown> = {
+    ...model.defaultConfig,
+    model: model.model,
+    temperature: computedTemperature({ model, temperature: 0.2 }),
+    max_tokens: computedMaxToken({ model, maxToken: 1200 }),
+    stream,
+    messages
+  };
+
+  const resp = (await ai.chat.completions.create(
+    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+  )) as unknown;
+
+  if (!stream) {
+    const unStreamResponse = resp as ChatCompletion;
+    const summary = (unStreamResponse.choices?.[0]?.message?.content || '').trim();
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: summary
+    };
+    const tokens =
+      unStreamResponse.usage?.total_tokens ??
+      (await countGptMessagesTokens(messages.concat(assistantMsg)));
+    return { summary, tokens };
+  }
+
+  const streamResp = resp as StreamChatType;
+  let summary = '';
+
+  for await (const part of streamResp) {
+    const delta = part.choices?.[0]?.delta?.content || '';
+    if (!delta) continue;
+    summary += delta;
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({
+        text: delta,
+        reasoning_content: '',
+        model: model.model
+      })
+    });
+  }
+
+  const assistantMsg: ChatCompletionMessageParam = {
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    content: summary
+  };
+  const tokens = await countGptMessagesTokens(messages.concat(assistantMsg));
+
+  return { summary: summary.trim(), tokens };
+};
 
 type PlannerResult = {
   steps: string[];
@@ -636,6 +747,17 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const step = planQueue.shift();
     if (!step) break;
 
+    if (stream) {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
+        data: textAdaptGptResponse({
+          text: `${TASK_PREFIX}${normalizeStepText(step)}\n`,
+          reasoning_content: '',
+          model: model.model
+        })
+      });
+    }
+
     const stepPrompt = buildExecutorPrompt({
       goal: userChatInput,
       step,
@@ -681,6 +803,17 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     totalRunTimes += stepResult[DispatchNodeResponseKeyEnum.runTimes] || 1;
     totalTokens += stepNodeResponse?.toolCallTokens || 0;
 
+    if (stream) {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
+        data: textAdaptGptResponse({
+          text: SUMMARY_SEPARATOR,
+          reasoning_content: '',
+          model: model.model
+        })
+      });
+    }
+
     // replan or respond
     let decision = await callReplanner({
       modelKey,
@@ -716,7 +849,74 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       // 结束前补一次最终 todo 快照（确保最后一项被勾选）
       pushTodoSnapshot();
 
-      const finalAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
+      const baseAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
+
+      // 当 todo 全部完成后，追加“总结层”输出更专业的总结回复，并用分隔符区分
+      let summaryResponse = '';
+      if (stream) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: baseAnswer,
+            reasoning_content: reasoningText,
+            model: model.model
+          })
+        });
+        try {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: SUMMARY_SEPARATOR,
+              reasoning_content: '',
+              model: model.model
+            })
+          });
+
+          const summarizer = await callSummarizer({
+            modelKey,
+            systemPrompt,
+            goal: userChatInput,
+            baseResponse: baseAnswer,
+            pastSteps,
+            stream: true,
+            workflowStreamResponse
+          });
+          summaryResponse = summarizer.summary;
+          totalTokens += summarizer.tokens;
+          totalRunTimes += 1;
+        } catch (err) {
+          summaryResponse = '（总结生成失败，可重试）';
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: summaryResponse,
+              reasoning_content: '',
+              model: model.model
+            })
+          });
+        }
+      } else {
+        try {
+          const summarizer = await callSummarizer({
+            modelKey,
+            systemPrompt,
+            goal: userChatInput,
+            baseResponse: baseAnswer,
+            pastSteps,
+            stream: false,
+            workflowStreamResponse
+          });
+          summaryResponse = summarizer.summary;
+          totalTokens += summarizer.tokens;
+          totalRunTimes += 1;
+        } catch {
+          summaryResponse = '';
+        }
+      }
+
+      const finalAnswer = summaryResponse
+        ? `${baseAnswer}${SUMMARY_SEPARATOR}${summaryResponse}`
+        : baseAnswer;
       const { totalPoints, modelName } = formatModelChars2Points({
         model: modelKey,
         tokens: totalTokens,
@@ -752,15 +952,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         }
       ];
 
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.fastAnswer,
-        data: textAdaptGptResponse({
-          text: finalAnswer,
-          reasoning_content: reasoningText,
-          model: model.model
-        })
-      });
-
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
         [NodeOutputKeyEnum.answerText]: finalAnswer,
@@ -768,7 +959,9 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         [NodeOutputKeyEnum.rawResponse]: {
           plan: planQueue,
           pastSteps,
-          finalDecision: 'response'
+          finalDecision: 'response',
+          baseResponse: baseAnswer,
+          summaryResponse
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
