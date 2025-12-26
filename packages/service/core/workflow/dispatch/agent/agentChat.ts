@@ -86,7 +86,7 @@ const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
 // 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
 const SUMMARY_SEPARATOR = '\n\n---\n\n';
 const TASK_PREFIX = '\n> Task: ';
-const SUMMARY_START_HINT = '\n> 总结\n';
+const SUMMARY_START_HINT = '\n\n> 总结\n';
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -201,6 +201,120 @@ const truncateText = (text: string, maxChars: number) => {
   const t = (text || '').trim();
   if (t.length <= maxChars) return t;
   return `${t.slice(0, Math.max(0, maxChars - 1))}…`;
+};
+
+const getRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+const extractToolPreviewText = (assistant: AIChatItemValueItemType[], maxChars = 2400) => {
+  const lines: string[] = [];
+
+  for (const item of assistant) {
+    if (item.type !== ChatItemValueTypeEnum.tool || !item.tools) continue;
+    for (const tool of item.tools) {
+      const toolObj = getRecord(tool);
+      const toolName =
+        (toolObj && typeof toolObj.toolName === 'string' && toolObj.toolName) ||
+        (toolObj && typeof toolObj.name === 'string' && toolObj.name) ||
+        (toolObj && typeof toolObj.functionName === 'string' && toolObj.functionName) ||
+        'tool';
+      const response =
+        (toolObj && typeof toolObj.response === 'string' && toolObj.response) ||
+        (toolObj && typeof toolObj.result === 'string' && toolObj.result) ||
+        '';
+      const responseText = truncateText(response, 900);
+      lines.push(`- ${toolName}：${responseText || '（无返回）'}`);
+    }
+  }
+
+  const text = lines.join('\n').trim();
+  return truncateText(text, maxChars);
+};
+
+const buildStepResultSynthesisPrompt = (params: {
+  goal: string;
+  step: string;
+  toolText: string;
+}) => {
+  const { goal, step, toolText } = params;
+  return `用户目标：${goal}\n\n当前步骤：${step}\n\n工具调用结果（节选）：\n${toolText || '（无）'}\n\n请输出“本步骤的最终结果”（中文，1~4 句，必须有内容，不要输出思考过程/计划/JSON/代码块）：`;
+};
+
+const callStepResultSynthesis = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  step: string;
+  toolText: string;
+  stream: boolean;
+  workflowStreamResponse?: Props['workflowStreamResponse'];
+}): Promise<{ text: string; tokens: number }> => {
+  const { modelKey, systemPrompt, goal, step, toolText, stream, workflowStreamResponse } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) return { text: '', tokens: 0 };
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个结果整理器。只输出“本步骤的最终结果”，不要输出思考过程。`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: buildStepResultSynthesisPrompt({ goal, step, toolText })
+    }
+  ];
+
+  const ai = getAIApi({ timeout: 480000 });
+  const requestBody: Record<string, unknown> = {
+    ...model.defaultConfig,
+    model: model.model,
+    temperature: computedTemperature({ model, temperature: 0.2 }),
+    max_tokens: computedMaxToken({ model, maxToken: 256 }),
+    stream,
+    messages
+  };
+
+  const resp = (await ai.chat.completions.create(
+    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+  )) as unknown;
+
+  if (!stream) {
+    const unStreamResponse = resp as ChatCompletion;
+    const text = (unStreamResponse.choices?.[0]?.message?.content || '').trim();
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: text
+    };
+    const tokens =
+      unStreamResponse.usage?.total_tokens ??
+      (await countGptMessagesTokens(messages.concat(assistantMsg)));
+    return { text, tokens };
+  }
+
+  const streamResp = resp as StreamChatType;
+  let text = '';
+
+  for await (const part of streamResp) {
+    const delta = part.choices?.[0]?.delta?.content || '';
+    if (!delta) continue;
+    text += delta;
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.fastAnswer,
+      data: textAdaptGptResponse({
+        text: delta,
+        reasoning_content: '',
+        model: model.model
+      })
+    });
+  }
+
+  const assistantMsg: ChatCompletionMessageParam = {
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    content: text
+  };
+  const tokens = await countGptMessagesTokens(messages.concat(assistantMsg));
+
+  return { text: text.trim(), tokens };
 };
 
 const buildSummarizerUserPrompt = (params: {
@@ -627,60 +741,32 @@ const mergeRemainingPlan = (params: { current: string[]; suggested: string[] }) 
   return result;
 };
 
-const mergeRemainingPlanWithBudget = (params: {
-  current: string[];
-  suggested: string[];
-  pastSteps: { step: string }[];
-  allSteps: string[];
+const applyReplannerPlanUpdate = (params: {
+  suggestedSteps: string[];
   maxPlanSteps: number;
+  pastSteps: { step: string }[];
+  todoAllSteps: string[];
 }) => {
-  const doneSet = new Set(params.pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
+  const { suggestedSteps, maxPlanSteps, pastSteps } = params;
+  const todoAllSteps = params.todoAllSteps.map(normalizeStepText).filter(Boolean);
 
-  const current = params.current
-    .map(normalizeStepText)
-    .filter(Boolean)
-    .filter((s) => !doneSet.has(s));
-  const suggested = params.suggested
+  const doneSet = new Set(pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
+  const todoSet = new Set(todoAllSteps.map(normalizeStepText));
+
+  const candidates = uniqueOrderedSteps(suggestedSteps)
     .map(normalizeStepText)
     .filter(Boolean)
     .filter((s) => !doneSet.has(s))
+    .filter((s) => !todoSet.has(s))
     .filter((s) => !isReplyLikeStep(s));
 
-  const allSteps = uniqueOrderedSteps(params.allSteps.map(normalizeStepText).filter(Boolean));
-  const allSet = new Set(allSteps);
-
-  const tryAddStep = (s: string) => {
-    if (!s) return false;
-    if (allSet.has(s)) return true;
-    if (allSteps.length >= params.maxPlanSteps) return false;
-    allSteps.push(s);
-    allSet.add(s);
-    return true;
-  };
-
-  const seen = new Set<string>();
-  const nextPlanQueue: string[] = [];
-
-  // 允许 replanner 插入新步骤，但严格受 maxPlanSteps 约束，避免 todo 无限增长
-  for (const s of suggested) {
-    if (!tryAddStep(s)) continue;
-    if (seen.has(s)) continue;
-    nextPlanQueue.push(s);
-    seen.add(s);
+  for (const s of candidates) {
+    if (todoAllSteps.length >= maxPlanSteps) break;
+    todoAllSteps.push(s);
+    todoSet.add(s);
   }
 
-  // 保留原剩余步骤，避免 replanner 漏掉导致步骤丢失
-  for (const s of current) {
-    if (!tryAddStep(s)) continue;
-    if (seen.has(s)) continue;
-    nextPlanQueue.push(s);
-    seen.add(s);
-  }
-
-  return {
-    nextPlanQueue,
-    nextAllSteps: allSteps
-  };
+  return todoAllSteps;
 };
 
 const pickToolItems = (items: AIChatItemValueItemType[]) =>
@@ -785,7 +871,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
-          text: `${TASK_PREFIX}${normalizeStepText(step)}\n`,
+          text: `${TASK_PREFIX}${normalizeStepText(step)}\n\n`,
           reasoning_content: '',
           model: model.model
         })
@@ -816,8 +902,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       histories
     });
 
-    const stepAnswer = stepResult[NodeOutputKeyEnum.answerText] || '';
-    pastSteps.push({ step, result: stepAnswer });
+    let stepAnswer = (stepResult[NodeOutputKeyEnum.answerText] || '').trim();
     const stepReasoning = stepResult[NodeOutputKeyEnum.reasoningText];
     if (stepReasoning) {
       reasoningText = reasoningText ? `${reasoningText}\n${stepReasoning}` : stepReasoning;
@@ -836,6 +921,40 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     totalRunTimes += stepResult[DispatchNodeResponseKeyEnum.runTimes] || 1;
     totalTokens += stepNodeResponse?.toolCallTokens || 0;
+
+    // 防御：部分推理模型可能只输出 reasoning_content 导致 answerText 为空，这里基于工具结果补一段“本步骤最终结果”
+    if (!stepAnswer) {
+      const toolText = extractToolPreviewText(stepAssistant);
+      if (toolText) {
+        const synthesized = await callStepResultSynthesis({
+          modelKey,
+          systemPrompt,
+          goal: userChatInput,
+          step,
+          toolText,
+          stream: !!stream,
+          workflowStreamResponse
+        });
+        stepAnswer = synthesized.text || '';
+        totalTokens += synthesized.tokens;
+        totalRunTimes += 1;
+      }
+      if (!stepAnswer) {
+        stepAnswer = '（本步骤未生成可展示的文本结果）';
+        if (stream) {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: stepAnswer,
+              reasoning_content: '',
+              model: model.model
+            })
+          });
+        }
+      }
+    }
+
+    pastSteps.push({ step, result: stepAnswer });
 
     if (stream) {
       workflowStreamResponse?.({
@@ -1060,16 +1179,16 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     }
 
     if (decision.action === 'plan') {
-      const suggested = decision.steps.length > 0 ? decision.steps : planQueue;
-      const merged = mergeRemainingPlanWithBudget({
-        current: planQueue,
-        suggested,
-        pastSteps,
-        allSteps: todoAllSteps,
-        maxPlanSteps
-      });
-      planQueue = merged.nextPlanQueue;
-      todoAllSteps = merged.nextAllSteps;
+      // 只允许追加新步骤（受 maxPlanSteps 限制），执行顺序始终以待办清单顺序为准
+      if (decision.steps.length > 0) {
+        todoAllSteps = applyReplannerPlanUpdate({
+          suggestedSteps: decision.steps,
+          maxPlanSteps,
+          pastSteps,
+          todoAllSteps
+        });
+      }
+      planQueue = getRemainingTodoSteps();
     }
 
     // 防御：若剩余计划意外为空但 todo 仍未全部完成，则按 todoAllSteps 补齐剩余步骤
