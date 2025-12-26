@@ -26,7 +26,8 @@ export enum ChatItemValueTypeEnum {
   file = 'file',
   tool = 'tool',
   interactive = 'interactive',
-  reasoning = 'reasoning' // 推理内容输出
+  reasoning = 'reasoning', // 推理内容输出
+  todo = 'todo' // 待办清单（Plan）
 }
 
 export enum ChatSourceEnum {

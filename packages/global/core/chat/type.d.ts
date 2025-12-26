@@ -17,6 +17,12 @@ import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
 
+export type TodoListResponseItemType = {
+  content: string;
+  done?: number;
+  total?: number;
+};
+
 export type ChatSchema = {
   _id: string;
   chatId: string;
@@ -72,13 +78,15 @@ export type AIChatItemValueItemType = {
     | ChatItemValueTypeEnum.text
     | ChatItemValueTypeEnum.reasoning
     | ChatItemValueTypeEnum.tool
-    | ChatItemValueTypeEnum.interactive;
+    | ChatItemValueTypeEnum.interactive
+    | ChatItemValueTypeEnum.todo;
   text?: {
     content: string;
   };
   reasoning?: {
     content: string;
   };
+  todo?: TodoListResponseItemType;
   tools?: ToolModuleResponseItemType[];
   interactive?: InteractiveNodeResponseItemType;
 };

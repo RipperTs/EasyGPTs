@@ -51,7 +51,7 @@ const PluginRunContextProvider = ({
   }, []);
 
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool }: generatingMessageProps) => {
+    ({ event, text = '', status, name, tool, todo }: generatingMessageProps) => {
       setHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
@@ -65,6 +65,21 @@ const PluginRunContextProvider = ({
               ...item,
               status,
               moduleName: name
+            };
+          } else if (event === SseResponseEventEnum.todo && todo?.content) {
+            const nextTodoVal: AIChatItemValueItemType = {
+              type: ChatItemValueTypeEnum.todo,
+              todo
+            };
+            const existsIndex = item.value.findIndex((v) => v.type === ChatItemValueTypeEnum.todo);
+            const nextValue =
+              existsIndex >= 0
+                ? item.value.map((v, i) => (i === existsIndex ? nextTodoVal : v))
+                : [nextTodoVal, ...item.value];
+
+            return {
+              ...item,
+              value: nextValue
             };
           } else if (
             (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&

@@ -33,6 +33,7 @@ import { dispatchAnswer } from './tools/answer';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchNL2SQL } from './agent/nl2sql';
+import { dispatchAgentChat } from './agent/agentChat';
 import { dispatchHttp468Request } from './tools/http468';
 import { dispatchDatabaseConnector } from './tools/databaseConnector';
 import { dispatchAppRequest } from './abandoned/runApp';
@@ -77,6 +78,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.agentChat]: dispatchAgentChat,
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
   [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,

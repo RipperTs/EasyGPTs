@@ -71,7 +71,13 @@ const NodeCard = (props: Props) => {
   });
 
   const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.tools),
+    () =>
+      isTool &&
+      nodeList.some(
+        (item) =>
+          item?.flowNodeType === FlowNodeTypeEnum.tools ||
+          item?.flowNodeType === FlowNodeTypeEnum.agentChat
+      ),
     [isTool, nodeList]
   );
 

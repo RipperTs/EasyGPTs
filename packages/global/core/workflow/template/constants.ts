@@ -11,6 +11,7 @@ import { ContextExtractModule } from './system/contextExtract/index';
 import { HttpNode468 } from './system/http468';
 
 import { ToolModule } from './system/tools';
+import { AgentChatModule } from './system/agentChat';
 import { StopToolNode } from './system/stopTool';
 
 import { RunAppModule } from './system/abandoned/runApp/index';
@@ -42,6 +43,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   DatasetSearchModule,
   DatasetConcatModule,
   ToolModule,
+  AgentChatModule,
   ToolSetNode,
   StopToolNode,
   ClassifyQuestionModule,

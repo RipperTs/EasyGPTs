@@ -102,6 +102,7 @@ export enum FlowNodeTypeEnum {
   globalVariable = 'globalVariable',
   workflowStart = 'workflowStart',
   chatNode = 'chatNode',
+  agentChat = 'agentChat',
 
   datasetSearchNode = 'datasetSearchNode',
   datasetConcatNode = 'datasetConcatNode',

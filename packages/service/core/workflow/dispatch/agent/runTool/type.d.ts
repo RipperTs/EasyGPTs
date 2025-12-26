@@ -15,7 +15,7 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiModel]: string;

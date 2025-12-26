@@ -4,6 +4,7 @@ export enum SseResponseEventEnum {
   error = 'error',
   answer = 'answer', // animation stream
   fastAnswer = 'fastAnswer', // direct answer text, not animation
+  todo = 'todo', // todo list (plan) update
   flowNodeStatus = 'flowNodeStatus', // update node status
 
   toolCall = 'toolCall', // tool start

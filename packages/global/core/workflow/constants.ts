@@ -227,7 +227,11 @@ export enum NodeInputKeyEnum {
 
   // time semantic parse
   timeSemanticParseType = 'timeSemanticParseType',
-  timeSemanticCurrentTime = 'timeSemanticCurrentTime'
+  timeSemanticCurrentTime = 'timeSemanticCurrentTime',
+
+  // agent chat (plan-and-execute)
+  agentMaxPlanSteps = 'agentMaxPlanSteps',
+  agentMaxLoops = 'agentMaxLoops'
 }
 
 // AI 推理强度等级

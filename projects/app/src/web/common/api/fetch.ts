@@ -43,7 +43,8 @@ export const streamFetch = ({
           event:
             | SseResponseEventEnum.toolCall
             | SseResponseEventEnum.toolParams
-            | SseResponseEventEnum.toolResponse;
+            | SseResponseEventEnum.toolResponse
+            | SseResponseEventEnum.todo;
           [key: string]: any;
         }
     )[] = [];
@@ -185,6 +186,11 @@ export const streamFetch = ({
             responseQueue.push({
               event,
               text
+            });
+          } else if (event === SseResponseEventEnum.todo) {
+            responseQueue.push({
+              event,
+              ...parseJson
             });
           } else if (
             event === SseResponseEventEnum.toolCall ||

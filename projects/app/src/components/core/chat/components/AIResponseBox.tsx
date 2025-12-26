@@ -190,6 +190,69 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   );
 });
 
+const RenderTodoContent = React.memo(function RenderTodoContent({
+  todo,
+  showAnimation
+}: {
+  todo: { content: string; done?: number; total?: number };
+  showAnimation: boolean;
+}) {
+  const [isOpen, setIsOpen] = React.useState(0);
+
+  React.useEffect(() => {
+    if (showAnimation) {
+      setIsOpen(0);
+    } else {
+      const timer = setTimeout(() => {
+        setIsOpen(-1);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [showAnimation]);
+
+  const title = todo.total ? `待办清单（${todo.done || 0}/${todo.total}）` : '待办清单';
+
+  return (
+    <Accordion allowToggle index={isOpen} onChange={(index) => setIsOpen(index as number)}>
+      <AccordionItem borderTop={'none'} borderBottom={'none'}>
+        <AccordionButton
+          w={'auto'}
+          bg={'white'}
+          borderRadius={'md'}
+          borderWidth={'1px'}
+          borderColor={'myGray.200'}
+          boxShadow={'1'}
+          pl={3}
+          pr={2.5}
+          py={1}
+          _hover={{
+            bg: 'auto'
+          }}
+        >
+          <HStack mr={2} spacing={1}>
+            <MyIcon name={'core/chat/think'} w={'0.85rem'} />
+            <Box fontSize={'sm'}>{title}</Box>
+          </HStack>
+
+          {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
+          <AccordionIcon color={'myGray.600'} ml={5} />
+        </AccordionButton>
+        <AccordionPanel
+          py={0}
+          pr={0}
+          pl={3}
+          mt={2}
+          borderLeft={'2px solid'}
+          borderColor={'myGray.300'}
+          color={'myGray.500'}
+        >
+          <Markdown source={todo.content} />
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  );
+});
+
 const RenderInteractive = React.memo(function RenderInteractive({
   interactive
 }: {
@@ -237,6 +300,8 @@ const RenderInteractive = React.memo(function RenderInteractive({
 const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
     return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
+  if (value.type === ChatItemValueTypeEnum.todo && value.todo?.content)
+    return <RenderTodoContent showAnimation={isChatting} todo={value.todo} />;
   if (
     value.type === ChatItemValueTypeEnum.reasoning &&
     value.reasoning &&
