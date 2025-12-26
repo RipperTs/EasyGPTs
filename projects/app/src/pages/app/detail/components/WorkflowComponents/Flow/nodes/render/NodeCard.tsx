@@ -174,8 +174,9 @@ const NodeCard = (props: Props) => {
               color={'myGray.500'}
               _hover={{ color: 'primary.600' }}
               onClick={() => {
+                const displayName = t(name as any);
                 onOpenCustomTitleModal({
-                  defaultVal: name,
+                  defaultVal: displayName,
                   onSuccess: (e) => {
                     if (!e) {
                       return toast({
@@ -183,6 +184,7 @@ const NodeCard = (props: Props) => {
                         status: 'warning'
                       });
                     }
+                    if (e === displayName) return;
                     onChangeNode({
                       nodeId,
                       type: 'attr',

@@ -95,10 +95,10 @@ export const getEditorVariables = ({
     .filter((input) => input.canEdit)
     .map((item) => ({
       key: item.key,
-      label: item.label,
+      label: t((item.label as any) || ''),
       parent: {
         id: currentNode.nodeId,
-        label: currentNode.name,
+        label: t(currentNode.name as any),
         avatar: currentNode.avatar
       }
     }));
@@ -123,7 +123,7 @@ export const getEditorVariables = ({
                 key: output.id,
                 parent: {
                   id: node.nodeId,
-                  label: node.name,
+                  label: t(node.name as any),
                   avatar: node.avatar
                 }
               };
