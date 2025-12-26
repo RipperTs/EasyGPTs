@@ -859,66 +859,66 @@ const buildExecutorPrompt = (params: {
 
   const remainingText =
     remainingPlan.length === 0
-      ? '(This is the final step)'
+      ? '（这是最后一步）'
       : remainingPlan.map((s, i) => `${i + 1}. ${s}`).join('\n');
 
   const pastForPrompt = pastSteps.slice(-4);
   const pastText =
     pastForPrompt.length === 0
-      ? '(None)'
+      ? '（无）'
       : pastForPrompt
           .map(
             (p, i) =>
-              `✓ Step ${i + 1}: ${p.step}\n   Result: ${truncateText(p.result || '', 800) || '(No result)'}`
+              `✓ 步骤 ${i + 1}: ${p.step}\n   结果: ${truncateText(p.result || '', 800) || '（无结果）'}`
           )
           .join('\n\n');
 
-  return `You are a Task Executor within a Plan-and-Execute agent. Complete the current step efficiently and accurately.
+  return `你是 Plan-and-Execute Agent 中的任务执行器。请高效准确地完成当前步骤。
 
-## Execution Rules
+## 执行规则
 
-1. **Tool-First Approach**:
-   - ALWAYS use available tools when they can provide accurate information
-   - NEVER guess or fabricate data that tools could retrieve
-   - If unsure, use tools to verify before responding
+1. **工具优先**：
+   - 始终优先使用可用工具获取准确信息
+   - 绝不猜测或编造工具可以获取的数据
+   - 不确定时，先用工具验证再回答
 
-2. **Step Focus**:
-   - Complete ONLY the current step, not future steps
-   - Use context from past steps, but don't repeat their work
-   - Stay within the scope of this step's objective
+2. **聚焦当前步骤**：
+   - 只完成当前步骤，不要提前做后续步骤
+   - 可以使用之前步骤的结果，但不要重复已完成的工作
+   - 保持在当前步骤的目标范围内
 
-3. **Self-Verification**:
-   - Validate tool outputs before accepting them
-   - If tool returns empty/error, report clearly
-   - Cross-check data when multiple sources available
+3. **自我验证**：
+   - 验证工具输出的有效性后再采纳
+   - 如果工具返回空或错误，清楚地报告
+   - 有多个数据源时进行交叉验证
 
-4. **Clear Reporting**:
-   - State what was accomplished with specific data
-   - Include key numbers, facts, or findings
-   - Keep response focused (under 300 words unless complex data)
-   - Report failures honestly with specifics
+4. **清晰报告**：
+   - 用具体数据说明完成了什么
+   - 包含关键数字、事实或发现
+   - 保持回复精炼（复杂数据除外，一般不超过300字）
+   - 遇到失败时诚实报告具体原因
 
-## Context
+## 上下文
 
-**Overall Goal**: ${goal}
+**用户目标**: ${goal}
 
-**Progress**: Step ${stepNumber} of ${totalSteps}
+**当前进度**: 第 ${stepNumber} 步，共 ${totalSteps} 步
 
-**Completed Steps**:
+**已完成步骤**:
 ${pastText}
 
-**Remaining Steps**:
+**剩余步骤**:
 ${remainingText}
 
-## Current Step (EXECUTE THIS)
+## 当前步骤（请执行）
 ${step}
 
-## Output Requirements
-- Provide concrete results, not just "completed" or "done"
-- Include relevant data points and facts discovered
-- If blocked, explain exactly what went wrong
+## 输出要求
+- 提供具体结果，不要只说"已完成"或"完成了"
+- 包含发现的相关数据和事实
+- 如果遇到阻碍，说明具体问题
 
-Execute the current step now:`;
+请执行当前步骤:`;
 };
 
 const renderTodoMarkdown = (params: {
@@ -1007,6 +1007,44 @@ const applyReplannerPlanUpdate = (params: {
 const pickToolItems = (items: AIChatItemValueItemType[]) =>
   items.filter((i) => i.type === ChatItemValueTypeEnum.tool);
 
+// 智能判断是否需要调用 Critic（减少不必要的 LLM 调用）
+const shouldCallCritic = (stepAnswer: string, isLastStep: boolean, hasToolCalls: boolean) => {
+  // 最后一步必须评估
+  if (isLastStep) return true;
+  // 结果为空或太短
+  if (!stepAnswer || stepAnswer.trim().length < 30) return true;
+  // 包含错误/失败关键词
+  if (/error|fail|exception|无法|失败|抱歉|出错|不能|找不到/i.test(stepAnswer)) return true;
+  // 有工具调用但结果很短（可能工具失败）
+  if (hasToolCalls && stepAnswer.trim().length < 100) return true;
+  return false;
+};
+
+// 简单问题快速判断（跳过 Task Analyzer）
+const isObviouslySimple = (input: string, toolCount: number) => {
+  const trimmed = input.trim();
+  // 没有工具可用，直接走简单路径
+  if (toolCount === 0) return true;
+  // 很短的问候语或简单问题
+  if (trimmed.length < 15 && /^(你好|hi|hello|谢谢|thanks|帮我|请问|什么是)/i.test(trimmed)) {
+    return true;
+  }
+  // 单一明确的查询（无复杂连接词）
+  if (trimmed.length < 30 && !/[，,、；;]|(并且|而且|同时|另外|还要|以及|和.*和)/.test(trimmed)) {
+    return true;
+  }
+  return false;
+};
+
+// 判断步骤执行是否明显失败
+const isStepFailed = (stepAnswer: string) => {
+  if (!stepAnswer || stepAnswer.trim().length < 10) return true;
+  // 严重错误关键词
+  const severeErrorPattern = /^(抱歉|sorry|无法完成|执行失败|出现错误|error occurred)/i;
+  if (severeErrorPattern.test(stepAnswer.trim())) return true;
+  return false;
+};
+
 export async function dispatchAgentChat(props: Props): Promise<Response> {
   const {
     node: { nodeId, name },
@@ -1042,19 +1080,28 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     .map((id) => runtimeNodes.find((n) => n.nodeId === id))
     .filter((n): n is RuntimeNodeItemType => !!n);
 
-  // Step 1: Analyze task complexity
-  const analysis = await callTaskAnalyzer({
-    modelKey,
-    goal: userChatInput,
-    toolNodes
-  });
-
-  let totalTokens = analysis.tokens;
-  let totalRunTimes = 1;
+  let totalTokens = 0;
+  let totalRunTimes = 0;
   let reasoningText = '';
 
+  // 快速路径：明显简单的问题跳过 Task Analyzer
+  const obviouslySimple = isObviouslySimple(userChatInput, toolNodes.length);
+
+  // Step 1: Analyze task complexity (如果不是明显简单的问题)
+  let complexity: 'simple' | 'complex' = 'simple';
+  if (!obviouslySimple) {
+    const analysis = await callTaskAnalyzer({
+      modelKey,
+      goal: userChatInput,
+      toolNodes
+    });
+    totalTokens += analysis.tokens;
+    totalRunTimes += 1;
+    complexity = analysis.complexity;
+  }
+
   // For SIMPLE tasks, directly execute without full plan-execute loop
-  if (analysis.complexity === 'simple') {
+  if (complexity === 'simple') {
     const simpleResult = await dispatchRunTools({
       ...props,
       params: {
@@ -1141,7 +1188,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     modelKey,
     systemPrompt,
     goal: userChatInput,
-    complexity: analysis.complexity,
+    complexity,
     maxPlanSteps: adaptiveMaxSteps,
     toolNodes,
     enableReasoning,
@@ -1192,6 +1239,10 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   let toolItems: AIChatItemValueItemType[] = [];
   let toolDetail: ChatHistoryItemResType[] = [];
   let nodeUsages: ChatNodeUsageType[] = [];
+
+  // 容错机制：步骤重试计数器（每个步骤最多重试1次）
+  const MAX_STEP_RETRY = 1;
+  const stepRetryCount = new Map<string, number>();
 
   // execute + replan
   for (let loop = 0; loop < maxLoops; loop++) {
@@ -1291,32 +1342,59 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     pastSteps.push({ step, result: stepAnswer });
 
-    // Critic: Evaluate step execution quality
-    const criticResult = await callCritic({
-      modelKey,
-      systemPrompt,
-      goal: userChatInput,
-      step,
-      result: stepAnswer,
-      toolText
-    });
-    totalTokens += criticResult.tokens;
-    totalRunTimes += 1;
+    // 智能 Critic：只在必要时调用（减少 LLM 调用）
+    const isLastStep = planQueue.length === 0;
+    const hasToolCalls = toolItems.length > 0;
+    let criticScore = 10; // 默认满分（不调用时假设成功）
+    let stepFailed = isStepFailed(stepAnswer);
 
-    // Output quality warning if score is low
-    if (criticResult.score < 6 && stream) {
-      const qualityNote =
-        criticResult.issues.length > 0
-          ? `⚠️ Quality: ${criticResult.score}/10 - ${criticResult.issues.slice(0, 2).join('; ')}`
-          : `⚠️ Quality: ${criticResult.score}/10`;
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.fastAnswer,
-        data: textAdaptGptResponse({
-          text: `\n${qualityNote}\n`,
-          reasoning_content: '',
-          model: model.model
-        })
+    if (shouldCallCritic(stepAnswer, isLastStep, hasToolCalls)) {
+      const criticResult = await callCritic({
+        modelKey,
+        systemPrompt,
+        goal: userChatInput,
+        step,
+        result: stepAnswer,
+        toolText
       });
+      totalTokens += criticResult.tokens;
+      totalRunTimes += 1;
+      criticScore = criticResult.score;
+
+      // Critic 评分低于 4 分视为步骤失败
+      if (criticScore < 4) {
+        stepFailed = true;
+        // 在结果中标记失败原因（内部使用，不直接展示给用户）
+        pastSteps[pastSteps.length - 1].result = `[质量不佳:${criticScore}/10] ${stepAnswer}`;
+      }
+    }
+
+    // 容错机制：步骤失败时尝试重试（每个步骤最多重试 MAX_STEP_RETRY 次）
+    if (stepFailed) {
+      const stepKey = normalizeStepText(step);
+      const currentRetry = stepRetryCount.get(stepKey) || 0;
+
+      if (currentRetry < MAX_STEP_RETRY) {
+        // 还有重试机会：移除失败记录，放回队列头部重试
+        stepRetryCount.set(stepKey, currentRetry + 1);
+        pastSteps.pop(); // 移除刚才的失败记录
+        planQueue.unshift(step); // 放回队列头部
+
+        if (stream) {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: `\n> 步骤执行质量不佳，正在重试...\n\n`,
+              reasoning_content: '',
+              model: model.model
+            })
+          });
+        }
+
+        // 直接进入下一次循环重试，跳过 replanner
+        continue;
+      }
+      // 重试次数用尽，继续正常流程（让 replanner 决定如何处理）
     }
 
     if (stream) {
@@ -1351,16 +1429,29 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         : decision.reasoningText;
     }
 
-    // 强制：只要 todo 还有未完成，就不允许结束（哪怕模型说 respond）
+    // 智能强制继续逻辑（优化：不再一刀切）
     const remainingTodo = getRemainingTodoSteps();
     if (decision.action === 'respond' && remainingTodo.length > 0) {
-      decision = {
-        action: 'continue',
-        steps: mergeRemainingPlan({ current: remainingTodo, suggested: [] }),
-        progress: `${pastSteps.length}/${originalPlan.length} completed`,
-        tokens: decision.tokens,
-        reasoningText: decision.reasoningText
-      } as ReplanResult;
+      // 计算完成率
+      const completionRate = pastSteps.length / originalPlan.length;
+      const responseLength = (decision.response || '').trim().length;
+
+      // 允许提前结束的条件：
+      // 1. 已完成至少 60% 的步骤（核心任务很可能已完成）
+      // 2. 模型给出了足够长的回复（>200字，说明确实有实质性答案）
+      const canEarlyRespond = completionRate >= 0.6 && responseLength > 200;
+
+      if (!canEarlyRespond) {
+        // 不满足提前结束条件，强制继续
+        decision = {
+          action: 'continue',
+          steps: mergeRemainingPlan({ current: remainingTodo, suggested: [] }),
+          progress: `${pastSteps.length}/${originalPlan.length} completed`,
+          tokens: decision.tokens,
+          reasoningText: decision.reasoningText
+        } as ReplanResult;
+      }
+      // 满足提前结束条件，允许 respond
     }
 
     if (decision.action === 'respond') {
