@@ -134,6 +134,17 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   showAnimation: boolean;
 }) {
   const [isOpen, setIsOpen] = React.useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+  const [finalSeconds, setFinalSeconds] = React.useState<number | null>(null);
+  const startAtRef = React.useRef<number | null>(null);
+  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const calcSeconds = React.useCallback((ms: number) => Math.max(0, Math.floor(ms / 1000)), []);
+
+  const updateElapsed = React.useCallback(() => {
+    if (startAtRef.current === null) return;
+    setElapsedSeconds(calcSeconds(Date.now() - startAtRef.current));
+  }, [calcSeconds]);
 
   // 当思考内容完成输出时自动折叠
   React.useEffect(() => {
@@ -148,6 +159,41 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
       return () => clearTimeout(timer);
     }
   }, [showAnimation]);
+
+  // 思考计时（秒）
+  React.useEffect(() => {
+    if (showAnimation) {
+      if (startAtRef.current === null) startAtRef.current = Date.now();
+      setFinalSeconds(null);
+      updateElapsed();
+
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(updateElapsed, 1000);
+
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      };
+    }
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+
+    if (startAtRef.current !== null) {
+      const seconds = calcSeconds(Date.now() - startAtRef.current);
+      setElapsedSeconds(seconds);
+      setFinalSeconds(seconds);
+      startAtRef.current = null;
+      return;
+    }
+
+    // 历史消息：没有开始时间时，给个兜底耗时
+    setFinalSeconds((prev) => prev ?? 0);
+  }, [calcSeconds, showAnimation, updateElapsed]);
+
+  const title = showAnimation
+    ? `正在思考 · ${elapsedSeconds}s`
+    : `已思考 ${finalSeconds ?? elapsedSeconds}s`;
 
   return (
     <Accordion allowToggle index={isOpen} onChange={(index) => setIsOpen(index as number)}>
@@ -168,7 +214,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
         >
           <HStack mr={2} spacing={1}>
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
-            <Box fontSize={'sm'}>推理过程</Box>
+            <Box fontSize={'sm'}>{title}</Box>
           </HStack>
 
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
@@ -302,17 +348,12 @@ const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
     return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
   if (value.type === ChatItemValueTypeEnum.todo && value.todo?.content)
     return <RenderTodoContent showAnimation={isChatting} todo={value.todo} />;
-  if (
-    value.type === ChatItemValueTypeEnum.reasoning &&
-    value.reasoning &&
-    value.reasoning.content.trim()
-  )
-    return (
-      <RenderResoningContent
-        showAnimation={isChatting && isLastChild}
-        content={value.reasoning.content}
-      />
-    );
+  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
+    const content = value.reasoning.content || '';
+    const showAnimation = isChatting && isLastChild;
+    if (!content.trim() && !showAnimation) return null;
+    return <RenderResoningContent showAnimation={showAnimation} content={content} />;
+  }
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
     return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;
   if (
