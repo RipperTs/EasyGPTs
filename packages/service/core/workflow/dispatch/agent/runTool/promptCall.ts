@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue, formatToolResponse } from './utils';
+import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 
@@ -144,32 +144,49 @@ export const runToolWithPromptCall = async (
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(requestBody as any, {
-    headers: {
-      Accept: 'application/json, text/plain, */*'
-    }
-  });
+  const createAiResponse = () =>
+    ai.chat.completions.create(requestBody as any, {
+      headers: { Accept: 'application/json, text/plain, */*' }
+    });
 
-  const { answer, reasoning } = await (async () => {
+  const parseAiResponse = async (resp: unknown) => {
     if (res && stream) {
-      const { answer, reasoning } = await streamResponse({
+      return streamResponse({
         res,
         toolNodes,
-        stream: aiResponse,
+        stream: resp as StreamChatType,
         workflowStreamResponse,
         enableReasoning
       });
+    }
 
-      return { answer, reasoning };
-    } else {
-      const result = aiResponse as ChatCompletion;
-      const answer = result.choices?.[0]?.message?.content || '';
-      const reasoning = enableReasoning
-        ? // @ts-ignore
-          result.choices?.[0]?.message?.reasoning_content || ''
-        : '';
+    const result = resp as ChatCompletion;
+    const answer = result.choices?.[0]?.message?.content || '';
+    const reasoning = enableReasoning
+      ? // @ts-ignore
+        result.choices?.[0]?.message?.reasoning_content || ''
+      : '';
 
-      return { answer, reasoning };
+    return { answer, reasoning };
+  };
+
+  const { answer, reasoning } = await (async () => {
+    let aiResponse = await createAiResponse();
+    try {
+      return await parseAiResponse(aiResponse);
+    } catch (e) {
+      if (!isLLMEmptyResponseError(e)) throw e;
+      await sleep(150);
+      aiResponse = await createAiResponse();
+      try {
+        return await parseAiResponse(aiResponse);
+      } catch (e2) {
+        if (!isLLMEmptyResponseError(e2)) throw e2;
+        return {
+          answer: '（模型本次未返回内容，已自动重试仍失败，请重试或更换模型）',
+          reasoning: ''
+        };
+      }
     }
   })();
 

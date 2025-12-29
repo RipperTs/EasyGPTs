@@ -3,6 +3,19 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
+export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export const getErrorMessage = (error: unknown): string => {
+  if (typeof error === 'string') return error;
+  if (!error || typeof error !== 'object') return '';
+  const maybeMessage = (error as { message?: unknown }).message;
+  if (typeof maybeMessage === 'string') return maybeMessage;
+  return '';
+};
+
+export const isLLMEmptyResponseError = (error: unknown) =>
+  getErrorMessage(error).includes('LLM api response empty') || error === 'LLM api response empty';
+
 export const updateToolInputValue = ({
   params,
   inputs

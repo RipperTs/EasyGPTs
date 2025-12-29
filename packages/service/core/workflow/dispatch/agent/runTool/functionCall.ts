@@ -23,7 +23,7 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue, formatToolResponse } from './utils';
+import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 
@@ -146,80 +146,104 @@ export const runToolWithFunctionCall = async (
   const ai = getAIApi({
     timeout: 480000
   });
-  let aiResponse;
-  try {
-    aiResponse = await ai.chat.completions.create(requestBody as any, {
-      headers: { Accept: 'application/json, text/plain, */*' }
-    });
-  } catch (error: any) {
-    const msg = `${error?.message || ''}`;
-    const status = error?.status ?? error?.code;
-    // 无可用渠道 → 模型降级（function call 场景）
-    const needFallback =
-      status === 503 || /无可用渠道|no available channel|当前分组/.test(msg || '');
-    if (needFallback && Array.isArray((global as any).llmModels)) {
-      const candidates = (global as any).llmModels.filter(
-        (m: LLMModelItemType) => m.usedInToolCall && m.functionCall && m.model !== toolModel.model
-      ) as LLMModelItemType[];
-      const fallback = candidates[0];
-      if (fallback) {
-        requestBody = {
-          ...(fallback?.defaultConfig || {}),
-          model: fallback.model,
-          temperature: computedTemperature({ model: fallback, temperature }),
-          max_tokens,
-          stream,
-          messages: requestMessages,
-          functions,
-          function_call: 'auto'
-        } as any;
-        const ai2 = getAIApi({ timeout: 480000 });
-        aiResponse = await ai2.chat.completions.create(requestBody as any, {
-          headers: { Accept: 'application/json, text/plain, */*' }
-        });
-      } else {
-        throw error;
+  const createAiResponse = async () => {
+    try {
+      return await ai.chat.completions.create(requestBody as any, {
+        headers: { Accept: 'application/json, text/plain, */*' }
+      });
+    } catch (error: unknown) {
+      const errObj = error as { message?: unknown; status?: unknown; code?: unknown };
+      const msg = typeof errObj?.message === 'string' ? errObj.message : '';
+      const status =
+        typeof errObj?.status === 'number' || typeof errObj?.status === 'string'
+          ? errObj.status
+          : errObj?.code;
+
+      // 无可用渠道 → 模型降级（function call 场景）
+      const needFallback =
+        status === 503 || /无可用渠道|no available channel|当前分组/.test(msg || '');
+      if (needFallback && Array.isArray((global as any).llmModels)) {
+        const candidates = (global as any).llmModels.filter(
+          (m: LLMModelItemType) => m.usedInToolCall && m.functionCall && m.model !== toolModel.model
+        ) as LLMModelItemType[];
+        const fallback = candidates[0];
+        if (fallback) {
+          requestBody = {
+            ...(fallback?.defaultConfig || {}),
+            model: fallback.model,
+            temperature: computedTemperature({ model: fallback, temperature }),
+            max_tokens,
+            stream,
+            messages: requestMessages,
+            functions,
+            function_call: 'auto'
+          } as any;
+          const ai2 = getAIApi({ timeout: 480000 });
+          return ai2.chat.completions.create(requestBody as any, {
+            headers: { Accept: 'application/json, text/plain, */*' }
+          });
+        }
       }
-    } else {
       throw error;
     }
-  }
+  };
 
-  const { answer, functionCalls, reasoning } = await (async () => {
+  const parseAiResponse = async (resp: unknown) => {
     if (res && stream) {
       return streamResponse({
         res,
         toolNodes,
-        stream: aiResponse,
+        stream: resp as StreamChatType,
         workflowStreamResponse,
         enableReasoning
       });
-    } else {
-      const result = aiResponse as ChatCompletion;
-      const function_call = result.choices?.[0]?.message?.function_call;
-      const toolNode = toolNodes.find((node) => node.nodeId === function_call?.name);
+    }
 
-      const toolCalls = function_call
-        ? [
-            {
-              ...function_call,
-              id: getNanoid(),
-              toolName: toolNode?.name,
-              toolAvatar: toolNode?.avatar
-            }
-          ]
-        : [];
+    const result = resp as ChatCompletion;
+    const function_call = result.choices?.[0]?.message?.function_call;
+    const toolNode = toolNodes.find((node) => node.nodeId === function_call?.name);
 
-      const reasoning = enableReasoning
-        ? // @ts-ignore
-          result.choices?.[0]?.message?.reasoning_content || ''
-        : '';
+    const toolCalls = function_call
+      ? [
+          {
+            ...function_call,
+            id: getNanoid(),
+            toolName: toolNode?.name,
+            toolAvatar: toolNode?.avatar
+          }
+        ]
+      : [];
 
-      return {
-        answer: result.choices?.[0]?.message?.content || '',
-        functionCalls: toolCalls,
-        reasoning: reasoning
-      };
+    const reasoning = enableReasoning
+      ? // @ts-ignore
+        result.choices?.[0]?.message?.reasoning_content || ''
+      : '';
+
+    return {
+      answer: result.choices?.[0]?.message?.content || '',
+      functionCalls: toolCalls,
+      reasoning: reasoning
+    };
+  };
+
+  const { answer, functionCalls, reasoning } = await (async () => {
+    let aiResponse = await createAiResponse();
+    try {
+      return await parseAiResponse(aiResponse);
+    } catch (e) {
+      if (!isLLMEmptyResponseError(e)) throw e;
+      await sleep(150);
+      aiResponse = await createAiResponse();
+      try {
+        return await parseAiResponse(aiResponse);
+      } catch (e2) {
+        if (!isLLMEmptyResponseError(e2)) throw e2;
+        return {
+          answer: '（模型本次未返回内容，已自动重试仍失败，请重试或更换模型）',
+          functionCalls: [],
+          reasoning: ''
+        };
+      }
     }
   })();
 

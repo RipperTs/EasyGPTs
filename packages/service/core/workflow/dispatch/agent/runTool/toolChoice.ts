@@ -23,7 +23,7 @@ import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { updateToolInputValue, formatToolResponse } from './utils';
+import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
@@ -188,39 +188,64 @@ export const runToolWithToolChoice = async (
     });
     // 成功直接进入解析
 
-    const { answer, toolCalls, reasoning } = await (async () => {
+    const parseAiResponse = async (resp: unknown) => {
       if (res && stream) {
         return streamResponse({
           res,
           workflowStreamResponse,
           toolNodes,
-          stream: aiResponse,
+          stream: resp as StreamChatType,
           enableReasoning
         });
-      } else {
-        const result = aiResponse as ChatCompletion;
-        const calls = result.choices?.[0]?.message?.tool_calls || [];
+      }
 
-        // 加上name和avatar
-        const toolCalls = calls.map((tool) => {
-          const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
-          return {
-            ...tool,
-            toolName: toolNode?.name || '',
-            toolAvatar: toolNode?.avatar || ''
-          };
+      const result = resp as ChatCompletion;
+      const calls = result.choices?.[0]?.message?.tool_calls || [];
+
+      // 加上name和avatar
+      const toolCalls = calls.map((tool) => {
+        const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+        return {
+          ...tool,
+          toolName: toolNode?.name || '',
+          toolAvatar: toolNode?.avatar || ''
+        };
+      });
+
+      const reasoning = enableReasoning
+        ? // @ts-ignore
+          result.choices?.[0]?.message?.reasoning_content || ''
+        : '';
+
+      return {
+        answer: result.choices?.[0]?.message?.content || '',
+        toolCalls,
+        reasoning
+      };
+    };
+
+    const { answer, toolCalls, reasoning } = await (async () => {
+      try {
+        return await parseAiResponse(aiResponse);
+      } catch (e) {
+        if (!isLLMEmptyResponseError(e)) throw e;
+
+        addLog.warn('LLM response empty, retry once', { model: toolModel.model });
+        await sleep(150);
+        aiResponse = await ai.chat.completions.create(requestBody as any, {
+          headers: { Accept: 'application/json, text/plain, */*' }
         });
 
-        const reasoning = enableReasoning
-          ? // @ts-ignore
-            result.choices?.[0]?.message?.reasoning_content || ''
-          : '';
-
-        return {
-          answer: result.choices?.[0]?.message?.content || '',
-          toolCalls: toolCalls,
-          reasoning: reasoning
-        };
+        try {
+          return await parseAiResponse(aiResponse);
+        } catch (e2) {
+          if (!isLLMEmptyResponseError(e2)) throw e2;
+          return {
+            answer: '（模型本次未返回内容，已自动重试仍失败，请重试或更换模型）',
+            toolCalls: [],
+            reasoning: ''
+          };
+        }
       }
     })();
 
