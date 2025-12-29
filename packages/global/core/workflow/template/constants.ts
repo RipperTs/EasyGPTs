@@ -26,6 +26,7 @@ import type { FlowNodeTemplateType } from '../type/node';
 import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';
 import { CodeNode } from './system/sandbox';
+import { CodeInterpreterModule } from './system/codeInterpreter';
 import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { ReadFilesNodes } from './system/readFiles';
@@ -57,6 +58,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
+  CodeInterpreterModule,
   TerminateWorkflowModule
 ];
 /* app flow module templates */

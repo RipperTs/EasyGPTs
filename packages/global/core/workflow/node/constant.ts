@@ -125,6 +125,7 @@ export enum FlowNodeTypeEnum {
   ifElseNode = 'ifElseNode',
   variableUpdate = 'variableUpdate',
   code = 'code',
+  codeInterpreter = 'codeInterpreter',
   textEditor = 'textEditor',
   customFeedback = 'customFeedback',
   readFiles = 'readFiles',

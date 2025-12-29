@@ -215,6 +215,8 @@ export enum NodeInputKeyEnum {
   // code
   code = 'code',
   codeType = 'codeType', // js|py
+  codeInterpreterMaxRetry = 'codeInterpreterMaxRetry',
+  codeInterpreterTimeout = 'codeInterpreterTimeout',
 
   // read files
   fileUrlList = 'fileUrlList',

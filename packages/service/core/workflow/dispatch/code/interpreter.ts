@@ -1,0 +1,464 @@
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import axios from 'axios';
+import { formatHttpError } from '../utils';
+import { getAIApi } from '../../../ai/config';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { ModelTypeEnum, getLLMModel } from '../../../ai/model';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
+import type {
+  ChatCompletionMessageParam,
+  SdkChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+
+type Props = ModuleDispatchProps<{
+  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiSystemPrompt]?: string;
+  [NodeInputKeyEnum.codeInterpreterMaxRetry]?: number;
+  [NodeInputKeyEnum.codeInterpreterTimeout]?: number;
+  [NodeInputKeyEnum.userChatInput]: string;
+}>;
+
+type Response = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.success]: boolean;
+  [NodeOutputKeyEnum.rawResponse]?: Record<string, unknown>;
+  [NodeOutputKeyEnum.error]: string;
+  generatedCode?: string;
+  executionLog?: string;
+}>;
+
+const DEFAULT_SYSTEM_PROMPT =
+  '你是一名资深 Python 工程师，负责把用户的自然语言任务转换为可执行的 Python 代码，并在沙盒环境中运行。\n' +
+  '要求：\n' +
+  '- 必须定义 `def main(task):` 作为入口，返回值必须是可 JSON 序列化的 dict；\n' +
+  '- 仅输出一段 Python 代码（建议使用 ```python 代码块```），不要包含任何解释；\n' +
+  '- 优先使用标准库；如需第三方库（如 pandas/numpy/matplotlib），遇到 ImportError 必须降级为标准库方案；\n' +
+  '- 代码中可以使用 print 输出运行日志。';
+
+const parseRetryTimes = (value: unknown, defaultValue = 3) => {
+  const num =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : defaultValue;
+
+  if (!Number.isFinite(num)) return defaultValue;
+
+  const rounded = Math.round(num);
+  return Math.min(Math.max(rounded, 1), 10);
+};
+
+const parseTimeoutSeconds = (value: unknown, defaultValue = 120) => {
+  const num =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : defaultValue;
+
+  if (!Number.isFinite(num)) return defaultValue;
+
+  const rounded = Math.round(num);
+  return Math.min(Math.max(rounded, 1), 600);
+};
+
+const extractPythonCodeFromModelOutput = (raw: string) => {
+  const text = raw.trim();
+  if (!text) return '';
+
+  const fenced = text.match(/```(?:python|py)?\s*([\s\S]*?)\s*```/i)?.[1];
+  return (fenced ?? text).trim();
+};
+
+const buildGenerateCodeMessages = ({
+  systemPrompt,
+  task
+}: {
+  systemPrompt: string;
+  task: string;
+}): ChatCompletionMessageParam[] => {
+  const userPrompt = `任务描述：
+${task}
+
+运行时会传入：
+- task: string（上面的任务描述）
+
+请输出可直接运行的 Python 代码，要求：
+- 必须定义 def main(task):
+- 返回一个 dict（可 JSON 序列化）
+- 只输出代码（建议用 \`\`\`python 代码块\`\`\`），不要输出任何解释文字。`;
+
+  return [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: systemPrompt
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: userPrompt
+    }
+  ];
+};
+
+const buildFixCodeMessages = ({
+  systemPrompt,
+  task,
+  currentCode,
+  errorText
+}: {
+  systemPrompt: string;
+  task: string;
+  currentCode: string;
+  errorText: string;
+}): ChatCompletionMessageParam[] => {
+  const userPrompt = `任务描述：
+${task}
+
+当前代码：
+\`\`\`python
+${currentCode}
+\`\`\`
+
+运行报错信息：
+${errorText}
+
+请根据报错修复代码，并再次输出一段可直接运行的 Python 代码，要求：
+- 必须定义 def main(task):
+- 返回一个 dict（可 JSON 序列化）
+- 只输出代码（必须用 \`\`\`python 代码块\`\`\`），不要输出任何解释文字。`;
+
+  return [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: systemPrompt
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: userPrompt
+    }
+  ];
+};
+
+const callModelGetCode = async ({
+  model,
+  messages,
+  aiParams
+}: {
+  model: string;
+  messages: ChatCompletionMessageParam[];
+  aiParams: Parameters<typeof getAIApi>[0];
+}) => {
+  const ai = getAIApi(aiParams);
+  const response = await ai.chat.completions.create({
+    model,
+    temperature: 0.01,
+    messages: messages as SdkChatCompletionMessageParam[],
+    stream: false
+  });
+
+  const answer = response.choices?.[0]?.message?.content || '';
+  const tokens = response.usage?.total_tokens ?? (await countGptMessagesTokens(messages));
+
+  const code = extractPythonCodeFromModelOutput(answer);
+  return { code, tokens, raw: answer };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object';
+
+const getRecord = (value: unknown): Record<string, unknown> | undefined =>
+  isRecord(value) ? value : undefined;
+
+const runPythonInSandbox = async ({
+  code,
+  variables,
+  timeoutSec
+}: {
+  code: string;
+  variables: Record<string, unknown>;
+  timeoutSec: number;
+}): Promise<{ codeReturn: Record<string, unknown>; log: string }> => {
+  if (!process.env.SANDBOX_URL) {
+    throw new Error('Can not find SANDBOX_URL in env');
+  }
+
+  const requestTimeoutMs = Math.min(Math.max(timeoutSec + 5, 10), 650) * 1000;
+  const { data } = await axios.post(
+    `${process.env.SANDBOX_URL}/sandbox/python`,
+    {
+      code,
+      variables,
+      timeout: timeoutSec,
+      timeoutMs: timeoutSec * 1000
+    },
+    {
+      timeout: requestTimeoutMs
+    }
+  );
+
+  const root = getRecord(data);
+  const success = root?.success === true;
+
+  const dataObj = getRecord(root?.data);
+  const codeReturn = getRecord(dataObj?.codeReturn);
+  const log = typeof dataObj?.log === 'string' ? dataObj.log : '';
+
+  if (success && codeReturn) {
+    return { codeReturn, log };
+  }
+
+  const message =
+    typeof root?.message === 'string'
+      ? root.message
+      : typeof root?.error === 'string'
+        ? root.error
+        : 'Run code failed';
+
+  throw new Error(`${message}${log ? `\n\nlog:\n${log}` : ''}`);
+};
+
+export const dispatchCodeInterpreter = async (props: Props): Promise<Response> => {
+  const {
+    user,
+    node,
+    params: { model, systemPrompt, codeInterpreterMaxRetry, codeInterpreterTimeout, userChatInput }
+  } = props;
+
+  if (!process.env.SANDBOX_URL) {
+    const message = 'Can not find SANDBOX_URL in env';
+    const pluginOutput = { success: false, error: message };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: message,
+      generatedCode: '',
+      executionLog: '',
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
+  }
+
+  if (!userChatInput) {
+    const message = '任务描述为空';
+    const pluginOutput = { success: false, error: message };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: message,
+      generatedCode: '',
+      executionLog: '',
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
+  }
+
+  const llmModel = getLLMModel(model);
+  if (!llmModel) {
+    const message = 'LLM model not found';
+    const pluginOutput = { success: false, error: message };
+
+    return {
+      [NodeOutputKeyEnum.success]: false,
+      [NodeOutputKeyEnum.error]: message,
+      generatedCode: '',
+      executionLog: '',
+      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
+  }
+
+  const maxRetry = parseRetryTimes(codeInterpreterMaxRetry, 3);
+  const timeoutSec = parseTimeoutSeconds(codeInterpreterTimeout, 120);
+  const variables: Record<string, unknown> = {
+    task: userChatInput
+  };
+
+  const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
+  const aiParams = {
+    userKey: user.openaiAccount,
+    timeout: 480000
+  } as const;
+
+  let currentCode = '';
+  let executionLog = '';
+  let lastErrorText = '';
+  let totalTokens = 0;
+  let lastRaw = '';
+  let attempt = 0;
+
+  for (attempt = 1; attempt <= maxRetry; attempt++) {
+    try {
+      const messages =
+        attempt === 1
+          ? buildGenerateCodeMessages({
+              systemPrompt: finalSystemPrompt,
+              task: userChatInput
+            })
+          : buildFixCodeMessages({
+              systemPrompt: finalSystemPrompt,
+              task: userChatInput,
+              currentCode,
+              errorText: lastErrorText
+            });
+
+      const { code, tokens, raw } = await callModelGetCode({
+        model: llmModel.model,
+        messages,
+        aiParams
+      });
+      totalTokens += tokens;
+      lastRaw = raw;
+
+      if (!code || !/\bdef\s+main\s*\(/.test(code)) {
+        lastErrorText = '模型输出的代码不包含 main 函数';
+        currentCode = code;
+        continue;
+      }
+
+      currentCode = code;
+
+      const runResult = await runPythonInSandbox({
+        code: currentCode,
+        variables,
+        timeoutSec
+      });
+      executionLog = runResult.log;
+
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: llmModel.model,
+        tokens: totalTokens,
+        modelType: ModelTypeEnum.llm
+      });
+
+      const pluginOutput: Record<string, unknown> = {
+        success: true,
+        rawResponse: runResult.codeReturn,
+        error: '',
+        generatedCode: currentCode,
+        executionLog
+      };
+
+      return {
+        [NodeOutputKeyEnum.success]: true,
+        [NodeOutputKeyEnum.error]: '',
+        [NodeOutputKeyEnum.rawResponse]: runResult.codeReturn,
+        generatedCode: currentCode,
+        executionLog,
+        [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+          model: modelName,
+          tokens: totalTokens,
+          query: userChatInput,
+          nodeInputs: {
+            systemPrompt: finalSystemPrompt,
+            maxRetry,
+            timeoutSec
+          },
+          nodeOutputs: {
+            attempts: attempt,
+            rawResponse: lastRaw
+          },
+          code: currentCode,
+          codeLog: executionLog,
+          pluginOutput,
+          textOutput: ''
+        },
+        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
+          totalTokens > 0
+            ? [
+                {
+                  moduleName: node.name,
+                  totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+                  model: modelName,
+                  tokens: totalTokens
+                }
+              ]
+            : []
+      };
+    } catch (error) {
+      const httpErrText = formatHttpError(error);
+      const errText =
+        error instanceof Error ? error.message : getErrText(error, 'Code Interpreter error');
+      lastErrorText = httpErrText || errText;
+
+      if (attempt >= maxRetry) break;
+    }
+  }
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: llmModel.model,
+    tokens: totalTokens,
+    modelType: ModelTypeEnum.llm
+  });
+
+  const finalErrText = lastErrorText || 'Code Interpreter error';
+  const pluginOutput: Record<string, unknown> = {
+    success: false,
+    error: finalErrText,
+    rawResponse: {},
+    generatedCode: currentCode,
+    executionLog
+  };
+
+  return {
+    [NodeOutputKeyEnum.success]: false,
+    [NodeOutputKeyEnum.error]: finalErrText,
+    [NodeOutputKeyEnum.rawResponse]: {},
+    generatedCode: currentCode,
+    executionLog,
+    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      model: modelName,
+      tokens: totalTokens,
+      query: userChatInput,
+      errorText: finalErrText,
+      error: { message: finalErrText },
+      nodeInputs: {
+        systemPrompt: finalSystemPrompt,
+        maxRetry,
+        timeoutSec
+      },
+      nodeOutputs: {
+        attempts: attempt || maxRetry,
+        rawResponse: lastRaw
+      },
+      code: currentCode,
+      codeLog: executionLog,
+      pluginOutput,
+      textOutput: finalErrText
+    },
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
+      totalTokens > 0
+        ? [
+            {
+              moduleName: node.name,
+              totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+              model: modelName,
+              tokens: totalTokens
+            }
+          ]
+        : []
+  };
+};
