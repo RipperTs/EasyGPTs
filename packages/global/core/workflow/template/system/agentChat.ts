@@ -29,10 +29,10 @@ export const AgentChatModule: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/aiAgent',
   name: 'Agent 对话',
   intro:
-    'Plan-and-Execute 对话模式：先规划再逐步执行（支持工具调用与重规划），十分适合复杂任务处理。',
+    'Plan-and-Execute 对话模式：结构化规划 → 逐步执行 → 持续重规划与收敛答复，适合复杂任务与数据分析场景。',
   showStatus: true,
   isTool: true,
-  version: '481',
+  version: '482',
   inputs: [
     {
       ...Input_Template_SettingAiModel,
@@ -123,7 +123,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.rawResponse,
       key: NodeOutputKeyEnum.rawResponse,
       label: '执行详情',
-      description: '计划、已完成步骤、最终决策等（用于调试）',
+      description: '结构化计划、重规划变化摘要、已完成步骤、耗时/循环等（用于调试与审计）',
       valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.static
     }

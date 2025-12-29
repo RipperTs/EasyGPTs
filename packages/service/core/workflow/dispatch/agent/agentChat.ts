@@ -26,6 +26,7 @@ import { filterToolResponseToPreview } from './runTool/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { StreamChatType } from '@fastgpt/global/core/ai/type';
+import { randomUUID } from 'crypto';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
@@ -44,9 +45,43 @@ type Props = ModuleDispatchProps<{
 }>;
 
 type RawResponse = {
+  traceId: string;
   plan: string[];
   pastSteps: { step: string; result: string }[];
   finalDecision: 'response' | 'fallback';
+  planSteps?: AgentPlanStep[];
+  replanHistory?: Array<{
+    loop: number;
+    changeSummary: string;
+    reason: string;
+    beforeRemaining: string[];
+    afterRemaining: string[];
+  }>;
+  usage?: {
+    totalTokens: number;
+    totalRunTimes: number;
+  };
+};
+
+type AgentPlanStep = {
+  id: string;
+  title: string;
+  intent?: string;
+  toolHints?: string[];
+  expectedOutput?: string;
+  acceptanceCriteria?: string[];
+  inputs?: Record<string, unknown>;
+};
+
+type AgentPastStep = {
+  step: AgentPlanStep;
+  result: string;
+  toolText?: string;
+  critic?: {
+    score: number;
+    issues: string[];
+    suggestion: string;
+  };
 };
 
 // Task Analyzer result type
@@ -90,7 +125,7 @@ const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
 
 // 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
 const SUMMARY_SEPARATOR = '\n\n---\n\n';
-const TASK_PREFIX = '\n> Task: ';
+const TASK_PREFIX = '\n> 任务：';
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -187,6 +222,175 @@ const parseStepsFromModelText = (text: string, maxSteps: number): string[] => {
   return [];
 };
 
+const normalizePlannerPlanSteps = (
+  steps: AgentPlanStep[],
+  maxPlanSteps: number,
+  reservedIds?: Set<string>
+) => {
+  const seenTitle = new Set<string>();
+  const seenId = new Set<string>();
+  const result: AgentPlanStep[] = [];
+
+  for (const step of steps) {
+    const title = normalizeStepText(step.title);
+    if (!title) continue;
+    if (isReplyLikeStep(title)) continue;
+
+    const titleKey = normalizeStepText(title);
+    if (!titleKey) continue;
+    if (seenTitle.has(titleKey)) continue;
+
+    let id = isNonEmptyString(step.id) ? step.id.trim() : '';
+    if (!id) id = `S${result.length + 1}`;
+    if (reservedIds?.has(id) || seenId.has(id)) {
+      let idx = 2;
+      while (reservedIds?.has(`${id}_${idx}`) || seenId.has(`${id}_${idx}`)) idx++;
+      id = `${id}_${idx}`;
+    }
+
+    const toolHints = step.toolHints?.map((s) => s.trim()).filter(Boolean);
+    const acceptanceCriteria = step.acceptanceCriteria?.map((s) => s.trim()).filter(Boolean);
+    const normalized: AgentPlanStep = {
+      ...step,
+      id,
+      title,
+      ...(toolHints?.length ? { toolHints } : {}),
+      ...(acceptanceCriteria?.length ? { acceptanceCriteria } : {})
+    };
+
+    result.push(normalized);
+    seenTitle.add(titleKey);
+    seenId.add(id);
+    if (result.length >= maxPlanSteps) break;
+  }
+
+  return result;
+};
+
+const parsePlanStepsFromModelText = (text: string, maxPlanSteps: number): AgentPlanStep[] => {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  const jsonStr = extractFirstJsonValue(trimmed) || trimmed;
+
+  const normalizeCriteria = (value: unknown, maxLen: number) => {
+    if (isNonEmptyString(value)) return [value.trim()].slice(0, maxLen);
+    return normalizeStringArray(value, maxLen);
+  };
+
+  const normalizeOne = (value: unknown, index: number): AgentPlanStep | undefined => {
+    if (isNonEmptyString(value)) {
+      const title = normalizeStepText(value);
+      if (!title) return;
+      return { id: `S${index + 1}`, title };
+    }
+
+    const obj = getRecord(value);
+    if (!obj) return;
+
+    const rawTitle =
+      (typeof obj.title === 'string' && obj.title) ||
+      (typeof obj.step === 'string' && obj.step) ||
+      '';
+    const title = normalizeStepText(rawTitle);
+    if (!title) return;
+
+    const id = isNonEmptyString(obj.id) ? obj.id.trim() : `S${index + 1}`;
+    const intent = isNonEmptyString(obj.intent) ? obj.intent.trim() : undefined;
+    const toolHints = normalizeStringArray(obj.toolHints ?? obj.tools, 6);
+    const expectedOutput = isNonEmptyString(obj.expectedOutput)
+      ? obj.expectedOutput.trim()
+      : undefined;
+    const acceptanceCriteria = normalizeCriteria(obj.acceptanceCriteria, 8);
+    const inputs = getRecord(obj.inputs);
+
+    return {
+      id,
+      title,
+      ...(intent ? { intent } : {}),
+      ...(toolHints.length ? { toolHints } : {}),
+      ...(expectedOutput ? { expectedOutput } : {}),
+      ...(acceptanceCriteria.length ? { acceptanceCriteria } : {}),
+      ...(inputs ? { inputs } : {})
+    };
+  };
+
+  try {
+    const parsed = json5.parse(jsonStr) as unknown;
+
+    const rawSteps = (() => {
+      if (Array.isArray(parsed)) return parsed;
+      const obj = getRecord(parsed);
+      if (!obj) return [];
+      const steps = obj.steps ?? obj.plan;
+      return Array.isArray(steps) ? steps : [];
+    })();
+
+    const steps = rawSteps
+      .map((item, index) => normalizeOne(item, index))
+      .filter((s): s is AgentPlanStep => !!s);
+
+    return normalizePlannerPlanSteps(steps, maxPlanSteps);
+  } catch {
+    return [];
+  }
+};
+
+const parsePlanStepsFromUnknown = (params: {
+  value: unknown;
+  maxPlanSteps: number;
+  reservedIds?: Set<string>;
+  defaultIdPrefix: string;
+}): AgentPlanStep[] => {
+  const { value, maxPlanSteps, reservedIds, defaultIdPrefix } = params;
+  if (!Array.isArray(value)) return [];
+
+  const normalizeCriteria = (v: unknown, maxLen: number) => {
+    if (isNonEmptyString(v)) return [v.trim()].slice(0, maxLen);
+    return normalizeStringArray(v, maxLen);
+  };
+
+  const steps = value
+    .map((item, index) => {
+      if (isNonEmptyString(item)) {
+        const title = normalizeStepText(item);
+        if (!title) return;
+        return { id: `${defaultIdPrefix}${index + 1}`, title };
+      }
+      const obj = getRecord(item);
+      if (!obj) return;
+      const rawTitle =
+        (typeof obj.title === 'string' && obj.title) ||
+        (typeof obj.step === 'string' && obj.step) ||
+        '';
+      const title = normalizeStepText(rawTitle);
+      if (!title) return;
+
+      const id = isNonEmptyString(obj.id) ? obj.id.trim() : `${defaultIdPrefix}${index + 1}`;
+      const intent = isNonEmptyString(obj.intent) ? obj.intent.trim() : undefined;
+      const toolHints = normalizeStringArray(obj.toolHints ?? obj.tools, 6);
+      const expectedOutput = isNonEmptyString(obj.expectedOutput)
+        ? obj.expectedOutput.trim()
+        : undefined;
+      const acceptanceCriteria = normalizeCriteria(obj.acceptanceCriteria, 8);
+      const inputs = getRecord(obj.inputs);
+
+      const step: AgentPlanStep = {
+        id,
+        title,
+        ...(intent ? { intent } : {}),
+        ...(toolHints.length ? { toolHints } : {}),
+        ...(expectedOutput ? { expectedOutput } : {}),
+        ...(acceptanceCriteria.length ? { acceptanceCriteria } : {}),
+        ...(inputs ? { inputs } : {})
+      };
+      return step;
+    })
+    .filter((s): s is AgentPlanStep => !!s);
+
+  return normalizePlannerPlanSteps(steps, maxPlanSteps, reservedIds);
+};
+
 // Planner may include "summary/final reply" steps, but these should not be executable sub-tasks
 const isReplyLikeStep = (step: string) => {
   const s = normalizeStepText(step).toLowerCase();
@@ -213,6 +417,18 @@ const truncateText = (text: string, maxChars: number) => {
 
 const getRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const normalizeStringArray = (value: unknown, maxLen: number) => {
+  if (!Array.isArray(value)) return [];
+  const arr = value
+    .filter(isNonEmptyString)
+    .map((s) => normalizeStepText(s))
+    .filter(Boolean);
+  return arr.slice(0, maxLen);
+};
 
 const extractToolPreviewText = (assistant: AIChatItemValueItemType[], maxChars = 2400) => {
   const lines: string[] = [];
@@ -241,11 +457,11 @@ const extractToolPreviewText = (assistant: AIChatItemValueItemType[], maxChars =
 
 const buildStepResultSynthesisPrompt = (params: {
   goal: string;
-  step: string;
+  step: AgentPlanStep;
   toolText: string;
 }) => {
   const { goal, step, toolText } = params;
-  return `Goal: ${goal}\n\nCurrent step: ${step}\n\nTool results (excerpt):\n${toolText || '(None)'}\n\nOutput the result of this step (1-4 sentences, concrete facts only, no JSON/code blocks):`;
+  return `Goal: ${goal}\n\nCurrent step: ${step.title}\n\nExpected output: ${step.expectedOutput || '(Not specified)'}\n\nTool results (excerpt):\n${toolText || '(None)'}\n\nOutput the result of this step (1-4 sentences, concrete facts only, no JSON/code blocks):`;
 };
 
 // Task Analyzer: Determine if task is simple (direct answer) or complex (needs planning)
@@ -341,7 +557,7 @@ const callStepResultSynthesis = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
-  step: string;
+  step: AgentPlanStep;
   toolText: string;
   stream: boolean;
   workflowStreamResponse?: Props['workflowStreamResponse'];
@@ -353,7 +569,7 @@ const callStepResultSynthesis = async (params: {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个结果整理器。只输出“本步骤的最终结果”，不要输出思考过程。`
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Step Result Synthesizer. Output ONLY the final result of the current step, with concrete facts only. Do NOT output reasoning. Output must be in Simplified Chinese.`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
@@ -415,7 +631,7 @@ const callStepResultSynthesis = async (params: {
 };
 
 type PlannerResult = {
-  steps: string[];
+  steps: AgentPlanStep[];
   tokens: number;
   reasoningText?: string;
 };
@@ -457,7 +673,7 @@ const callPlanner = async (params: {
           .join('\n');
 
   // Adaptive step limits based on complexity
-  const stepRange = complexity === 'simple' ? '1-2' : `2-${Math.min(maxPlanSteps, 6)}`;
+  const stepRange = complexity === 'simple' ? '1-2' : `2-${maxPlanSteps}`;
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -489,20 +705,32 @@ const callPlanner = async (params: {
 **IMPORTANT: All step descriptions MUST be written in Chinese (简体中文).**
 
 ## Output Format
-Respond with JSON only: {"steps": ["步骤1描述", "步骤2描述", ...]}`
+Respond with JSON only:
+{
+  "steps": [
+    {
+      "id": "S1",
+      "title": "步骤标题（可执行动作）",
+      "intent": "为什么要做这步（可选）",
+      "toolHints": ["建议使用的工具/节点名（可选）"],
+      "expectedOutput": "这步期望产出（可选）",
+      "acceptanceCriteria": ["验收标准1", "验收标准2（可选）"]
+    }
+  ]
+}`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `## 用户目标
+      content: `## User goal
 ${goal}
 
-## 任务复杂度
-${complexity.toUpperCase()} - 相应规划 (${stepRange} 步)
+## Task complexity
+${complexity.toUpperCase()} - plan with ${stepRange} steps
 
-## 可用工具
+## Available tools
 ${toolsText}
 
-生成执行计划 (仅输出JSON，步骤描述必须使用中文):`
+Generate an execution plan (JSON only). IMPORTANT: step titles MUST be in Simplified Chinese:`
     }
   ];
 
@@ -533,20 +761,33 @@ ${toolsText}
   const tokens =
     resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
 
+  const structuredSteps = parsePlanStepsFromModelText(content, maxPlanSteps);
+  const fallbackSteps = normalizePlannerSteps(
+    parseStepsFromModelText(content, maxPlanSteps),
+    maxPlanSteps
+  ).map((title, index) => ({ id: `S${index + 1}`, title }));
+
   return {
-    steps: normalizePlannerSteps(parseStepsFromModelText(content, maxPlanSteps), maxPlanSteps),
+    steps: structuredSteps.length > 0 ? structuredSteps : fallbackSteps,
     tokens,
     reasoningText: reasoning
   };
 };
 
-// Simplified Replanner: only 2 decisions (respond or continue)
 type ReplanResult =
-  | { action: 'respond'; response: string; tokens: number; reasoningText?: string }
+  | {
+      action: 'respond';
+      response: string;
+      reason: string;
+      tokens: number;
+      reasoningText?: string;
+    }
   | {
       action: 'continue';
-      steps: string[];
+      remainingSteps: AgentPlanStep[];
       progress: string;
+      changeSummary: string;
+      reason: string;
       tokens: number;
       reasoningText?: string;
     };
@@ -555,9 +796,9 @@ const callReplanner = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
-  originalPlan: string[];
-  currentPlan: string[];
-  pastSteps: { step: string; result: string }[];
+  originalPlan: AgentPlanStep[];
+  remainingSteps: AgentPlanStep[];
+  pastSteps: AgentPastStep[];
   maxPlanSteps: number;
   enableReasoning: boolean;
   reasoningEffort?: string;
@@ -567,7 +808,7 @@ const callReplanner = async (params: {
     systemPrompt,
     goal,
     originalPlan,
-    currentPlan,
+    remainingSteps,
     pastSteps,
     maxPlanSteps,
     enableReasoning,
@@ -579,6 +820,7 @@ const callReplanner = async (params: {
     return {
       action: 'respond',
       response: pastSteps[pastSteps.length - 1]?.result || '',
+      reason: '',
       tokens: 0
     };
   }
@@ -595,18 +837,30 @@ const callReplanner = async (params: {
     pastSteps.length === 0
       ? '(No completed steps)'
       : pastSteps
-          .map((p, i) => `✓ Step ${i + 1}: ${p.step}\n   Result: ${truncateText(p.result, 500)}`)
+          .map(
+            (p, i) =>
+              `✓ Step ${i + 1}: [${p.step.id}] ${p.step.title}\n   Result: ${truncateText(p.result, 500)}`
+          )
           .join('\n\n');
 
   const planText =
-    currentPlan.length === 0
+    remainingSteps.length === 0
       ? '(All planned steps complete)'
-      : currentPlan.map((s, i) => `○ ${i + 1}. ${s}`).join('\n');
+      : remainingSteps
+          .map((s, i) => {
+            const meta: string[] = [];
+            if (s.expectedOutput) meta.push(`Expected: ${truncateText(s.expectedOutput, 80)}`);
+            if (s.acceptanceCriteria?.length) {
+              meta.push(`AC: ${truncateText(s.acceptanceCriteria.join('；'), 120)}`);
+            }
+            return `○ ${i + 1}. [${s.id}] ${s.title}${meta.length ? `\n   ${meta.join(' | ')}` : ''}`;
+          })
+          .join('\n');
 
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Progress Evaluator for a Plan-and-Execute agent. After each step, decide whether to RESPOND to the user or CONTINUE execution.
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are the Progress Evaluator and Replanner of a Plan-and-Execute agent. After each step, decide whether to RESPOND to the user now or CONTINUE execution.
 
 ## Decision Framework
 
@@ -622,18 +876,39 @@ const callReplanner = async (params: {
 - Current results are incomplete or insufficient
 - Plan needs adjustment based on new findings
 
+## Remaining Plan Update Rules (when continuing)
+- 允许对“剩余步骤”做最小必要修改：重排 / 删除 / 替换 / 新增
+- 禁止把已完成步骤加回（必须确保 remainingSteps 仅包含未完成步骤）
+- 必须遵守步数上限：已完成步数 + remainingSteps.length <= maxPlanSteps
+- 必须输出 changeSummary（变化摘要）与 reason（理由），便于审计与前端展示
+
 ## Output Format (JSON only)
 
 **To respond to user:**
-{"action": "respond", "response": "Your complete, user-facing answer..."}
+{"action": "respond", "response": "Your complete, user-facing answer...", "reason": "why can respond now"}
 
 **To continue execution:**
-{"action": "continue", "steps": ["Remaining or adjusted steps..."], "progress": "X% complete, need Y"}
+{
+  "action": "continue",
+  "remainingSteps": [
+    {
+      "id": "S3",
+      "title": "下一步要做什么（可执行动作）",
+      "intent": "可选",
+      "toolHints": ["可选"],
+      "expectedOutput": "可选",
+      "acceptanceCriteria": ["可选"]
+    }
+  ],
+  "progress": "X% complete, need Y",
+  "changeSummary": "简述你做了哪些修改",
+  "reason": "为什么需要继续/为什么要这样修改"
+}
 
 ## Critical Rules
-- "response" must be a direct, user-facing answer (NOT JSON, NOT code blocks unless requested)
-- "steps" should only contain REMAINING steps, never completed ones
-- If "steps" array is empty but action is "continue", use the original remaining plan
+- "response" must be a direct, user-facing answer in Simplified Chinese (NOT JSON, NOT code blocks unless requested)
+- "remainingSteps" should only contain REMAINING steps, never completed ones
+- If "remainingSteps" is empty but action is "continue", keep the original remaining plan
 - Evaluate "can we answer the user NOW?" not "have we completed all steps?"`
     },
     {
@@ -648,6 +923,11 @@ ${pastText}
 
 ### Remaining Steps
 ${planText}
+
+## Constraints
+- maxPlanSteps: ${maxPlanSteps}
+- completedSteps: ${pastSteps.length}
+- remainingSteps: ${remainingSteps.length}
 
 ## Decision Required
 Based on the completed steps, can you provide a satisfactory answer to the user?
@@ -691,9 +971,12 @@ Output your decision (JSON only):`
       const obj = parsed as {
         action?: unknown;
         response?: unknown;
+        remainingSteps?: unknown;
         steps?: unknown;
         plan?: unknown;
         progress?: unknown;
+        changeSummary?: unknown;
+        reason?: unknown;
       };
       const action = typeof obj.action === 'string' ? obj.action : '';
 
@@ -701,16 +984,33 @@ Output your decision (JSON only):`
         return {
           action: 'respond',
           response: obj.response.trim(),
+          reason: typeof obj.reason === 'string' ? obj.reason.trim() : '',
           tokens,
           reasoningText: reasoning
         };
       }
 
       if (action === 'continue') {
-        const steps = normalizeSteps(obj.steps ?? obj.plan, maxPlanSteps);
+        const reservedIds = new Set(pastSteps.map((p) => p.step.id));
+        const steps = parsePlanStepsFromUnknown({
+          value: obj.remainingSteps ?? obj.steps ?? obj.plan,
+          maxPlanSteps,
+          reservedIds,
+          defaultIdPrefix: 'R'
+        });
         const progress =
           typeof obj.progress === 'string' ? obj.progress : `${completionRate}% complete`;
-        return { action: 'continue', steps, progress, tokens, reasoningText: reasoning };
+        const changeSummary = typeof obj.changeSummary === 'string' ? obj.changeSummary.trim() : '';
+        const reason = typeof obj.reason === 'string' ? obj.reason.trim() : '';
+        return {
+          action: 'continue',
+          remainingSteps: steps,
+          progress,
+          changeSummary,
+          reason,
+          tokens,
+          reasoningText: reasoning
+        };
       }
     }
   } catch {}
@@ -718,8 +1018,10 @@ Output your decision (JSON only):`
   // Parse failure: default to continue with current plan
   return {
     action: 'continue',
-    steps: [],
+    remainingSteps: [],
     progress: `${completionRate}% complete`,
+    changeSummary: '模型输出解析失败，保持原剩余计划不变',
+    reason: '模型输出无法解析为 JSON',
     tokens,
     reasoningText: reasoning
   };
@@ -737,7 +1039,7 @@ const callCritic = async (params: {
   modelKey: string;
   systemPrompt?: string;
   goal: string;
-  step: string;
+  step: AgentPlanStep;
   result: string;
   toolText: string;
 }): Promise<CriticResult> => {
@@ -778,7 +1080,13 @@ const callCritic = async (params: {
 ${goal}
 
 ## Current Step
-${step}
+${step.title}
+
+## Expected Output
+${step.expectedOutput || '(Not specified)'}
+
+## Acceptance Criteria
+${step.acceptanceCriteria?.length ? step.acceptanceCriteria.map((s) => `- ${s}`).join('\n') : '(Not specified)'}
 
 ## Execution Result
 ${truncateText(result, 800)}
@@ -849,18 +1157,22 @@ Evaluate the quality of this step's execution. Output JSON only:`
 
 const buildExecutorPrompt = (params: {
   goal: string;
-  step: string;
+  step: AgentPlanStep;
   stepNumber: number;
   totalSteps: number;
-  remainingPlan: string[];
-  pastSteps: { step: string; result: string }[];
+  remainingPlan: AgentPlanStep[];
+  pastSteps: AgentPastStep[];
+  retry?: {
+    attempt: number;
+    lastCritic?: CriticResult;
+  };
 }) => {
-  const { goal, step, stepNumber, totalSteps, remainingPlan, pastSteps } = params;
+  const { goal, step, stepNumber, totalSteps, remainingPlan, pastSteps, retry } = params;
 
   const remainingText =
     remainingPlan.length === 0
       ? '（这是最后一步）'
-      : remainingPlan.map((s, i) => `${i + 1}. ${s}`).join('\n');
+      : remainingPlan.map((s, i) => `${i + 1}. ${s.title}`).join('\n');
 
   const pastForPrompt = pastSteps.slice(-4);
   const pastText =
@@ -869,139 +1181,82 @@ const buildExecutorPrompt = (params: {
       : pastForPrompt
           .map(
             (p, i) =>
-              `✓ 步骤 ${i + 1}: ${p.step}\n   结果: ${truncateText(p.result || '', 800) || '（无结果）'}`
+              `✓ 步骤 ${i + 1}: ${p.step.title}\n   结果: ${truncateText(p.result || '', 800) || '（无结果）'}`
           )
           .join('\n\n');
 
-  return `你是 Plan-and-Execute Agent 中的任务执行器。请高效准确地完成当前步骤。
+  return `You are the EXECUTOR in a Plan-and-Execute agent. Complete the CURRENT step efficiently and accurately.
 
-## 执行规则
+## Core Rules
 
-1. **工具优先**：
-   - 始终优先使用可用工具获取准确信息
-   - 绝不猜测或编造工具可以获取的数据
-   - 不确定时，先用工具验证再回答
+1) Tool-first (no hallucination)
+- Prefer using available tools to obtain accurate data.
+- Do NOT guess or fabricate data that tools can provide.
+- If unsure, verify via tools first.
+- If a tool returns empty/error: retry with adjusted parameters → try an alternative tool → if still blocked, report the concrete reason and the best fallback approach.
 
-2. **聚焦当前步骤**：
-   - 只完成当前步骤，不要提前做后续步骤
-   - 可以使用之前步骤的结果，但不要重复已完成的工作
-   - 保持在当前步骤的目标范围内
+2) Focus on the current step
+- Only execute the current step. Do not pre-complete future steps.
+- You may use results from completed steps; avoid repeating work.
 
-3. **自我验证**：
-   - 验证工具输出的有效性后再采纳
-   - 如果工具返回空或错误，清楚地报告
-   - 有多个数据源时进行交叉验证
+3) Self-check
+- Validate tool outputs before using them.
+- Cross-check when multiple sources exist.
 
-4. **清晰报告**：
-   - 用具体数据说明完成了什么
-   - 包含关键数字、事实或发现
-   - 保持回复精炼（复杂数据除外，一般不超过300字）
-   - 遇到失败时诚实报告具体原因
+4) Output requirements (user-visible)
+- Output MUST be in Simplified Chinese.
+- Output ONLY the final result of THIS step (no chain-of-thought).
+- Be specific: include key numbers/facts/findings.
+- If blocked, state the exact blocker and what you tried.
 
-## 上下文
+## Context
 
-**用户目标**: ${goal}
+User goal: ${goal}
+Progress: Step ${stepNumber} / ${totalSteps}${retry?.attempt && retry.attempt > 1 ? ` (retry #${retry.attempt})` : ''}
 
-**当前进度**: 第 ${stepNumber} 步，共 ${totalSteps} 步
-
-**已完成步骤**:
+Completed steps (recent):
 ${pastText}
 
-**剩余步骤**:
+Remaining steps:
 ${remainingText}
 
-## 当前步骤（请执行）
-${step}
+## Current step metadata
+Title: ${step.title}
+${step.intent ? `\nIntent: ${step.intent}` : ''}
+${step.toolHints?.length ? `\nTool hints: ${step.toolHints.join(', ')}` : ''}
+${step.expectedOutput ? `\nExpected output: ${step.expectedOutput}` : ''}
+${step.acceptanceCriteria?.length ? `\nAcceptance criteria:\n- ${step.acceptanceCriteria.join('\n- ')}` : ''}
 
-## 输出要求
-- 提供具体结果，不要只说"已完成"或"完成了"
-- 包含发现的相关数据和事实
-- 如果遇到阻碍，说明具体问题
+${
+  retry?.lastCritic
+    ? `\n## Last attempt review (Critic)\n- Score: ${retry.lastCritic.score}/10\n${
+        retry.lastCritic.issues?.length
+          ? `- Issues: ${retry.lastCritic.issues
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .join('；')}`
+          : ''
+      }\n${retry.lastCritic.suggestion ? `- Suggestion: ${retry.lastCritic.suggestion}` : ''}\n\nAdjust your execution strictly based on the issues/suggestion above.`
+    : ''
+}
 
-请执行当前步骤:`;
+## Execute now
+Execute the current step and output the step result in Simplified Chinese:`;
 };
 
-const renderTodoMarkdown = (params: {
-  allSteps: string[];
-  pastSteps: { step: string; result: string }[];
-}) => {
+const renderTodoMarkdown = (params: { allSteps: AgentPlanStep[]; pastSteps: AgentPastStep[] }) => {
   const { allSteps, pastSteps } = params;
-  const doneCounts = new Map<string, number>();
-  pastSteps.forEach((p) => {
-    const key = normalizeStepText(p.step);
-    doneCounts.set(key, (doneCounts.get(key) || 0) + 1);
-  });
+  const doneIds = new Set(pastSteps.map((p) => p.step.id));
 
   const lines: string[] = [];
-  allSteps.forEach((raw) => {
-    const step = normalizeStepText(raw);
-    if (!step) return;
-    const remaining = doneCounts.get(step) || 0;
-    if (remaining > 0) {
-      doneCounts.set(step, remaining - 1);
-      lines.push(`- ☑ ~~${step}~~`);
-    } else {
-      lines.push(`- ☐ ${step}`);
-    }
+  allSteps.forEach((s) => {
+    const title = normalizeStepText(s.title);
+    if (!title) return;
+    if (doneIds.has(s.id)) lines.push(`- ☑ ~~${title}~~`);
+    else lines.push(`- ☐ ${title}`);
   });
 
   return `${lines.filter(Boolean).join('\n')}\n`;
-};
-
-const mergeRemainingPlan = (params: { current: string[]; suggested: string[] }) => {
-  const current = params.current.map(normalizeStepText).filter(Boolean);
-  const suggested = params.suggested.map(normalizeStepText).filter(Boolean);
-
-  // strict: replanner 只能重排“当前剩余计划”里的步骤，不能插入新步骤，不能把已完成步骤加回来
-  const currentSet = new Set(current);
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  for (const s of suggested) {
-    if (!s) continue;
-    if (!currentSet.has(s)) continue;
-    if (seen.has(s)) continue;
-    result.push(s);
-    seen.add(s);
-  }
-
-  // append any remaining steps that suggested didn't include
-  for (const s of current) {
-    if (!s) continue;
-    if (seen.has(s)) continue;
-    result.push(s);
-    seen.add(s);
-  }
-
-  return result;
-};
-
-const applyReplannerPlanUpdate = (params: {
-  suggestedSteps: string[];
-  maxPlanSteps: number;
-  pastSteps: { step: string }[];
-  todoAllSteps: string[];
-}) => {
-  const { suggestedSteps, maxPlanSteps, pastSteps } = params;
-  const todoAllSteps = params.todoAllSteps.map(normalizeStepText).filter(Boolean);
-
-  const doneSet = new Set(pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
-  const todoSet = new Set(todoAllSteps.map(normalizeStepText));
-
-  const candidates = uniqueOrderedSteps(suggestedSteps)
-    .map(normalizeStepText)
-    .filter(Boolean)
-    .filter((s) => !doneSet.has(s))
-    .filter((s) => !todoSet.has(s))
-    .filter((s) => !isReplyLikeStep(s));
-
-  for (const s of candidates) {
-    if (todoAllSteps.length >= maxPlanSteps) break;
-    todoAllSteps.push(s);
-    todoSet.add(s);
-  }
-
-  return todoAllSteps;
 };
 
 const pickToolItems = (items: AIChatItemValueItemType[]) =>
@@ -1080,6 +1335,9 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     .map((id) => runtimeNodes.find((n) => n.nodeId === id))
     .filter((n): n is RuntimeNodeItemType => !!n);
 
+  const traceId = randomUUID();
+  const replanHistory: NonNullable<RawResponse['replanHistory']> = [];
+
   let totalTokens = 0;
   let totalRunTimes = 0;
   let reasoningText = '';
@@ -1156,9 +1414,16 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       [NodeOutputKeyEnum.answerText]: simpleAnswer,
       [NodeOutputKeyEnum.reasoningText]: simpleReasoning,
       [NodeOutputKeyEnum.rawResponse]: {
+        traceId,
         plan: [],
         pastSteps: [{ step: userChatInput, result: simpleAnswer }],
-        finalDecision: 'response'
+        finalDecision: 'response',
+        planSteps: [],
+        replanHistory: [],
+        usage: {
+          totalTokens,
+          totalRunTimes
+        }
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -1181,8 +1446,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   }
 
   // Step 2: For COMPLEX tasks, use full plan-execute loop
-  // Adaptive step limits based on complexity
-  const adaptiveMaxSteps = Math.min(6, maxPlanSteps);
+  const adaptiveMaxSteps = maxPlanSteps;
 
   const planner = await callPlanner({
     modelKey,
@@ -1199,21 +1463,36 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   totalRunTimes += 1;
   reasoningText = (planner.reasoningText || '').trim();
 
-  const initialPlanRaw = planner.steps.length > 0 ? planner.steps : [userChatInput];
-  let todoAllSteps = normalizePlannerSteps(initialPlanRaw, adaptiveMaxSteps);
+  const initialPlan =
+    planner.steps.length > 0
+      ? planner.steps
+      : [
+          {
+            id: 'S1',
+            title: normalizeStepText(userChatInput) || userChatInput.trim()
+          }
+        ];
+
+  let todoAllSteps = normalizePlannerPlanSteps(initialPlan, adaptiveMaxSteps);
   if (todoAllSteps.length === 0) {
-    todoAllSteps = [normalizeStepText(userChatInput)].filter(Boolean);
+    todoAllSteps = [
+      {
+        id: 'S1',
+        title: normalizeStepText(userChatInput) || userChatInput.trim()
+      }
+    ];
   }
+
   const originalPlan = [...todoAllSteps]; // Keep original plan for progress tracking
   let planQueue = [...todoAllSteps];
-  const pastSteps: { step: string; result: string }[] = [];
+  const pastSteps: AgentPastStep[] = [];
 
   let todoContent = '';
   const getRemainingTodoSteps = () => {
-    const doneSet = new Set(pastSteps.map((p) => normalizeStepText(p.step)).filter(Boolean));
-    return todoAllSteps.filter((s) => !doneSet.has(normalizeStepText(s)));
+    const doneSet = new Set(pastSteps.map((p) => p.step.id));
+    return todoAllSteps.filter((s) => !doneSet.has(s.id));
   };
-  const getDoneCount = () => todoAllSteps.length - getRemainingTodoSteps().length;
+  const getDoneCount = () => pastSteps.length;
 
   const pushTodoSnapshot = () => {
     const todo = renderTodoMarkdown({ allSteps: todoAllSteps, pastSteps });
@@ -1243,6 +1522,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // 容错机制：步骤重试计数器（每个步骤最多重试1次）
   const MAX_STEP_RETRY = 1;
   const stepRetryCount = new Map<string, number>();
+  const lastCriticByStepId = new Map<string, CriticResult>();
 
   // execute + replan
   for (let loop = 0; loop < maxLoops; loop++) {
@@ -1253,20 +1533,29 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
-          text: `${TASK_PREFIX}${normalizeStepText(step)}\n\n`,
+          text: `${TASK_PREFIX}${normalizeStepText(step.title)}\n\n`,
           reasoning_content: '',
           model: model.model
         })
       });
     }
 
+    const attempt = 1 + (stepRetryCount.get(step.id) || 0);
     const stepPrompt = buildExecutorPrompt({
       goal: userChatInput,
       step,
       stepNumber: pastSteps.length + 1,
-      totalSteps: originalPlan.length,
+      totalSteps: todoAllSteps.length,
       remainingPlan: planQueue,
-      pastSteps
+      pastSteps,
+      ...(attempt > 1
+        ? {
+            retry: {
+              attempt,
+              lastCritic: lastCriticByStepId.get(step.id)
+            }
+          }
+        : {})
     });
 
     const stepResult = await dispatchRunTools({
@@ -1280,7 +1569,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         aiChatReasoningEffort: props.params.aiChatReasoningEffort,
         // 子任务共享对话历史（由卡片“历史记录”控制），增强连续性与工具调用智能
         history,
-        systemPrompt: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是一个 Plan-and-Execute Agent：会先规划，再逐步执行；每次只解决“当前步骤”。`,
+        systemPrompt: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Plan-and-Execute agent. You plan first, then execute step by step. Only solve the CURRENT step. All user-visible outputs must be in Simplified Chinese.`,
         userChatInput: stepPrompt
       },
       histories
@@ -1293,7 +1582,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     }
 
     const stepAssistant = stepResult[DispatchNodeResponseKeyEnum.assistantResponses] || [];
-    toolItems = toolItems.concat(pickToolItems(stepAssistant));
+    const stepToolItems = pickToolItems(stepAssistant);
+    toolItems = toolItems.concat(stepToolItems);
 
     const stepNodeResponse = stepResult[DispatchNodeResponseKeyEnum.nodeResponse];
     if (stepNodeResponse && Array.isArray(stepNodeResponse.toolDetail)) {
@@ -1340,12 +1630,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       }
     }
 
-    pastSteps.push({ step, result: stepAnswer });
+    pastSteps.push({ step, result: stepAnswer, toolText });
 
     // 智能 Critic：只在必要时调用（减少 LLM 调用）
     const isLastStep = planQueue.length === 0;
-    const hasToolCalls = toolItems.length > 0;
-    let criticScore = 10; // 默认满分（不调用时假设成功）
+    const hasToolCalls = stepToolItems.length > 0;
     let stepFailed = isStepFailed(stepAnswer);
 
     if (shouldCallCritic(stepAnswer, isLastStep, hasToolCalls)) {
@@ -1359,32 +1648,35 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       });
       totalTokens += criticResult.tokens;
       totalRunTimes += 1;
-      criticScore = criticResult.score;
+      lastCriticByStepId.set(step.id, criticResult);
+      pastSteps[pastSteps.length - 1].critic = {
+        score: criticResult.score,
+        issues: criticResult.issues,
+        suggestion: criticResult.suggestion
+      };
 
       // Critic 评分低于 4 分视为步骤失败
-      if (criticScore < 4) {
+      if (criticResult.score < 4) {
         stepFailed = true;
-        // 在结果中标记失败原因（内部使用，不直接展示给用户）
-        pastSteps[pastSteps.length - 1].result = `[质量不佳:${criticScore}/10] ${stepAnswer}`;
       }
     }
 
     // 容错机制：步骤失败时尝试重试（每个步骤最多重试 MAX_STEP_RETRY 次）
     if (stepFailed) {
-      const stepKey = normalizeStepText(step);
-      const currentRetry = stepRetryCount.get(stepKey) || 0;
+      const currentRetry = stepRetryCount.get(step.id) || 0;
 
       if (currentRetry < MAX_STEP_RETRY) {
         // 还有重试机会：移除失败记录，放回队列头部重试
-        stepRetryCount.set(stepKey, currentRetry + 1);
+        stepRetryCount.set(step.id, currentRetry + 1);
         pastSteps.pop(); // 移除刚才的失败记录
         planQueue.unshift(step); // 放回队列头部
 
         if (stream) {
+          const lastCritic = lastCriticByStepId.get(step.id);
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              text: `\n> 步骤执行质量不佳，正在重试...\n\n`,
+              text: `\n> 步骤执行质量不佳，正在重试...\n${lastCritic?.suggestion ? `> 建议：${lastCritic.suggestion}\n` : ''}\n`,
               reasoning_content: '',
               model: model.model
             })
@@ -1414,7 +1706,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       systemPrompt,
       goal: userChatInput,
       originalPlan,
-      currentPlan: planQueue,
+      remainingSteps: planQueue,
       pastSteps,
       maxPlanSteps,
       enableReasoning,
@@ -1432,26 +1724,21 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     // 智能强制继续逻辑（优化：不再一刀切）
     const remainingTodo = getRemainingTodoSteps();
     if (decision.action === 'respond' && remainingTodo.length > 0) {
-      // 计算完成率
-      const completionRate = pastSteps.length / originalPlan.length;
+      const completionRate = todoAllSteps.length > 0 ? pastSteps.length / todoAllSteps.length : 1;
       const responseLength = (decision.response || '').trim().length;
-
-      // 允许提前结束的条件：
-      // 1. 已完成至少 60% 的步骤（核心任务很可能已完成）
-      // 2. 模型给出了足够长的回复（>200字，说明确实有实质性答案）
-      const canEarlyRespond = completionRate >= 0.6 && responseLength > 200;
+      const canEarlyRespond = completionRate >= 0.4 || responseLength >= 160;
 
       if (!canEarlyRespond) {
-        // 不满足提前结束条件，强制继续
         decision = {
           action: 'continue',
-          steps: mergeRemainingPlan({ current: remainingTodo, suggested: [] }),
-          progress: `${pastSteps.length}/${originalPlan.length} completed`,
+          remainingSteps: remainingTodo,
+          progress: `${Math.round(completionRate * 100)}% complete`,
+          changeSummary: '阻止过早结束：继续完成剩余关键步骤',
+          reason: '当前完成度与回复信息量不足',
           tokens: decision.tokens,
           reasoningText: decision.reasoningText
-        } as ReplanResult;
+        };
       }
-      // 满足提前结束条件，允许 respond
     }
 
     if (decision.action === 'respond') {
@@ -1511,9 +1798,16 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         [NodeOutputKeyEnum.answerText]: finalAnswer,
         [NodeOutputKeyEnum.reasoningText]: reasoningText,
         [NodeOutputKeyEnum.rawResponse]: {
-          plan: planQueue,
-          pastSteps,
-          finalDecision: 'response'
+          traceId,
+          plan: planQueue.map((s) => s.title),
+          pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
+          finalDecision: 'response',
+          planSteps: todoAllSteps,
+          replanHistory,
+          usage: {
+            totalTokens,
+            totalRunTimes
+          }
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -1556,16 +1850,28 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     }
 
     if (decision.action === 'continue') {
-      // 只允许追加新步骤（受 maxPlanSteps 限制），执行顺序始终以待办清单顺序为准
-      if (decision.steps.length > 0) {
-        todoAllSteps = applyReplannerPlanUpdate({
-          suggestedSteps: decision.steps,
-          maxPlanSteps,
-          pastSteps,
-          todoAllSteps
-        });
-      }
-      planQueue = getRemainingTodoSteps();
+      const beforeRemaining = planQueue.map((s) => s.title);
+      const availableRemainingSlots = Math.max(0, maxPlanSteps - pastSteps.length);
+      const suggested = decision.remainingSteps.length > 0 ? decision.remainingSteps : planQueue;
+      const doneTitleSet = new Set(
+        pastSteps.map((p) => normalizeStepText(p.step.title)).filter(Boolean)
+      );
+      const filteredSuggested = suggested.filter(
+        (s) => !doneTitleSet.has(normalizeStepText(s.title))
+      );
+
+      const nextQueueSource = filteredSuggested.length > 0 ? filteredSuggested : planQueue;
+      planQueue = nextQueueSource.slice(0, availableRemainingSlots);
+      todoAllSteps = [...pastSteps.map((p) => p.step), ...planQueue];
+
+      const afterRemaining = planQueue.map((s) => s.title);
+      replanHistory.push({
+        loop,
+        changeSummary: decision.changeSummary || '无变化',
+        reason: decision.reason || '',
+        beforeRemaining,
+        afterRemaining
+      });
     }
 
     // 防御：若剩余计划意外为空但 todo 仍未全部完成，则按 todoAllSteps 补齐剩余步骤
@@ -1579,7 +1885,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // fallback
   const fallbackAnswer =
     pastSteps[pastSteps.length - 1]?.result ||
-    (planQueue.length > 0 ? `未完成全部步骤，当前停在：${planQueue[0]}` : '未生成有效结果');
+    (planQueue.length > 0 ? `未完成全部步骤，当前停在：${planQueue[0].title}` : '未生成有效结果');
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelKey,
@@ -1630,9 +1936,16 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     [NodeOutputKeyEnum.answerText]: fallbackAnswer,
     [NodeOutputKeyEnum.reasoningText]: reasoningText,
     [NodeOutputKeyEnum.rawResponse]: {
-      plan: planQueue,
-      pastSteps,
-      finalDecision: 'fallback'
+      traceId,
+      plan: planQueue.map((s) => s.title),
+      pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
+      finalDecision: 'fallback',
+      planSteps: todoAllSteps,
+      replanHistory,
+      usage: {
+        totalTokens,
+        totalRunTimes
+      }
     },
     [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
