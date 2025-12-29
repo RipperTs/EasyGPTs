@@ -16,13 +16,14 @@ import { getHandleConfig } from '../../utils';
 
 export const CodeInterpreterModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.codeInterpreter,
-  templateType: FlowNodeTemplateTypeEnum.tools,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.codeInterpreter,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: 'core/workflow/template/codeRun',
-  name: '代码解释器（Python）',
-  intro: '根据自然语言任务自动生成并执行 Python 代码，失败会基于报错自动修复并重试。',
+  avatar: 'core/workflow/template/codeInter',
+  name: '代码解释器',
+  intro:
+    '能够依据用户的自然语言需求，在沙盒环境中编写和运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
   showStatus: true,
   isTool: true,
   version: '482',
