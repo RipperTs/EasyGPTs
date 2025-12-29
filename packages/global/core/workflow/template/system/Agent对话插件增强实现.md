@@ -26,19 +26,14 @@
 
 ### P0（必做：商用稳定性与可控性）
 
-1. **Agent 状态机（可恢复/可继续）**
-   - 新增/输出 `agent_state`：持久化 `plan/todo/pastSteps/vars/budgets/traceId`
-   - 支持断点续跑：同一任务多次调用可继续执行，而不是每次从 0 规划
-   - 可“暂停/继续/终止”：为后续前端交互与运营排障提供基础
-
-2. **规划结构化（从 string[] 到可执行计划）**
+1. **规划结构化（从 string[] 到可执行计划）**
    - Planner 输出 schema 化：
      - `steps: [{ id, title, intent, toolHints, expectedOutput, acceptanceCriteria, inputs }]`
    - 价值：
      - 降低“步骤写成总结/回复”的概率
      - executor/critic/replanner 能围绕验收标准闭环，而不是靠长度/关键词启发式
 
-3. **重规划升级（允许重排/替换/删减剩余步骤）**
+2. **重规划升级（允许重排/替换/删减剩余步骤）**
    - 当前策略偏“只追加 + todo 顺序执行”，复杂任务会被早期错误计划拖死
    - 目标：replanner 可对 remaining steps 做“最小必要修改”
    - 必要守卫：
@@ -46,7 +41,7 @@
      - 不允许无限扩张（受 `maxPlanSteps` + 预算约束）
      - 必须输出“修改理由/变化摘要”（便于审计与前端展示）
 
-4. **失败恢复闭环（Critic 建议反哺重试）**
+3. **失败恢复闭环（Critic 建议反哺重试）**
    - 当前 Critic 的 `issues/suggestion` 没有用于重试 prompt
    - 目标：失败重试时把“失败原因 + 建议”注入 executor 的 system/user prompt
    - 增加“工具级失败策略”：
@@ -54,13 +49,8 @@
      - 幂等键（避免重复写入类工具的副作用；当前虽暂不做沙箱命令，但接口类工具同样可能有副作用）
 
 5. **成本与延迟控制（商用必备）**
-   - 分工模型策略：
-     - TaskAnalyzer/Critic/Replanner 使用低成本模型或更小 max_tokens
-     - Executor 用主模型
    - 合并调用：
      - 能合并成一次“critic+replan” JSON 输出就合并，减少 round-trip
-   - 预算管理：
-     - 增加 `token_budget/point_budget/time_budget`，触发“降级/提前收敛/给出部分结果”
 
 ### P1（强化：通用能力与可观测性）
 
