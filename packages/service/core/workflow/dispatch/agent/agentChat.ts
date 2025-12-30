@@ -27,6 +27,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { StreamChatType } from '@fastgpt/global/core/ai/type';
 import { randomUUID } from 'crypto';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
@@ -126,6 +127,45 @@ const normalizeStepText = (step: string) => step.replace(/\s+/g, ' ').trim();
 // 注意：`---` 紧跟上一行文本会被 Markdown 解析为 Setext 标题下划线，导致上一行变成标题样式
 const SUMMARY_SEPARATOR = '\n\n---\n\n';
 const TASK_PREFIX = '\n> 任务：';
+
+// Tool-calling preference hint: prefer the Code Interpreter tool for complex tasks that benefit from execution.
+// Keep this in English to avoid interfering with user-visible Chinese output constraints.
+const TOOL_PREFERENCE_PROMPT_STRONG = `## Tool Preference (Important)
+If an available tool can **generate and run Python code** (often named "Code Interpreter", "代码解释器", or related), **prefer using it** for tasks involving:
+- data analysis / statistics / visualization
+- programming that requires execution, testing, or debugging
+- math / numerical computation / optimization
+- file processing (CSV/Excel/JSON/PDF/text parsing, transformation, batch operations)
+
+When planning, explicitly mention the chosen tool in \`toolHints\` and structure the step so the tool can execute it (provide inputs/files, expected outputs, and acceptance criteria).`;
+
+const TOOL_PREFERENCE_PROMPT_LIGHT = `## Available Tool Hint
+If a Code Interpreter tool is available, consider using it when the task benefits from Python code execution (e.g., data analysis, math computation, file processing).`;
+
+// Helper: Check if Code Interpreter tool exists
+const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean => {
+  return toolNodes.some(
+    (node) =>
+      node.flowNodeType === FlowNodeTypeEnum.codeInterpreter ||
+      /code.*interpreter|代码解释器/i.test(node.name || '') ||
+      /code.*interpreter|代码解释器/i.test(node.intro || '')
+  );
+};
+
+// Adaptive prompt injection based on context
+type ToolPreferenceMode = 'none' | 'light' | 'strong';
+const withToolPreference = (
+  systemPrompt: string | undefined,
+  toolNodes: RuntimeNodeItemType[],
+  mode: ToolPreferenceMode = 'strong'
+): string => {
+  if (mode === 'none' || !hasCodeInterpreter(toolNodes)) {
+    return systemPrompt || '';
+  }
+
+  const hint = mode === 'light' ? TOOL_PREFERENCE_PROMPT_LIGHT : TOOL_PREFERENCE_PROMPT_STRONG;
+  return `${systemPrompt ? `${systemPrompt}\n\n` : ''}${hint}\n\n`;
+};
 
 // 提取第一段完整的 JSON 值（对象或数组），忽略字符串内的括号，避免 sliceJsonStr 被 braces-in-string 搞崩
 const extractFirstJsonValue = (text: string): string => {
@@ -678,7 +718,7 @@ const callPlanner = async (params: {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are an Advanced Task Planner. Your role is to decompose user goals into clear, actionable execution steps.
+      content: `${withToolPreference(systemPrompt, toolNodes, 'strong')}You are an Advanced Task Planner. Your role is to decompose user goals into clear, actionable execution steps.
 
 ## Planning Principles
 
@@ -800,6 +840,7 @@ const callReplanner = async (params: {
   remainingSteps: AgentPlanStep[];
   pastSteps: AgentPastStep[];
   maxPlanSteps: number;
+  toolNodes: RuntimeNodeItemType[];
   enableReasoning: boolean;
   reasoningEffort?: string;
 }): Promise<ReplanResult> => {
@@ -811,6 +852,7 @@ const callReplanner = async (params: {
     remainingSteps,
     pastSteps,
     maxPlanSteps,
+    toolNodes,
     enableReasoning,
     reasoningEffort
   } = params;
@@ -860,7 +902,7 @@ const callReplanner = async (params: {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are the Progress Evaluator and Replanner of a Plan-and-Execute agent. After each step, decide whether to RESPOND to the user now or CONTINUE execution.
+      content: `${withToolPreference(systemPrompt, toolNodes, 'light')}You are the Progress Evaluator and Replanner of a Plan-and-Execute agent. After each step, decide whether to RESPOND to the user now or CONTINUE execution.
 
 ## Decision Framework
 
@@ -1194,6 +1236,7 @@ const buildExecutorPrompt = (params: {
 - Do NOT guess or fabricate data that tools can provide.
 - If unsure, verify via tools first.
 - If a tool returns empty/error: retry with adjusted parameters → try an alternative tool → if still blocked, report the concrete reason and the best fallback approach.
+- When the step involves data analysis/programming/math/file processing and a Code Interpreter tool is available, prefer using it to compute/verify results.
 
 2) Focus on the current step
 - Only execute the current step. Do not pre-complete future steps.
@@ -1370,7 +1413,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         aiChatReasoning: props.params.aiChatReasoning,
         aiChatReasoningEffort: props.params.aiChatReasoningEffort,
         history,
-        systemPrompt: systemPrompt || '',
+        systemPrompt: systemPrompt || '', // 不注入倾向性，保持简单任务快速响应
         userChatInput
       },
       histories
@@ -1567,9 +1610,9 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         aiChatVision: props.params.aiChatVision,
         aiChatReasoning: props.params.aiChatReasoning,
         aiChatReasoningEffort: props.params.aiChatReasoningEffort,
-        // 子任务共享对话历史（由卡片“历史记录”控制），增强连续性与工具调用智能
+        // 子任务共享对话历史（由卡片"历史记录"控制），增强连续性与工具调用智能
         history,
-        systemPrompt: `${systemPrompt ? `${systemPrompt}\n\n` : ''}You are a Plan-and-Execute agent. You plan first, then execute step by step. Only solve the CURRENT step. All user-visible outputs must be in Simplified Chinese.`,
+        systemPrompt: `${withToolPreference(systemPrompt, toolNodes, 'strong')}You are a Plan-and-Execute agent. You plan first, then execute step by step. Only solve the CURRENT step. All user-visible outputs must be in Simplified Chinese.`,
         userChatInput: stepPrompt
       },
       histories
@@ -1709,6 +1752,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       remainingSteps: planQueue,
       pastSteps,
       maxPlanSteps,
+      toolNodes,
       enableReasoning,
       reasoningEffort
     });
