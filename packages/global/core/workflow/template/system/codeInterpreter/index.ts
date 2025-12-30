@@ -64,8 +64,9 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.result,
       key: NodeOutputKeyEnum.result,
       label: '结果输出',
-      description: '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files。',
-      valueType: WorkflowIOValueTypeEnum.any,
+      description:
+        '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files（以换行拼接）。',
+      valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
     {

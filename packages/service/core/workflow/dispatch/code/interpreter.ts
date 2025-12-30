@@ -27,13 +27,23 @@ type Props = ModuleDispatchProps<{
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.error]: string;
-  [NodeOutputKeyEnum.result]: string | string[];
+  [NodeOutputKeyEnum.result]: string;
   [NodeOutputKeyEnum.execution_time]: number;
   [NodeOutputKeyEnum.image_url]: string;
   [NodeOutputKeyEnum.files]: string[];
   [NodeOutputKeyEnum.inputs]: string[];
   [NodeOutputKeyEnum.code]: string;
 }>;
+
+type ToolOutput = {
+  [NodeOutputKeyEnum.result]: string;
+  [NodeOutputKeyEnum.error]: string;
+  [NodeOutputKeyEnum.execution_time]: number;
+  [NodeOutputKeyEnum.image_url]: string;
+  [NodeOutputKeyEnum.files]: string[];
+  [NodeOutputKeyEnum.inputs]: string[];
+  [NodeOutputKeyEnum.code]: string;
+};
 
 const DEFAULT_SYSTEM_PROMPT =
   'You are a senior Python engineer acting as a Code Interpreter.\n' +
@@ -383,13 +393,18 @@ const parseNullableString = (value: unknown) => {
   return typeof value === 'string' ? value : JSON.stringify(value);
 };
 
-const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = '') => {
+const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = ''): ToolOutput => {
   const resultText = typeof raw.result === 'string' ? raw.result.trim() : '';
   const imageUrl = typeof raw.image_url === 'string' ? raw.image_url.trim() : '';
   const outputFiles = parseStringArray(raw.files);
 
-  const unifiedResult: string | string[] =
-    resultText || imageUrl ? resultText || imageUrl : outputFiles.length > 0 ? outputFiles : '';
+  const unifiedResult: string = resultText
+    ? resultText
+    : imageUrl
+      ? imageUrl
+      : outputFiles.length > 0
+        ? outputFiles.join('\n')
+        : '';
 
   return {
     [NodeOutputKeyEnum.result]: unifiedResult,
@@ -547,10 +562,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       });
       executionLog = runResult.log;
       const toolOutput = parseCodeInterpreterToolOutput(runResult.raw, currentCode);
-      const toolResponse =
-        typeof toolOutput[NodeOutputKeyEnum.result] === 'string'
-          ? toolOutput[NodeOutputKeyEnum.result]
-          : JSON.stringify(toolOutput[NodeOutputKeyEnum.result]);
+      const toolResponse = toolOutput[NodeOutputKeyEnum.result];
 
       const { totalPoints, modelName } = formatModelChars2Points({
         model: llmModel.model,
