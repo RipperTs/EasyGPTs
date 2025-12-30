@@ -41,7 +41,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       required: true,
       min: 1,
       max: 10,
-      value: 3
+      value: 5
     },
     {
       key: NodeInputKeyEnum.codeInterpreterTimeout,
