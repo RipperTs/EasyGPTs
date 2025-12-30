@@ -16,6 +16,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -35,13 +36,21 @@ type Response = DispatchNodeResultType<{
 }>;
 
 const DEFAULT_SYSTEM_PROMPT =
-  '你是一名资深 Python 工程师，负责把用户的自然语言任务转换为可执行的 Python 代码，并在代码执行器环境中运行。\n' +
-  '要求：\n' +
-  '- 必须定义 `def main(task):` 作为入口，返回值必须是可 JSON 序列化的 dict；\n' +
-  '- 仅输出一段 Python 代码（建议使用 ```python 代码块```），不要包含任何解释；\n' +
-  '- 优先使用标准库；如需第三方库（如 pandas/numpy/matplotlib），遇到 ImportError 必须降级为标准库方案；\n' +
-  '- 代码中可以使用 print 输出运行日志；\n' +
-  '- 如果给了 files（文档链接），它们会被下载到当前目录，可自行读取/写入。';
+  'You are a senior Python engineer acting as a Code Interpreter.\n' +
+  'Your job is to translate the user task into runnable Python code and execute it in a sandbox.\n' +
+  '\n' +
+  'Execution environment:\n' +
+  '- The server will download each URL in `files` into the current working directory before running the code.\n' +
+  '- Your code can read/write local files in the working directory.\n' +
+  '- Network access may be restricted; do not rely on external HTTP calls.\n' +
+  '\n' +
+  'Output rules:\n' +
+  '- Output ONLY Python code (prefer a fenced ```python code block```). No explanations.\n' +
+  '- Make the code self-contained and directly runnable as a script.\n' +
+  '- Always print the final answer to stdout. If structured output is needed, print JSON.\n' +
+  '- If you generate a chart/image, save it (e.g. plt.savefig("output.png")) so it can be returned.\n' +
+  '- Prefer the standard library. If you use optional libraries (pandas/numpy/matplotlib), handle ImportError and degrade gracefully.\n' +
+  '- Be robust with file names: list the working directory and infer the correct local file to open when needed.\n';
 
 const parseRetryTimes = (value: unknown, defaultValue = 3) => {
   const num =
@@ -76,20 +85,22 @@ const buildGenerateCodeMessages = ({
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
-      ? `\n\n输入文件链接（files，已下载到当前目录）：\n${files.map((url) => `- ${url}`).join('\n')}`
-      : '';
-  const userPrompt = `任务描述：
+      ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
+      : '\n\nInput file URLs (files): (none)';
+  const userPrompt = `Task:
 ${task}
 ${filesPrompt}
 
-运行时会传入：
-- task: string（上面的任务描述）
-- files: list[str]（输入文件链接，可能为空）
+You will have these variables available in the runtime (already defined for you):
+- TASK: str (the task above)
+- FILES: list[str] (input file URLs, may be empty)
 
-请输出可直接运行的 Python 代码，要求：
-- 必须定义 def main(task):
-- 返回一个 dict（可 JSON 序列化）
-- 只输出代码（建议用 \`\`\`python 代码块\`\`\`），不要输出任何解释文字。`;
+Write a runnable Python script to solve the task.
+Rules:
+- Output ONLY code (prefer a \`\`\`python code block\`\`\`).
+- Print the final answer to stdout (use JSON if helpful).
+- If files are needed, inspect the working directory (e.g. os.listdir('.')) and open the correct local file.
+- If you generate an image/chart, save it to a file (e.g. output.png).`;
 
   return [
     {
@@ -118,24 +129,26 @@ const buildFixCodeMessages = ({
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
-      ? `\n\n输入文件链接（files，已下载到当前目录）：\n${files.map((url) => `- ${url}`).join('\n')}`
-      : '';
-  const userPrompt = `任务描述：
+      ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
+      : '\n\nInput file URLs (files): (none)';
+  const userPrompt = `Task:
 ${task}
 ${filesPrompt}
 
-当前代码：
+Current code:
 \`\`\`python
 ${currentCode}
 \`\`\`
 
-运行报错信息：
+Runtime error:
 ${errorText}
 
-请根据报错修复代码，并再次输出一段可直接运行的 Python 代码，要求：
-- 必须定义 def main(task):
-- 返回一个 dict（可 JSON 序列化）
-- 只输出代码（必须用 \`\`\`python 代码块\`\`\`），不要输出任何解释文字。`;
+Fix the code so it runs successfully and solves the task.
+Rules:
+- Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
+- Print the final answer to stdout (use JSON if helpful).
+- Be robust with local file names: list the working directory and open the correct downloaded file.
+- If you generate an image/chart, save it to a file (e.g. output.png).`;
 
   return [
     {
@@ -219,8 +232,14 @@ const parsePublicFileUrl = ({
   if (!trimmed) return '';
   if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return '';
 
-  // 优先使用 customApiDomain（通常是可从外部访问的 API 域名），其次用 requestOrigin。
-  const baseOrigin = (global.feConfigs?.customApiDomain || requestOrigin || '').trim();
+  // 优先使用 FE_DOMAIN（前端域名，用于把 "/api/xxx" 拼成可下载的公网/可访问 URL）
+  // 其次才回退到 customApiDomain / requestOrigin（兼容历史配置与本地调试）。
+  const baseOrigin = (
+    process.env.FE_DOMAIN ||
+    global.feConfigs?.customApiDomain ||
+    requestOrigin ||
+    ''
+  ).trim();
   if (isHttpUrl(trimmed)) return trimmed;
 
   if (!baseOrigin) return '';
@@ -263,21 +282,18 @@ const buildExecuteCode = ({
   task: string;
   files: string[];
 }) => `# -*- coding: utf-8 -*-
-${pythonCode}
+"""
+Task:
+${task}
 
-if __name__ == '__main__':
-    import json
-    import traceback
+Input file URLs (downloaded into current working directory before execution):
+${files.map((url) => `- ${url}`).join('\n')}
+"""
 
-    task = ${JSON.stringify(task)}
-    files = ${JSON.stringify(files)}
+TASK = ${JSON.stringify(task)}
+FILES = ${JSON.stringify(files)}
 
-    try:
-        _ret = main(task)
-        print(json.dumps(_ret, ensure_ascii=False))
-    except Exception:
-        traceback.print_exc()
-        raise
+${pythonCode.trim()}
 `;
 
 const runPythonInCodeInterpreter = async ({
@@ -296,6 +312,16 @@ const runPythonInCodeInterpreter = async ({
   const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
   const executeCode = buildExecuteCode({ pythonCode, task, files });
 
+  console.info(
+    '[CodeInterpreter] request',
+    JSON.stringify({
+      url: requestUrl,
+      files,
+      codeLength: executeCode.length,
+      codePreview: executeCode.slice(0, 500)
+    })
+  );
+
   const { data } = await axios.post(
     requestUrl,
     {
@@ -303,7 +329,11 @@ const runPythonInCodeInterpreter = async ({
       files
     },
     {
-      timeout: 0
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Type': 'CODE_INTERPRETER'
+      },
+      timeout: 120000 // 可选：超时
     }
   );
 
@@ -487,8 +517,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       totalTokens += tokens;
       lastRaw = raw;
 
-      if (!code || !/\bdef\s+main\s*\(/.test(code)) {
-        lastErrorText = '模型输出的代码不包含 main 函数';
+      if (!code) {
+        lastErrorText = 'Empty code generated by the model';
         currentCode = code;
         continue;
       }
