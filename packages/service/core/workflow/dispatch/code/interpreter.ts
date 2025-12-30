@@ -32,6 +32,7 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.image_url]: string;
   [NodeOutputKeyEnum.files]: string[];
   [NodeOutputKeyEnum.inputs]: string[];
+  [NodeOutputKeyEnum.code]: string;
 }>;
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -382,7 +383,7 @@ const parseNullableString = (value: unknown) => {
   return typeof value === 'string' ? value : JSON.stringify(value);
 };
 
-const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>) => {
+const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = '') => {
   const resultText = typeof raw.result === 'string' ? raw.result.trim() : '';
   const imageUrl = typeof raw.image_url === 'string' ? raw.image_url.trim() : '';
   const outputFiles = parseStringArray(raw.files);
@@ -396,7 +397,8 @@ const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>) => {
     [NodeOutputKeyEnum.execution_time]: parseNumber(raw.execution_time, 0),
     [NodeOutputKeyEnum.image_url]: parseNullableString(raw.image_url),
     [NodeOutputKeyEnum.files]: outputFiles,
-    [NodeOutputKeyEnum.inputs]: parseStringArray(raw.inputs)
+    [NodeOutputKeyEnum.inputs]: parseStringArray(raw.inputs),
+    [NodeOutputKeyEnum.code]: code
   };
 };
 
@@ -418,7 +420,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       [NodeOutputKeyEnum.execution_time]: 0,
       [NodeOutputKeyEnum.image_url]: '',
       [NodeOutputKeyEnum.files]: [],
-      [NodeOutputKeyEnum.inputs]: []
+      [NodeOutputKeyEnum.inputs]: [],
+      [NodeOutputKeyEnum.code]: ''
     };
 
     return {
@@ -441,7 +444,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       [NodeOutputKeyEnum.execution_time]: 0,
       [NodeOutputKeyEnum.image_url]: '',
       [NodeOutputKeyEnum.files]: [],
-      [NodeOutputKeyEnum.inputs]: []
+      [NodeOutputKeyEnum.inputs]: [],
+      [NodeOutputKeyEnum.code]: ''
     };
 
     return {
@@ -465,7 +469,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       [NodeOutputKeyEnum.execution_time]: 0,
       [NodeOutputKeyEnum.image_url]: '',
       [NodeOutputKeyEnum.files]: [],
-      [NodeOutputKeyEnum.inputs]: []
+      [NodeOutputKeyEnum.inputs]: [],
+      [NodeOutputKeyEnum.code]: ''
     };
 
     return {
@@ -541,7 +546,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         files
       });
       executionLog = runResult.log;
-      const toolOutput = parseCodeInterpreterToolOutput(runResult.raw);
+      const toolOutput = parseCodeInterpreterToolOutput(runResult.raw, currentCode);
       const toolResponse =
         typeof toolOutput[NodeOutputKeyEnum.result] === 'string'
           ? toolOutput[NodeOutputKeyEnum.result]
@@ -614,7 +619,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     [NodeOutputKeyEnum.execution_time]: 0,
     [NodeOutputKeyEnum.image_url]: '',
     [NodeOutputKeyEnum.files]: [],
-    [NodeOutputKeyEnum.inputs]: []
+    [NodeOutputKeyEnum.inputs]: [],
+    [NodeOutputKeyEnum.code]: currentCode
   };
 
   return {

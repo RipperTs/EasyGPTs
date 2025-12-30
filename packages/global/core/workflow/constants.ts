@@ -262,6 +262,7 @@ export enum NodeOutputKeyEnum {
   image_url = 'image_url',
   files = 'files',
   inputs = 'inputs',
+  code = 'code',
 
   // dataset
   datasetQuoteQA = 'quoteQA',

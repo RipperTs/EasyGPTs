@@ -26,7 +26,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     '能够依据用户的自然语言需求，生成并运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
   showStatus: true,
   isTool: true,
-  version: '494',
+  version: '498',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -63,7 +63,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.result,
       key: NodeOutputKeyEnum.result,
-      label: 'result',
+      label: '结果输出',
       description: '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files。',
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static
@@ -81,30 +81,6 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.execution_time,
       label: '执行耗时（秒）',
       valueType: WorkflowIOValueTypeEnum.number,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
-      id: NodeOutputKeyEnum.image_url,
-      key: NodeOutputKeyEnum.image_url,
-      label: '图片地址',
-      description: '代码执行最后产生图片的输出结果；没有则为空字符串。',
-      valueType: WorkflowIOValueTypeEnum.string,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
-      id: NodeOutputKeyEnum.files,
-      key: NodeOutputKeyEnum.files,
-      label: '文件地址',
-      description: '代码执行最后产生的文件地址',
-      valueType: WorkflowIOValueTypeEnum.arrayString,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
-      id: NodeOutputKeyEnum.inputs,
-      key: NodeOutputKeyEnum.inputs,
-      label: '输入文件',
-      description: '输入的文件',
-      valueType: WorkflowIOValueTypeEnum.arrayString,
       type: FlowNodeOutputTypeEnum.static
     }
   ]
