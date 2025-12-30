@@ -6,7 +6,7 @@ import axios from 'axios';
 import { formatHttpError } from '../utils';
 import { getAIApi } from '../../../ai/config';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { ModelTypeEnum, getLLMModel } from '../../../ai/model';
+import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import type {
   ChatCompletionMessageParam,
@@ -16,7 +16,6 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -228,19 +227,30 @@ const parsePublicFileUrl = ({
   url: string;
   requestOrigin?: string;
 }): string => {
+  if (!process.env.FE_DOMAIN) {
+    throw new Error('Can not find FE_DOMAIN in env');
+  }
+
   const trimmed = url.trim();
   if (!trimmed) return '';
   if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return '';
 
-  // 优先使用 FE_DOMAIN（前端域名，用于把 "/api/xxx" 拼成可下载的公网/可访问 URL）
-  // 其次才回退到 customApiDomain / requestOrigin（兼容历史配置与本地调试）。
-  const baseOrigin = (
-    process.env.FE_DOMAIN ||
-    global.feConfigs?.customApiDomain ||
-    requestOrigin ||
-    ''
-  ).trim();
-  if (isHttpUrl(trimmed)) return trimmed;
+  const baseOrigin = process.env.FE_DOMAIN.trim();
+
+  // 如果是HTTP URL，替换为FE_DOMAIN的域名（保留路径和查询参数）
+  if (isHttpUrl(trimmed)) {
+    try {
+      const urlObj = new URL(trimmed);
+      const baseUrlObj = new URL(baseOrigin);
+      // 替换协议、域名和端口，保留路径和查询参数
+      urlObj.protocol = baseUrlObj.protocol;
+      urlObj.hostname = baseUrlObj.hostname;
+      urlObj.port = baseUrlObj.port;
+      return urlObj.toString();
+    } catch {
+      return trimmed;
+    }
+  }
 
   if (!baseOrigin) return '';
 
