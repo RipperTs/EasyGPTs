@@ -32,7 +32,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
     'Plan-and-Execute 对话模式：结构化规划 → 逐步执行 → 持续重规划与收敛答复，适合复杂任务与数据分析场景。',
   showStatus: true,
   isTool: true,
-  version: '482',
+  version: '483',
   inputs: [
     {
       ...Input_Template_SettingAiModel,
@@ -92,12 +92,6 @@ export const AgentChatModule: FlowNodeTemplateType = {
       value: 12,
       min: 1,
       max: 50
-    },
-    {
-      ...Input_Template_System_Prompt,
-      label: '系统提示词',
-      description: chatNodeSystemPromptTip,
-      placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
     Input_Template_UserChatInput
