@@ -130,17 +130,30 @@ const TASK_PREFIX = '\n> 任务：';
 
 // Tool-calling preference hint: prefer the Code Interpreter tool for complex tasks that benefit from execution.
 // Keep this in English to avoid interfering with user-visible Chinese output constraints.
-const TOOL_PREFERENCE_PROMPT_STRONG = `## Tool Preference (Important)
-If an available tool can **generate and run Python code** (often named "Code Interpreter", "代码解释器", or related), **prefer using it** for tasks involving:
-- data analysis / statistics / visualization
-- programming that requires execution, testing, or debugging
-- math / numerical computation / optimization
-- file processing (CSV/Excel/JSON/PDF/text parsing, transformation, batch operations)
+const TOOL_PREFERENCE_PROMPT_STRONG = `## Code Interpreter Tool Usage (Critical)
 
-When planning, explicitly mention the chosen tool in \`toolHints\` and structure the step so the tool can execute it (provide inputs/files, expected outputs, and acceptance criteria).`;
+**ONLY use Code Interpreter when the task REQUIRES code execution to compute/verify results:**
+
+✓ **Use when:**
+- Data analysis with actual calculations (statistics, trends, correlations from datasets)
+- Mathematical computations beyond simple arithmetic (equations, optimization, numerical analysis)
+- File data processing (parse/analyze CSV/Excel files, extract structured data from documents)
+- Generating data visualizations (charts, graphs, plots from data)
+- Algorithm execution for verification (sorting, filtering, transformations that need validation)
+
+✗ **DO NOT use for:**
+- Text generation, writing, summarization, or content creation
+- Knowledge-based Q&A, explanations, or educational content
+- Planning, scheduling, brainstorming, or organizing information
+- Simple structured output (JSON/lists/tables that don't require computation)
+- Tasks solvable by direct LLM reasoning and text generation
+
+**Key decision rule:** Ask "Does this task need code to RUN and COMPUTE, or can the LLM generate the answer directly?"
+
+When planning steps that genuinely need Code Interpreter, mention it in \`toolHints\` with specific inputs/expected outputs.`;
 
 const TOOL_PREFERENCE_PROMPT_LIGHT = `## Available Tool Hint
-If a Code Interpreter tool is available, consider using it when the task benefits from Python code execution (e.g., data analysis, math computation, file processing).`;
+A Code Interpreter tool is available for tasks requiring actual code execution (data analysis, numerical computation, file processing). Use only when code execution is necessary to compute results, not for text-based planning or content generation.`;
 
 // Helper: Check if Code Interpreter tool exists
 const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean => {
@@ -934,10 +947,14 @@ const callReplanner = async (params: {
 ${toolsText}
 
 **When to switch tools during replanning:**
-- If completed steps revealed unexpected data formats (e.g., CSV files → use Code Interpreter)
-- If the original tool choice was suboptimal based on actual results
-- If a different tool can handle remaining steps more efficiently
-- Mention the chosen tool in \`toolHints\` when adjusting steps
+- If completed steps revealed data files requiring computation (e.g., CSV with 1000+ rows → Code Interpreter for analysis)
+- If discovered numerical calculations needed (e.g., statistics, trends, formulas → Code Interpreter)
+- If found a more suitable tool based on actual data/results encountered
+- **DO NOT switch to Code Interpreter** for pure text tasks (planning, writing, organizing, Q&A)
+
+**Decision rule:** Only use Code Interpreter if the remaining steps need code to **execute and compute**, not just to format or organize text.
+
+When adjusting steps, mention the chosen tool in \`toolHints\` only if truly necessary for computation.
 
 ## Remaining Plan Update Rules (when continuing)
 - 允许对“剩余步骤”做最小必要修改：重排 / 删除 / 替换 / 新增
@@ -1257,7 +1274,7 @@ const buildExecutorPrompt = (params: {
 - Do NOT guess or fabricate data that tools can provide.
 - If unsure, verify via tools first.
 - If a tool returns empty/error: retry with adjusted parameters → try an alternative tool → if still blocked, report the concrete reason and the best fallback approach.
-- When the step involves data analysis/programming/math/file processing and a Code Interpreter tool is available, prefer using it to compute/verify results.
+- **Code Interpreter usage:** Only use when the step requires actual code execution (numerical calculations, data file analysis, algorithm verification). Do NOT use for text generation, planning, or simple formatting.
 
 2) Focus on the current step
 - Only execute the current step. Do not pre-complete future steps.
