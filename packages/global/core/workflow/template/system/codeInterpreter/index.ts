@@ -23,10 +23,10 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/codeInter',
   name: '代码解释器',
   intro:
-    '能够依据用户的自然语言需求，在沙盒环境中编写和运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
+    '能够依据用户的自然语言需求，生成并运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
   showStatus: true,
   isTool: true,
-  version: '482',
+  version: '490',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -44,15 +44,13 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       value: 5
     },
     {
-      key: NodeInputKeyEnum.codeInterpreterTimeout,
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-      valueType: WorkflowIOValueTypeEnum.number,
-      label: '代码运行超时时间（秒）',
-      description: '单次代码执行的最大等待时间，超时将终止运行；默认 120 秒。',
-      required: true,
-      min: 1,
-      max: 600,
-      value: 120
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      label: '文档链接',
+      description: '需要在代码中操作的文件链接（数组），服务会自动下载到执行环境中。',
+      required: false,
+      value: []
     },
     {
       ...Input_Template_UserChatInput,

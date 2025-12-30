@@ -19,7 +19,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.codeInterpreterMaxRetry]?: number;
-  [NodeInputKeyEnum.codeInterpreterTimeout]?: number;
+  [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.userChatInput]: string;
 }>;
 
@@ -32,12 +32,13 @@ type Response = DispatchNodeResultType<{
 }>;
 
 const DEFAULT_SYSTEM_PROMPT =
-  '你是一名资深 Python 工程师，负责把用户的自然语言任务转换为可执行的 Python 代码，并在沙盒环境中运行。\n' +
+  '你是一名资深 Python 工程师，负责把用户的自然语言任务转换为可执行的 Python 代码，并在代码执行器环境中运行。\n' +
   '要求：\n' +
   '- 必须定义 `def main(task):` 作为入口，返回值必须是可 JSON 序列化的 dict；\n' +
   '- 仅输出一段 Python 代码（建议使用 ```python 代码块```），不要包含任何解释；\n' +
   '- 优先使用标准库；如需第三方库（如 pandas/numpy/matplotlib），遇到 ImportError 必须降级为标准库方案；\n' +
-  '- 代码中可以使用 print 输出运行日志。';
+  '- 代码中可以使用 print 输出运行日志；\n' +
+  '- 如果给了 files（文档链接），它们会被下载到当前目录，可自行读取/写入。';
 
 const parseRetryTimes = (value: unknown, defaultValue = 3) => {
   const num =
@@ -53,20 +54,6 @@ const parseRetryTimes = (value: unknown, defaultValue = 3) => {
   return Math.min(Math.max(rounded, 1), 10);
 };
 
-const parseTimeoutSeconds = (value: unknown, defaultValue = 120) => {
-  const num =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && value.trim()
-        ? Number(value)
-        : defaultValue;
-
-  if (!Number.isFinite(num)) return defaultValue;
-
-  const rounded = Math.round(num);
-  return Math.min(Math.max(rounded, 1), 600);
-};
-
 const extractPythonCodeFromModelOutput = (raw: string) => {
   const text = raw.trim();
   if (!text) return '';
@@ -77,16 +64,24 @@ const extractPythonCodeFromModelOutput = (raw: string) => {
 
 const buildGenerateCodeMessages = ({
   systemPrompt,
-  task
+  task,
+  files
 }: {
   systemPrompt: string;
   task: string;
+  files: string[];
 }): ChatCompletionMessageParam[] => {
+  const filesPrompt =
+    files.length > 0
+      ? `\n\n输入文件链接（files，已下载到当前目录）：\n${files.map((url) => `- ${url}`).join('\n')}`
+      : '';
   const userPrompt = `任务描述：
 ${task}
+${filesPrompt}
 
 运行时会传入：
 - task: string（上面的任务描述）
+- files: list[str]（输入文件链接，可能为空）
 
 请输出可直接运行的 Python 代码，要求：
 - 必须定义 def main(task):
@@ -108,16 +103,23 @@ ${task}
 const buildFixCodeMessages = ({
   systemPrompt,
   task,
+  files,
   currentCode,
   errorText
 }: {
   systemPrompt: string;
   task: string;
+  files: string[];
   currentCode: string;
   errorText: string;
 }): ChatCompletionMessageParam[] => {
+  const filesPrompt =
+    files.length > 0
+      ? `\n\n输入文件链接（files，已下载到当前目录）：\n${files.map((url) => `- ${url}`).join('\n')}`
+      : '';
   const userPrompt = `任务描述：
 ${task}
+${filesPrompt}
 
 当前代码：
 \`\`\`python
@@ -174,63 +176,96 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const getRecord = (value: unknown): Record<string, unknown> | undefined =>
   isRecord(value) ? value : undefined;
 
-const runPythonInSandbox = async ({
-  code,
-  variables,
-  timeoutSec
+const parseStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+};
+
+const trimTrailingSlash = (url: string) => url.replace(/\/+$/, '');
+
+const buildExecuteCode = ({
+  pythonCode,
+  task,
+  files
 }: {
-  code: string;
-  variables: Record<string, unknown>;
-  timeoutSec: number;
-}): Promise<{ codeReturn: Record<string, unknown>; log: string }> => {
-  if (!process.env.SANDBOX_URL) {
-    throw new Error('Can not find SANDBOX_URL in env');
+  pythonCode: string;
+  task: string;
+  files: string[];
+}) => `# -*- coding: utf-8 -*-
+${pythonCode}
+
+if __name__ == '__main__':
+    import json
+    import traceback
+
+    task = ${JSON.stringify(task)}
+    files = ${JSON.stringify(files)}
+
+    try:
+        _ret = main(task)
+        print(json.dumps(_ret, ensure_ascii=False))
+    except Exception:
+        traceback.print_exc()
+        raise
+`;
+
+const runPythonInCodeInterpreter = async ({
+  pythonCode,
+  task,
+  files
+}: {
+  pythonCode: string;
+  task: string;
+  files: string[];
+}): Promise<{ raw: Record<string, unknown>; log: string }> => {
+  if (!process.env.CODE_INTERPRETER_URL) {
+    throw new Error('Can not find CODE_INTERPRETER_URL in env');
   }
 
-  const requestTimeoutMs = Math.min(Math.max(timeoutSec + 5, 10), 650) * 1000;
+  const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
+  const executeCode = buildExecuteCode({ pythonCode, task, files });
+
   const { data } = await axios.post(
-    `${process.env.SANDBOX_URL}/sandbox/python`,
+    requestUrl,
     {
-      code,
-      variables,
-      timeout: timeoutSec,
-      timeoutMs: timeoutSec * 1000
+      code: executeCode,
+      files
     },
     {
-      timeout: requestTimeoutMs
+      timeout: 0
     }
   );
 
-  const root = getRecord(data);
-  const success = root?.success === true;
-
-  const dataObj = getRecord(root?.data);
-  const codeReturn = getRecord(dataObj?.codeReturn);
-  const log = typeof dataObj?.log === 'string' ? dataObj.log : '';
-
-  if (success && codeReturn) {
-    return { codeReturn, log };
+  const raw = getRecord(data);
+  if (!raw) {
+    throw new Error('Invalid response from code interpreter');
   }
 
-  const message =
-    typeof root?.message === 'string'
-      ? root.message
-      : typeof root?.error === 'string'
-        ? root.error
-        : 'Run code failed';
+  const error = raw.error;
+  const errorText =
+    error === null || error === undefined
+      ? ''
+      : typeof error === 'string'
+        ? error
+        : JSON.stringify(error);
+  const resultText = typeof raw.result === 'string' ? raw.result : '';
 
-  throw new Error(`${message}${log ? `\n\nlog:\n${log}` : ''}`);
+  if (errorText) {
+    throw new Error(`${errorText}${resultText ? `\n\nresult:\n${resultText}` : ''}`);
+  }
+
+  return { raw, log: resultText };
 };
 
 export const dispatchCodeInterpreter = async (props: Props): Promise<Response> => {
   const {
     user,
     node,
-    params: { model, systemPrompt, codeInterpreterMaxRetry, codeInterpreterTimeout, userChatInput }
+    params: { model, systemPrompt, codeInterpreterMaxRetry, fileUrlList, userChatInput }
   } = props;
 
-  if (!process.env.SANDBOX_URL) {
-    const message = 'Can not find SANDBOX_URL in env';
+  if (!process.env.CODE_INTERPRETER_URL) {
+    const message = 'Can not find CODE_INTERPRETER_URL in env';
     const pluginOutput = { success: false, error: message };
 
     return {
@@ -288,10 +323,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   }
 
   const maxRetry = parseRetryTimes(codeInterpreterMaxRetry, 3);
-  const timeoutSec = parseTimeoutSeconds(codeInterpreterTimeout, 120);
-  const variables: Record<string, unknown> = {
-    task: userChatInput
-  };
+  const files = parseStringArray(fileUrlList);
 
   const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
   const aiParams = {
@@ -312,11 +344,13 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         attempt === 1
           ? buildGenerateCodeMessages({
               systemPrompt: finalSystemPrompt,
-              task: userChatInput
+              task: userChatInput,
+              files
             })
           : buildFixCodeMessages({
               systemPrompt: finalSystemPrompt,
               task: userChatInput,
+              files,
               currentCode,
               errorText: lastErrorText
             });
@@ -337,10 +371,10 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
       currentCode = code;
 
-      const runResult = await runPythonInSandbox({
-        code: currentCode,
-        variables,
-        timeoutSec
+      const runResult = await runPythonInCodeInterpreter({
+        pythonCode: currentCode,
+        task: userChatInput,
+        files
       });
       executionLog = runResult.log;
 
@@ -352,7 +386,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
       const pluginOutput: Record<string, unknown> = {
         success: true,
-        rawResponse: runResult.codeReturn,
+        rawResponse: runResult.raw,
         error: '',
         generatedCode: currentCode,
         executionLog
@@ -361,7 +395,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       return {
         [NodeOutputKeyEnum.success]: true,
         [NodeOutputKeyEnum.error]: '',
-        [NodeOutputKeyEnum.rawResponse]: runResult.codeReturn,
+        [NodeOutputKeyEnum.rawResponse]: runResult.raw,
         generatedCode: currentCode,
         executionLog,
         [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
@@ -373,7 +407,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           nodeInputs: {
             systemPrompt: finalSystemPrompt,
             maxRetry,
-            timeoutSec
+            files
           },
           nodeOutputs: {
             attempts: attempt,
@@ -438,7 +472,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       nodeInputs: {
         systemPrompt: finalSystemPrompt,
         maxRetry,
-        timeoutSec
+        files
       },
       nodeOutputs: {
         attempts: attempt || maxRetry,
