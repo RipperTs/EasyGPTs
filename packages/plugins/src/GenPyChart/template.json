@@ -403,7 +403,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "http://10.6.80.35:14564/api/v1/execute",
+            "value": "http://10.6.80.164:14564/api/v1/execute",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -681,7 +681,7 @@
               "custom"
             ],
             "label": "",
-            "value": "function main({ result, image_url }) {\n    if (!image_url) {\n        return {\n            result: `\\n\\n${result}`\n        }\n    }\n\n    const markdown_image_string = `![image](http://10.6.80.35:14564${image_url})`\n    return {\n        result: `\\n\\n${markdown_image_string}`\n    }\n}",
+            "value": "function main({ result, image_url }) {\n    if (!image_url) {\n        return {\n            result: `\\n\\n${result}`\n        }\n    }\n\n    const markdown_image_string = `![image](${image_url})`\n    return {\n        result: `\\n\\n${markdown_image_string}`\n    }\n}",
             "debugLabel": "",
             "toolDescription": ""
           },
