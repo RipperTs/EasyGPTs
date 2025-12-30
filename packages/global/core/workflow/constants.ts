@@ -256,6 +256,13 @@ export enum NodeOutputKeyEnum {
   // start
   userFiles = 'userFiles',
 
+  // code interpreter
+  result = 'result',
+  execution_time = 'execution_time',
+  image_url = 'image_url',
+  files = 'files',
+  inputs = 'inputs',
+
   // dataset
   datasetQuoteQA = 'quoteQA',
 

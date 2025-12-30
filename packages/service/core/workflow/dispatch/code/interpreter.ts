@@ -24,11 +24,12 @@ type Props = ModuleDispatchProps<{
 }>;
 
 type Response = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.success]: boolean;
-  [NodeOutputKeyEnum.rawResponse]?: Record<string, unknown>;
   [NodeOutputKeyEnum.error]: string;
-  generatedCode?: string;
-  executionLog?: string;
+  [NodeOutputKeyEnum.result]: string | string[];
+  [NodeOutputKeyEnum.execution_time]: number;
+  [NodeOutputKeyEnum.image_url]: string;
+  [NodeOutputKeyEnum.files]: string[];
+  [NodeOutputKeyEnum.inputs]: string[];
 }>;
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -257,6 +258,38 @@ const runPythonInCodeInterpreter = async ({
   return { raw, log: resultText };
 };
 
+const parseNumber = (value: unknown, defaultValue = 0) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+  }
+  return defaultValue;
+};
+
+const parseNullableString = (value: unknown) => {
+  if (value === null || value === undefined) return '';
+  return typeof value === 'string' ? value : JSON.stringify(value);
+};
+
+const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>) => {
+  const resultText = typeof raw.result === 'string' ? raw.result.trim() : '';
+  const imageUrl = typeof raw.image_url === 'string' ? raw.image_url.trim() : '';
+  const outputFiles = parseStringArray(raw.files);
+
+  const unifiedResult: string | string[] =
+    resultText || imageUrl ? resultText || imageUrl : outputFiles.length > 0 ? outputFiles : '';
+
+  return {
+    [NodeOutputKeyEnum.result]: unifiedResult,
+    [NodeOutputKeyEnum.error]: parseNullableString(raw.error),
+    [NodeOutputKeyEnum.execution_time]: parseNumber(raw.execution_time, 0),
+    [NodeOutputKeyEnum.image_url]: parseNullableString(raw.image_url),
+    [NodeOutputKeyEnum.files]: outputFiles,
+    [NodeOutputKeyEnum.inputs]: parseStringArray(raw.inputs)
+  };
+};
+
 export const dispatchCodeInterpreter = async (props: Props): Promise<Response> => {
   const {
     user,
@@ -266,14 +299,18 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
   if (!process.env.CODE_INTERPRETER_URL) {
     const message = 'Can not find CODE_INTERPRETER_URL in env';
-    const pluginOutput = { success: false, error: message };
+    const pluginOutput = {
+      [NodeOutputKeyEnum.result]: '',
+      [NodeOutputKeyEnum.error]: message,
+      [NodeOutputKeyEnum.execution_time]: 0,
+      [NodeOutputKeyEnum.image_url]: '',
+      [NodeOutputKeyEnum.files]: [],
+      [NodeOutputKeyEnum.inputs]: []
+    };
 
     return {
-      [NodeOutputKeyEnum.success]: false,
-      [NodeOutputKeyEnum.error]: message,
-      generatedCode: '',
-      executionLog: '',
-      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      ...pluginOutput,
+      [DispatchNodeResponseKeyEnum.toolResponses]: message,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         errorText: message,
         pluginOutput,
@@ -285,14 +322,18 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
   if (!userChatInput) {
     const message = '任务描述为空';
-    const pluginOutput = { success: false, error: message };
+    const pluginOutput = {
+      [NodeOutputKeyEnum.result]: '',
+      [NodeOutputKeyEnum.error]: message,
+      [NodeOutputKeyEnum.execution_time]: 0,
+      [NodeOutputKeyEnum.image_url]: '',
+      [NodeOutputKeyEnum.files]: [],
+      [NodeOutputKeyEnum.inputs]: []
+    };
 
     return {
-      [NodeOutputKeyEnum.success]: false,
-      [NodeOutputKeyEnum.error]: message,
-      generatedCode: '',
-      executionLog: '',
-      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      ...pluginOutput,
+      [DispatchNodeResponseKeyEnum.toolResponses]: message,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         errorText: message,
         pluginOutput,
@@ -305,14 +346,18 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   const llmModel = getLLMModel(model);
   if (!llmModel) {
     const message = 'LLM model not found';
-    const pluginOutput = { success: false, error: message };
+    const pluginOutput = {
+      [NodeOutputKeyEnum.result]: '',
+      [NodeOutputKeyEnum.error]: message,
+      [NodeOutputKeyEnum.execution_time]: 0,
+      [NodeOutputKeyEnum.image_url]: '',
+      [NodeOutputKeyEnum.files]: [],
+      [NodeOutputKeyEnum.inputs]: []
+    };
 
     return {
-      [NodeOutputKeyEnum.success]: false,
-      [NodeOutputKeyEnum.error]: message,
-      generatedCode: '',
-      executionLog: '',
-      [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+      ...pluginOutput,
+      [DispatchNodeResponseKeyEnum.toolResponses]: message,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         errorText: message,
         pluginOutput,
@@ -377,6 +422,11 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         files
       });
       executionLog = runResult.log;
+      const toolOutput = parseCodeInterpreterToolOutput(runResult.raw);
+      const toolResponse =
+        typeof toolOutput[NodeOutputKeyEnum.result] === 'string'
+          ? toolOutput[NodeOutputKeyEnum.result]
+          : JSON.stringify(toolOutput[NodeOutputKeyEnum.result]);
 
       const { totalPoints, modelName } = formatModelChars2Points({
         model: llmModel.model,
@@ -384,21 +434,9 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         modelType: ModelTypeEnum.llm
       });
 
-      const pluginOutput: Record<string, unknown> = {
-        success: true,
-        rawResponse: runResult.raw,
-        error: '',
-        generatedCode: currentCode,
-        executionLog
-      };
-
       return {
-        [NodeOutputKeyEnum.success]: true,
-        [NodeOutputKeyEnum.error]: '',
-        [NodeOutputKeyEnum.rawResponse]: runResult.raw,
-        generatedCode: currentCode,
-        executionLog,
-        [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+        ...toolOutput,
+        [DispatchNodeResponseKeyEnum.toolResponses]: toolResponse,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
           model: modelName,
@@ -415,8 +453,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           },
           code: currentCode,
           codeLog: executionLog,
-          pluginOutput,
-          textOutput: ''
+          pluginOutput: toolOutput,
+          textOutput: toolResponse
         },
         [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
           totalTokens > 0
@@ -447,21 +485,18 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   });
 
   const finalErrText = lastErrorText || 'Code Interpreter error';
-  const pluginOutput: Record<string, unknown> = {
-    success: false,
-    error: finalErrText,
-    rawResponse: {},
-    generatedCode: currentCode,
-    executionLog
+  const pluginOutput = {
+    [NodeOutputKeyEnum.result]: '',
+    [NodeOutputKeyEnum.error]: finalErrText,
+    [NodeOutputKeyEnum.execution_time]: 0,
+    [NodeOutputKeyEnum.image_url]: '',
+    [NodeOutputKeyEnum.files]: [],
+    [NodeOutputKeyEnum.inputs]: []
   };
 
   return {
-    [NodeOutputKeyEnum.success]: false,
-    [NodeOutputKeyEnum.error]: finalErrText,
-    [NodeOutputKeyEnum.rawResponse]: {},
-    generatedCode: currentCode,
-    executionLog,
-    [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
+    ...pluginOutput,
+    [DispatchNodeResponseKeyEnum.toolResponses]: finalErrText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
