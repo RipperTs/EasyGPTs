@@ -899,6 +899,18 @@ const callReplanner = async (params: {
           })
           .join('\n');
 
+  // Build available tools text for replanning decisions
+  const toolsText =
+    toolNodes.length === 0
+      ? '(No tools available)'
+      : toolNodes
+          .map((t, i) => {
+            const toolName = t.name || t.nodeId;
+            const toolIntro = t.intro || '';
+            return `${i + 1}. **${toolName}**${toolIntro ? `: ${toolIntro}` : ''}`;
+          })
+          .join('\n');
+
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
@@ -917,6 +929,15 @@ const callReplanner = async (params: {
 - More steps are needed to achieve the goal
 - Current results are incomplete or insufficient
 - Plan needs adjustment based on new findings
+
+## Available Tools (for Replanning Reference)
+${toolsText}
+
+**When to switch tools during replanning:**
+- If completed steps revealed unexpected data formats (e.g., CSV files → use Code Interpreter)
+- If the original tool choice was suboptimal based on actual results
+- If a different tool can handle remaining steps more efficiently
+- Mention the chosen tool in \`toolHints\` when adjusting steps
 
 ## Remaining Plan Update Rules (when continuing)
 - 允许对“剩余步骤”做最小必要修改：重排 / 删除 / 替换 / 新增

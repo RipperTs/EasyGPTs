@@ -469,9 +469,13 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
             : []
       };
     } catch (error) {
-      const httpErrText = formatHttpError(error);
+      const httpError = formatHttpError(error);
+      const httpErrText =
+        httpError && typeof httpError.message === 'string' ? httpError.message : '';
       const errText =
-        error instanceof Error ? error.message : getErrText(error, 'Code Interpreter error');
+        error instanceof Error
+          ? error.message
+          : String(getErrText(error, 'Code Interpreter error'));
       lastErrorText = httpErrText || errText;
 
       if (attempt >= maxRetry) break;

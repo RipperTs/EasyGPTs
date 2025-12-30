@@ -160,6 +160,7 @@ export type DispatchNodeResponseType = {
   toolStop?: boolean;
 
   // code
+  code?: string;
   codeLog?: string;
 
   // plugin
