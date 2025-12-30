@@ -63,8 +63,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.result,
       key: NodeOutputKeyEnum.result,
       label: 'result',
-      description:
-        '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files（数组）。',
+      description: '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files。',
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -95,7 +94,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.files,
       key: NodeOutputKeyEnum.files,
       label: '文件地址',
-      description: '代码执行最后产生的文件地址（数组）。',
+      description: '代码执行最后产生的文件地址',
       valueType: WorkflowIOValueTypeEnum.arrayString,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -103,7 +102,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.inputs,
       key: NodeOutputKeyEnum.inputs,
       label: '输入文件',
-      description: '输入的文件（数组）。',
+      description: '输入的文件',
       valueType: WorkflowIOValueTypeEnum.arrayString,
       type: FlowNodeOutputTypeEnum.static
     }
