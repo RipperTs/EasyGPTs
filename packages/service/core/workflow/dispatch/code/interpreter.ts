@@ -14,6 +14,8 @@ import type {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -184,6 +186,74 @@ const parseStringArray = (value: unknown): string[] => {
 
 const trimTrailingSlash = (url: string) => url.replace(/\/+$/, '');
 
+const isHttpUrl = (url: string) => /^https?:\/\//i.test(url);
+
+const parseFilesFromHistories = (histories: ChatItemType[]) => {
+  return histories
+    .filter((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return item.value.filter((value) => value.type === 'file');
+      }
+      return false;
+    })
+    .map((item) => {
+      const value = item.value as UserChatItemValueItemType[];
+      const files = value
+        .map((item) => {
+          return item.file?.url;
+        })
+        .filter(Boolean) as string[];
+      return files;
+    })
+    .flat();
+};
+
+const parsePublicFileUrl = ({
+  url,
+  requestOrigin
+}: {
+  url: string;
+  requestOrigin?: string;
+}): string => {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return '';
+
+  // 优先使用 customApiDomain（通常是可从外部访问的 API 域名），其次用 requestOrigin。
+  const baseOrigin = (global.feConfigs?.customApiDomain || requestOrigin || '').trim();
+  if (isHttpUrl(trimmed)) return trimmed;
+
+  if (!baseOrigin) return '';
+
+  try {
+    return new URL(trimmed, baseOrigin).toString();
+  } catch {
+    return '';
+  }
+};
+
+const parseCodeInterpreterFiles = ({
+  fileUrlList,
+  histories,
+  requestOrigin,
+  maxFiles
+}: {
+  fileUrlList?: string[];
+  histories: ChatItemType[];
+  requestOrigin?: string;
+  maxFiles: number;
+}) => {
+  const inputUrls = parseStringArray(fileUrlList);
+  const historyUrls = parseFilesFromHistories(histories);
+
+  const urlList = [...inputUrls, ...historyUrls]
+    .map((url) => parsePublicFileUrl({ url, requestOrigin }))
+    .filter(Boolean);
+
+  // 去重 + 限制数量（避免传超大数组给执行器）
+  return Array.from(new Set(urlList)).slice(0, maxFiles);
+};
+
 const buildExecuteCode = ({
   pythonCode,
   task,
@@ -294,6 +364,9 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   const {
     user,
     node,
+    histories,
+    chatConfig,
+    requestOrigin,
     params: { model, systemPrompt, codeInterpreterMaxRetry, fileUrlList, userChatInput }
   } = props;
 
@@ -368,7 +441,13 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   }
 
   const maxRetry = parseRetryTimes(codeInterpreterMaxRetry, 3);
-  const files = parseStringArray(fileUrlList);
+  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const files = parseCodeInterpreterFiles({
+    fileUrlList,
+    histories,
+    requestOrigin,
+    maxFiles
+  });
 
   const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
   const aiParams = {

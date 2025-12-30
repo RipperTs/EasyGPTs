@@ -26,7 +26,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     '能够依据用户的自然语言需求，生成并运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
   showStatus: true,
   isTool: true,
-  version: '492',
+  version: '493',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -48,7 +48,8 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayString,
       label: '文档链接',
-      description: '需要在代码中操作的文件，服务会自动下载到执行环境中。',
+      description:
+        '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
       value: []
     },
