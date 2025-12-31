@@ -68,11 +68,12 @@ const DEFAULT_SYSTEM_PROMPT =
   'Output rules:\n' +
   '- Output ONLY Python code (prefer a fenced ```python code block```). No explanations.\n' +
   '- Make the code self-contained and directly runnable as a script.\n' +
-  '- Print CONCISE final results to stdout (max 4000 chars recommended). If structured, use compact JSON.\n' +
-  '- For visualizations: save as local files (e.g. plt.savefig("output.png")), print only the filename.\n' +
+  '- Print CONCISE final text results to stdout (max 4000 chars). If structured, use compact JSON.\n' +
+  '- For visualizations/files: save them (e.g. plt.savefig("chart.png"), df.to_csv("data.csv")).\n' +
+  '  The Code Interpreter service will AUTOMATICALLY detect and return file URLs in `image_url` and `files` response fields.\n' +
+  '  DO NOT print filenames or file paths to stdout. Stdout is ONLY for text results (or can be empty if only generating files).\n' +
   '- NEVER output images as Base64, data URIs, or long binary strings in stdout.\n' +
   '- NEVER return full file contents, raw data dumps, or intermediate processing results to stdout.\n' +
-  '- The service will return generated files and image URLs. In stdout, print only a brief summary.\n' +
   '- Prefer the standard library. If you use optional libraries (pandas/numpy/matplotlib), handle ImportError and degrade gracefully.\n' +
   '- Be robust with file names: list the working directory and infer the correct local file to open when needed.\n';
 
@@ -124,10 +125,11 @@ Write a runnable Python script to solve the task.
 CRITICAL Rules:
 - Output ONLY code (prefer a \`\`\`python code block\`\`\`).
 - Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
-- Print ONLY final results to stdout (max ~4000 chars). Use concise summaries, not raw data.
+- Print ONLY final text results to stdout (max ~4000 chars). Use concise summaries, not raw data.
 - For large datasets: calculate statistics/summaries in code, print compact results only.
-- For files/images: save to local files, print only filenames/brief descriptions.
-- If you generate an image/chart, save it to a local file (e.g. output.png), print "Saved to output.png".
+- For visualizations/files: save to local files (e.g. plt.savefig("chart.png"), df.to_csv("output.csv")).
+  The Code Interpreter service will automatically detect generated files and return their URLs.
+  DO NOT print filenames to stdout - stdout is for text results only (or leave empty if only generating files).
 - DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
 - DO NOT return full file contents, raw arrays, or intermediate data to stdout.
 - Inspect working directory if needed: os.listdir('.') to find downloaded files.`;
@@ -178,11 +180,12 @@ Fix the code so it runs successfully and solves the task.
 CRITICAL Rules:
 - Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
 - Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
-- Print ONLY final results to stdout (max ~4000 chars). Use concise summaries, not raw data.
+- Print ONLY final text results to stdout (max ~4000 chars). Use concise summaries, not raw data.
 - For large datasets: calculate statistics/summaries in code, print compact results only.
 - Be robust with local file names: list the working directory and open the correct downloaded file.
-- For files/images: save to local files, print only filenames/brief descriptions.
-- If you generate an image/chart, save it to a local file (e.g. output.png), print "Saved to output.png".
+- For visualizations/files: save to local files (e.g. plt.savefig("chart.png"), df.to_csv("output.csv")).
+  The Code Interpreter service will automatically detect generated files and return their URLs.
+  DO NOT print filenames to stdout - stdout is for text results only (or leave empty if only generating files).
 - DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
 - DO NOT return full file contents, raw arrays, or intermediate data to stdout.`;
 
