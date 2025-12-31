@@ -51,6 +51,18 @@ type RawResponse = {
   pastSteps: { step: string; result: string }[];
   finalDecision: 'response' | 'fallback';
   planSteps?: AgentPlanStep[];
+  toolsCatalogText?: string;
+  workingMemory?: {
+    summary: string;
+    constraints: string[];
+    knownFacts: string[];
+    openQuestions: string[];
+  };
+  clarify?: {
+    needClarify: boolean;
+    reason: string;
+    questions: string[];
+  };
   replanHistory?: Array<{
     loop: number;
     changeSummary: string;
@@ -78,6 +90,13 @@ type AgentPastStep = {
   step: AgentPlanStep;
   result: string;
   toolText?: string;
+  memory?: {
+    facts?: string[];
+    numbers?: Array<{ name: string; value: string; unit?: string }>;
+    assumptions?: string[];
+    sources?: string[];
+    openQuestions?: string[];
+  };
   critic?: {
     score: number;
     issues: string[];
@@ -483,6 +502,99 @@ const normalizeStringArray = (value: unknown, maxLen: number) => {
   return arr.slice(0, maxLen);
 };
 
+type ToolCatalogParam = {
+  key: string;
+  required: boolean;
+  description: string;
+  valueType?: string;
+  enumValues?: string[];
+};
+
+type ToolCatalogItem = {
+  nodeId: string;
+  name: string;
+  intro?: string;
+  params: ToolCatalogParam[];
+};
+
+const valueTypeToText = (valueType: unknown) => {
+  if (typeof valueType === 'string' && valueType.trim()) return valueType.trim();
+  if (typeof valueType === 'number') return String(valueType);
+  return '';
+};
+
+const buildToolsCatalog = (toolNodes: RuntimeNodeItemType[]): ToolCatalogItem[] => {
+  return toolNodes.map((node) => {
+    const params = (node.inputs || [])
+      .filter((i) => typeof (i as { toolDescription?: unknown }).toolDescription === 'string')
+      .map((input) => {
+        const inputRecord = input as unknown as {
+          key?: unknown;
+          required?: unknown;
+          toolDescription?: unknown;
+          valueType?: unknown;
+          list?: unknown;
+        };
+        const key = typeof inputRecord.key === 'string' ? inputRecord.key : '';
+        const required = !!inputRecord.required;
+        const description =
+          typeof inputRecord.toolDescription === 'string' ? inputRecord.toolDescription : '';
+        const enumValues = Array.isArray(inputRecord.list)
+          ? inputRecord.list
+              .map((item) =>
+                item && typeof item === 'object' ? (item as { value?: unknown }).value : undefined
+              )
+              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+          : undefined;
+
+        const valueType = valueTypeToText(inputRecord.valueType);
+        return {
+          key,
+          required,
+          description,
+          ...(valueType ? { valueType } : {}),
+          ...(enumValues && enumValues.length ? { enumValues } : {})
+        };
+      })
+      .filter((p) => p.key);
+
+    return {
+      nodeId: node.nodeId,
+      name: node.name || node.nodeId,
+      intro: node.intro || '',
+      params
+    };
+  });
+};
+
+const renderToolsCatalogText = (toolNodes: RuntimeNodeItemType[], maxChars = 5200): string => {
+  const items = buildToolsCatalog(toolNodes);
+  if (items.length === 0) return '(No tools available)';
+
+  const lines: string[] = [];
+  items.forEach((t, idx) => {
+    lines.push(
+      `${idx + 1}. ${t.name} (id: ${t.nodeId})${t.intro ? `：${truncateText(t.intro, 140)}` : ''}`
+    );
+    if (t.params.length === 0) {
+      lines.push('   - params: （无参数说明）');
+      return;
+    }
+    t.params.slice(0, 14).forEach((p) => {
+      const meta: string[] = [];
+      if (p.required) meta.push('required');
+      if (p.valueType) meta.push(`type=${p.valueType}`);
+      if (p.enumValues?.length) meta.push(`enum=${truncateText(p.enumValues.join('|'), 80)}`);
+      lines.push(
+        `   - ${p.key}${meta.length ? ` (${meta.join(', ')})` : ''}${p.description ? `：${truncateText(p.description, 160)}` : ''}`
+      );
+    });
+    if (t.params.length > 14) lines.push(`   - ...（共 ${t.params.length} 个参数）`);
+  });
+
+  return truncateText(lines.join('\n'), maxChars);
+};
+
 const extractToolPreviewText = (assistant: AIChatItemValueItemType[], maxChars = 2400) => {
   const lines: string[] = [];
 
@@ -517,6 +629,380 @@ const buildStepResultSynthesisPrompt = (params: {
   return `Goal: ${goal}\n\nCurrent step: ${step.title}\n\nExpected output: ${step.expectedOutput || '(Not specified)'}\n\nTool results (excerpt):\n${toolText || '(None)'}\n\nOutput the result of this step (1-4 sentences, concrete facts only, no JSON/code blocks):`;
 };
 
+type ClarifyResult = {
+  needClarify: boolean;
+  reason: string;
+  questions: string[];
+  tokens: number;
+};
+
+const callClarifier = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  toolNodes: RuntimeNodeItemType[];
+}): Promise<ClarifyResult> => {
+  const { modelKey, systemPrompt, goal, toolNodes } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) return { needClarify: false, reason: '', questions: [], tokens: 0 };
+
+  const toolsText = renderToolsCatalogText(toolNodes, 5200);
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是“澄清判断器”。你的任务是判断：为了安全且高质量地解决用户目标，是否必须先向用户询问关键缺失信息。
+
+规则：
+1) 只有在“缺失信息会导致工具调用/分析结果明显不可靠”时，才 needClarify=true。
+2) 如果用户目标已足够明确，needClarify=false。
+3) questions 最多 3 个，必须短且具体，可直接让用户补齐关键参数。
+4) 输出 JSON 且仅输出 JSON：
+{"needClarify": true|false, "reason": "一句话原因", "questions": ["..."]}`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `用户目标：
+${goal}
+
+可用工具（含参数）：
+${toolsText}
+
+请输出 JSON：`
+    }
+  ];
+
+  try {
+    const ai = getAIApi({ timeout: 60000 });
+    const requestBody: Record<string, unknown> = {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: 0,
+      max_tokens: 220,
+      stream: false,
+      messages
+    };
+
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+    const content = resp.choices?.[0]?.message?.content || '';
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+
+    const jsonStr = extractFirstJsonValue(content) || content.trim();
+    const parsed = json5.parse(jsonStr) as unknown;
+    const obj = getRecord(parsed);
+    if (!obj) return { needClarify: false, reason: '', questions: [], tokens };
+
+    const needClarify = obj.needClarify === true;
+    const reason = typeof obj.reason === 'string' ? obj.reason.trim() : '';
+    const questions = Array.isArray(obj.questions)
+      ? obj.questions
+          .filter((q): q is string => typeof q === 'string')
+          .map((q) => q.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+
+    return { needClarify, reason, questions, tokens };
+  } catch {
+    return { needClarify: false, reason: '', questions: [], tokens: 0 };
+  }
+};
+
+type WorkingMemory = NonNullable<RawResponse['workingMemory']>;
+const callWorkingMemory = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  toolNodes: RuntimeNodeItemType[];
+}): Promise<{ memory: WorkingMemory; tokens: number }> => {
+  const { modelKey, systemPrompt, goal, toolNodes } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) {
+    return {
+      memory: { summary: '', constraints: [], knownFacts: [], openQuestions: [] },
+      tokens: 0
+    };
+  }
+
+  const toolsText = renderToolsCatalogText(toolNodes, 2600);
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是“工作记忆压缩器”。把对话目标压缩成稳定、可复用的短记忆，供后续多步执行使用。
+
+规则：
+1) 只输出 JSON 且仅输出 JSON。
+2) summary 1-2 句；constraints/knownFacts/openQuestions 各最多 6 条，短句。
+3) 严禁编造事实；不确定就放到 openQuestions。
+
+输出格式：
+{"summary":"...","constraints":["..."],"knownFacts":["..."],"openQuestions":["..."]}`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `用户目标：
+${goal}
+
+可用工具（摘要）：
+${toolsText}
+
+请输出 JSON：`
+    }
+  ];
+
+  try {
+    const ai = getAIApi({ timeout: 60000 });
+    const requestBody: Record<string, unknown> = {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: 0,
+      max_tokens: 320,
+      stream: false,
+      messages
+    };
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+    const content = resp.choices?.[0]?.message?.content || '';
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+    const jsonStr = extractFirstJsonValue(content) || content.trim();
+    const parsed = json5.parse(jsonStr) as unknown;
+    const obj = getRecord(parsed) || {};
+
+    const summary = typeof obj.summary === 'string' ? obj.summary.trim() : '';
+    const constraints = normalizeStringArray(obj.constraints, 6);
+    const knownFacts = normalizeStringArray(obj.knownFacts, 6);
+    const openQuestions = normalizeStringArray(obj.openQuestions, 6);
+
+    return { memory: { summary, constraints, knownFacts, openQuestions }, tokens };
+  } catch {
+    return {
+      memory: { summary: '', constraints: [], knownFacts: [], openQuestions: [] },
+      tokens: 0
+    };
+  }
+};
+
+const renderWorkingMemoryText = (memory?: WorkingMemory) => {
+  if (!memory) return '';
+  const lines: string[] = [];
+  if (memory.summary) lines.push(`- 摘要：${memory.summary}`);
+  if (memory.constraints?.length) lines.push(`- 约束：${memory.constraints.join('；')}`);
+  if (memory.knownFacts?.length) lines.push(`- 已知：${memory.knownFacts.join('；')}`);
+  if (memory.openQuestions?.length) lines.push(`- 待确认：${memory.openQuestions.join('；')}`);
+  return lines.length ? `\n工作记忆（必须遵守，禁止编造）：\n${lines.join('\n')}\n` : '';
+};
+
+const callStepMemoryExtractor = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  stepTitle: string;
+  stepResult: string;
+  toolText: string;
+}): Promise<{ memory?: AgentPastStep['memory']; tokens: number }> => {
+  const { modelKey, systemPrompt, goal, stepTitle, stepResult, toolText } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) return { memory: undefined, tokens: 0 };
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是“步骤记忆提取器”。把本步骤的输出抽取成结构化信息，供最终答复合成使用。
+
+规则：
+1) 只输出 JSON 且仅输出 JSON。
+2) 严禁编造；只从 stepResult/toolText 中抽取。
+3) 每个数组最多 6 条，短句。
+4) numbers 每项用字符串 value（避免小数/格式问题）。
+
+输出格式：
+{"facts":["..."],"numbers":[{"name":"...","value":"...","unit":"..."}],"assumptions":["..."],"sources":["..."],"openQuestions":["..."]}`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `用户目标：${goal}
+步骤：${stepTitle}
+
+stepResult：
+${truncateText(stepResult, 1800)}
+
+toolText（摘要）：
+${truncateText(toolText, 1800)}
+
+请输出 JSON：`
+    }
+  ];
+
+  try {
+    const ai = getAIApi({ timeout: 60000 });
+    const requestBody: Record<string, unknown> = {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: 0,
+      max_tokens: 360,
+      stream: false,
+      messages
+    };
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+    const content = resp.choices?.[0]?.message?.content || '';
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+
+    const jsonStr = extractFirstJsonValue(content) || content.trim();
+    const parsed = json5.parse(jsonStr) as unknown;
+    const obj = getRecord(parsed);
+    if (!obj) return { memory: undefined, tokens };
+
+    const facts = normalizeStringArray(obj.facts, 6);
+    const assumptions = normalizeStringArray(obj.assumptions, 6);
+    const sources = normalizeStringArray(obj.sources, 6);
+    const openQuestions = normalizeStringArray(obj.openQuestions, 6);
+
+    const numbers = Array.isArray(obj.numbers)
+      ? obj.numbers
+          .map((n) => {
+            const r = getRecord(n);
+            if (!r) return;
+            const name = typeof r.name === 'string' ? r.name.trim() : '';
+            const value = typeof r.value === 'string' ? r.value.trim() : '';
+            const unit = typeof r.unit === 'string' ? r.unit.trim() : undefined;
+            if (!name || !value) return;
+            return { name, value, ...(unit ? { unit } : {}) };
+          })
+          .filter((v): v is { name: string; value: string; unit?: string } => !!v)
+          .slice(0, 6)
+      : [];
+
+    return {
+      memory: {
+        ...(facts.length ? { facts } : {}),
+        ...(numbers.length ? { numbers } : {}),
+        ...(assumptions.length ? { assumptions } : {}),
+        ...(sources.length ? { sources } : {}),
+        ...(openQuestions.length ? { openQuestions } : {})
+      },
+      tokens
+    };
+  } catch {
+    return { memory: undefined, tokens: 0 };
+  }
+};
+
+const callFinalSynthesis = async (params: {
+  modelKey: string;
+  systemPrompt?: string;
+  goal: string;
+  workingMemory?: WorkingMemory;
+  pastSteps: AgentPastStep[];
+  decisionResponse?: string;
+}): Promise<{ text: string; tokens: number }> => {
+  const { modelKey, systemPrompt, goal, workingMemory, pastSteps, decisionResponse } = params;
+  const model = getLLMModel(modelKey);
+  if (!model) return { text: decisionResponse || '', tokens: 0 };
+
+  const memoryText = renderWorkingMemoryText(workingMemory);
+  const stepsText =
+    pastSteps.length === 0
+      ? '（无）'
+      : pastSteps
+          .slice(-10)
+          .map((p, i) => {
+            const mem = p.memory;
+            const memLines: string[] = [];
+            if (mem?.facts?.length) memLines.push(`facts: ${mem.facts.join('；')}`);
+            if (mem?.numbers?.length) {
+              memLines.push(
+                `numbers: ${mem.numbers.map((n) => `${n.name}=${n.value}${n.unit || ''}`).join('；')}`
+              );
+            }
+            if (mem?.assumptions?.length)
+              memLines.push(`assumptions: ${mem.assumptions.join('；')}`);
+            if (mem?.openQuestions?.length) memLines.push(`open: ${mem.openQuestions.join('；')}`);
+            return `Step ${i + 1}: ${p.step.title}\n结果：${truncateText(p.result, 600)}${
+              memLines.length ? `\n抽取：${truncateText(memLines.join(' | '), 900)}` : ''
+            }`;
+          })
+          .join('\n\n');
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: `${systemPrompt ? `${systemPrompt}\n\n` : ''}你是“最终答复合成器”。你的任务是把多步执行结果合并成一份连贯、可交付的最终答复。
+
+硬规则：
+1) 严禁编造：只使用已完成步骤的事实/数字/工具结果。
+2) 如果仍缺关键信息，必须明确写“缺少什么、为什么缺少、需要用户补充什么”。
+3) 输出必须是简体中文，不要输出 JSON。
+
+推荐结构（可按需调整）：
+- 结论（TL;DR）
+- 关键证据/数据点
+- 口径/假设（若有）
+- 风险与局限
+- 下一步建议（可执行）`
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `用户目标：
+${goal}
+${memoryText}
+
+已完成步骤与结果（含抽取）：
+${stepsText}
+
+（可选）replanner 给出的直接回复草案：
+${decisionResponse ? truncateText(decisionResponse, 1200) : '（无）'}
+
+请输出最终答复：`
+    }
+  ];
+
+  try {
+    const ai = getAIApi({ timeout: 120000 });
+    const requestBody: Record<string, unknown> = {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: computedTemperature({ model, temperature: 0.2 }),
+      max_tokens: computedMaxToken({ model, maxToken: 900 }),
+      stream: false,
+      messages
+    };
+    const resp = (await ai.chat.completions.create(
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    )) as unknown as ChatCompletion;
+    const text = (resp.choices?.[0]?.message?.content || '').trim();
+    const assistantMsg: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: text
+    };
+    const tokens =
+      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
+    return { text, tokens };
+  } catch {
+    return { text: decisionResponse || pastSteps[pastSteps.length - 1]?.result || '', tokens: 0 };
+  }
+};
+
 // Task Analyzer: Determine if task is simple (direct answer) or complex (needs planning)
 const callTaskAnalyzer = async (params: {
   modelKey: string;
@@ -527,12 +1013,7 @@ const callTaskAnalyzer = async (params: {
   const model = getLLMModel(modelKey);
   if (!model) return { complexity: 'simple', reason: 'No model available', tokens: 0 };
 
-  const toolsText =
-    toolNodes.length === 0
-      ? '(No tools available)'
-      : toolNodes
-          .map((t, i) => `${i + 1}. ${t.name || t.nodeId}: ${t.intro || 'No description'}`)
-          .join('\n');
+  const toolsText = renderToolsCatalogText(toolNodes, 3200);
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -713,17 +1194,10 @@ const callPlanner = async (params: {
   const model = getLLMModel(modelKey);
   if (!model) return { steps: [], tokens: 0 };
 
-  // Build detailed tool descriptions
   const toolsText =
     toolNodes.length === 0
       ? '(No tools available - plan based on general knowledge)'
-      : toolNodes
-          .map((t, i) => {
-            const toolName = t.name || t.nodeId;
-            const toolIntro = t.intro || '';
-            return `${i + 1}. **${toolName}**${toolIntro ? `: ${toolIntro}` : ''}`;
-          })
-          .join('\n');
+      : renderToolsCatalogText(toolNodes, 5200);
 
   // Adaptive step limits based on complexity
   const stepRange = complexity === 'simple' ? '1-2' : `2-${maxPlanSteps}`;
@@ -912,17 +1386,7 @@ const callReplanner = async (params: {
           })
           .join('\n');
 
-  // Build available tools text for replanning decisions
-  const toolsText =
-    toolNodes.length === 0
-      ? '(No tools available)'
-      : toolNodes
-          .map((t, i) => {
-            const toolName = t.name || t.nodeId;
-            const toolIntro = t.intro || '';
-            return `${i + 1}. **${toolName}**${toolIntro ? `: ${toolIntro}` : ''}`;
-          })
-          .join('\n');
+  const toolsText = renderToolsCatalogText(toolNodes, 4200);
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -1237,6 +1701,7 @@ Evaluate the quality of this step's execution. Output JSON only:`
 
 const buildExecutorPrompt = (params: {
   goal: string;
+  workingMemoryText?: string;
   step: AgentPlanStep;
   stepNumber: number;
   totalSteps: number;
@@ -1247,7 +1712,8 @@ const buildExecutorPrompt = (params: {
     lastCritic?: CriticResult;
   };
 }) => {
-  const { goal, step, stepNumber, totalSteps, remainingPlan, pastSteps, retry } = params;
+  const { goal, workingMemoryText, step, stepNumber, totalSteps, remainingPlan, pastSteps, retry } =
+    params;
 
   const remainingText =
     remainingPlan.length === 0
@@ -1293,6 +1759,7 @@ const buildExecutorPrompt = (params: {
 ## Context
 
 User goal: ${goal}
+${workingMemoryText || ''}
 Progress: Step ${stepNumber} / ${totalSteps}${retry?.attempt && retry.attempt > 1 ? ` (retry #${retry.attempt})` : ''}
 
 Completed steps (recent):
@@ -1415,6 +1882,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   const toolNodes = toolNodeIds
     .map((id) => runtimeNodes.find((n) => n.nodeId === id))
     .filter((n): n is RuntimeNodeItemType => !!n);
+  const toolsCatalogText = renderToolsCatalogText(toolNodes, 5200);
 
   const traceId = randomUUID();
   const replanHistory: NonNullable<RawResponse['replanHistory']> = [];
@@ -1500,6 +1968,18 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         pastSteps: [{ step: userChatInput, result: simpleAnswer }],
         finalDecision: 'response',
         planSteps: [],
+        toolsCatalogText,
+        workingMemory: {
+          summary: '',
+          constraints: [],
+          knownFacts: [],
+          openQuestions: []
+        },
+        clarify: {
+          needClarify: false,
+          reason: '',
+          questions: []
+        },
         replanHistory: [],
         usage: {
           totalTokens,
@@ -1529,10 +2009,108 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // Step 2: For COMPLEX tasks, use full plan-execute loop
   const adaptiveMaxSteps = maxPlanSteps;
 
-  const planner = await callPlanner({
+  // P1: 澄清优先。复杂任务且有工具时，先判断是否必须向用户补充关键参数
+  let clarify: ClarifyResult = { needClarify: false, reason: '', questions: [], tokens: 0 };
+  if (toolNodes.length > 0) {
+    clarify = await callClarifier({
+      modelKey,
+      systemPrompt,
+      goal: userChatInput,
+      toolNodes
+    });
+    totalTokens += clarify.tokens;
+    totalRunTimes += 1;
+  }
+
+  if (clarify.needClarify && clarify.questions.length > 0) {
+    const clarifyText = `为了确保结果可靠，我需要你先补充几个关键信息：\n${clarify.questions
+      .map((q, i) => `${i + 1}. ${q}`)
+      .join('\n')}`;
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.fastAnswer,
+      data: textAdaptGptResponse({
+        text: clarifyText,
+        reasoning_content: '',
+        model: model.model
+      })
+    });
+
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelKey,
+      tokens: totalTokens,
+      modelType: ModelTypeEnum.llm
+    });
+
+    const finalAssistantResponses: AIChatItemValueItemType[] = [
+      {
+        type: ChatItemValueTypeEnum.text as AIChatItemValueItemType['type'],
+        text: { content: clarifyText }
+      }
+    ];
+
+    return {
+      [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
+      [NodeOutputKeyEnum.answerText]: clarifyText,
+      [NodeOutputKeyEnum.reasoningText]: '',
+      [NodeOutputKeyEnum.rawResponse]: {
+        traceId,
+        plan: [],
+        pastSteps: [{ step: userChatInput, result: clarifyText }],
+        finalDecision: 'response',
+        planSteps: [],
+        toolsCatalogText,
+        workingMemory: {
+          summary: '',
+          constraints: [],
+          knownFacts: [],
+          openQuestions: []
+        },
+        clarify: {
+          needClarify: true,
+          reason: clarify.reason,
+          questions: clarify.questions
+        },
+        replanHistory,
+        usage: {
+          totalTokens,
+          totalRunTimes
+        }
+      },
+      [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints,
+        toolCallTokens: totalTokens,
+        model: modelName,
+        query: userChatInput,
+        toolDetail: []
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+        {
+          moduleName: name,
+          totalPoints,
+          model: modelName,
+          tokens: totalTokens
+        }
+      ]
+    };
+  }
+
+  // P2: 工作记忆压缩（降低 history 噪音，增强跨步一致性）
+  const workingMemoryResult = await callWorkingMemory({
     modelKey,
     systemPrompt,
     goal: userChatInput,
+    toolNodes
+  });
+  totalTokens += workingMemoryResult.tokens;
+  totalRunTimes += 1;
+  const workingMemory = workingMemoryResult.memory;
+  const workingMemoryText = renderWorkingMemoryText(workingMemory);
+
+  const planner = await callPlanner({
+    modelKey,
+    systemPrompt,
+    goal: `${userChatInput}${workingMemoryText}`,
     complexity,
     maxPlanSteps: adaptiveMaxSteps,
     toolNodes,
@@ -1624,6 +2202,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const attempt = 1 + (stepRetryCount.get(step.id) || 0);
     const stepPrompt = buildExecutorPrompt({
       goal: userChatInput,
+      workingMemoryText,
       step,
       stepNumber: pastSteps.length + 1,
       totalSteps: todoAllSteps.length,
@@ -1770,6 +2349,21 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       // 重试次数用尽，继续正常流程（让 replanner 决定如何处理）
     }
 
+    // P2: 抽取步骤结构化记忆（用于最终合成，减少“各步割裂”）
+    if (stepAnswer.trim().length >= 30 || toolText.trim().length >= 10) {
+      const extracted = await callStepMemoryExtractor({
+        modelKey,
+        systemPrompt,
+        goal: userChatInput,
+        stepTitle: step.title,
+        stepResult: stepAnswer,
+        toolText
+      });
+      totalTokens += extracted.tokens;
+      totalRunTimes += 1;
+      pastSteps[pastSteps.length - 1].memory = extracted.memory;
+    }
+
     if (stream) {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
@@ -1785,7 +2379,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     let decision = await callReplanner({
       modelKey,
       systemPrompt,
-      goal: userChatInput,
+      goal: `${userChatInput}${workingMemoryText}`,
       originalPlan,
       remainingSteps: planQueue,
       pastSteps,
@@ -1827,7 +2421,19 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       // 结束前补一次最终 todo 快照（确保最后一项被勾选）
       pushTodoSnapshot();
 
-      const finalAnswer = decision.response || pastSteps[pastSteps.length - 1]?.result || '';
+      const synthesized = await callFinalSynthesis({
+        modelKey,
+        systemPrompt,
+        goal: userChatInput,
+        workingMemory,
+        pastSteps,
+        decisionResponse: decision.response || ''
+      });
+      totalTokens += synthesized.tokens;
+      totalRunTimes += 1;
+
+      const finalAnswer =
+        synthesized.text || decision.response || pastSteps[pastSteps.length - 1]?.result || '';
 
       if (stream) {
         workflowStreamResponse?.({
@@ -1885,6 +2491,13 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
           finalDecision: 'response',
           planSteps: todoAllSteps,
+          toolsCatalogText,
+          workingMemory,
+          clarify: {
+            needClarify: false,
+            reason: '',
+            questions: []
+          },
           replanHistory,
           usage: {
             totalTokens,
@@ -1966,6 +2579,21 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // fallback
   const fallbackAnswer =
+    (
+      await (async () => {
+        if (pastSteps.length === 0) return '';
+        const synthesized = await callFinalSynthesis({
+          modelKey,
+          systemPrompt,
+          goal: userChatInput,
+          workingMemory,
+          pastSteps
+        });
+        totalTokens += synthesized.tokens;
+        totalRunTimes += 1;
+        return synthesized.text;
+      })()
+    ).trim() ||
     pastSteps[pastSteps.length - 1]?.result ||
     (planQueue.length > 0 ? `未完成全部步骤，当前停在：${planQueue[0].title}` : '未生成有效结果');
 
@@ -2023,6 +2651,13 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
       finalDecision: 'fallback',
       planSteps: todoAllSteps,
+      toolsCatalogText,
+      workingMemory,
+      clarify: {
+        needClarify: false,
+        reason: '',
+        questions: []
+      },
       replanHistory,
       usage: {
         totalTokens,

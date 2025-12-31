@@ -16,7 +16,6 @@ import {
   Input_Template_System_Prompt,
   Input_Template_UserChatInput
 } from '../input';
-import { chatNodeSystemPromptTip } from '../tip';
 import { getHandleConfig } from '../utils';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 
@@ -38,6 +37,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
       ...Input_Template_SettingAiModel,
       llmModelType: LLMModelTypeEnum.all
     },
+    Input_Template_System_Prompt,
     // --- ai settings modal
     {
       key: NodeInputKeyEnum.aiChatTemperature,

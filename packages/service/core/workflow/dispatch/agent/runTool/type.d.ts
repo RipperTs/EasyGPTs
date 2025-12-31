@@ -32,6 +32,8 @@ export type RunToolResponse = {
   totalTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
   assistantResponses?: AIChatItemValueItemType[];
+  toolResultCache?: Record<string, string>;
+  toolValidationRetry?: Record<string, number>;
   [DispatchNodeResponseKeyEnum.runTimes]: number;
   reasoningText?: string;
 };

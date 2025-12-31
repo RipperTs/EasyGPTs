@@ -12,7 +12,10 @@ import {
 } from '@fastgpt/global/core/ai/type.d';
 import { NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
@@ -36,6 +39,69 @@ type FunctionRunResponseType = {
 const mergeReasoningText = (prev?: string, curr?: string): string => {
   if (prev && curr) return `${prev}\n${curr}`;
   return prev || curr || '';
+};
+
+const createEmptyDispatchFlowResponse = (): DispatchFlowResponse => {
+  return {
+    flowResponses: [],
+    flowUsages: [],
+    debugResponse: {
+      finishedNodes: [],
+      finishedEdges: [],
+      nextStepRunNodes: []
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: [] as unknown,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+    [DispatchNodeResponseKeyEnum.runTimes]: 0,
+    newVariables: {}
+  };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const stableStringify = (value: unknown): string => {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (isRecord(value)) {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(String(value));
+};
+
+const validateToolArgs = (params: {
+  toolNode: ToolNodeItemType;
+  args: Record<string, unknown>;
+}) => {
+  const { toolNode, args } = params;
+  const errors: string[] = [];
+  const defs = (toolNode.toolParams || [])
+    .map((p) => p as unknown as { key?: unknown; required?: unknown; toolDescription?: unknown })
+    .filter((p) => typeof p.key === 'string' && p.key)
+    .map((p) => ({
+      key: p.key as string,
+      required: !!p.required,
+      toolDescription: typeof p.toolDescription === 'string' ? p.toolDescription : ''
+    }));
+
+  defs.forEach((def) => {
+    const value = args[def.key];
+    const missing =
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim().length === 0) ||
+      (Array.isArray(value) && value.length === 0);
+    if (def.required && missing) {
+      errors.push(
+        `缺少必填参数：${def.key}${def.toolDescription ? `（${def.toolDescription}）` : ''}`
+      );
+    }
+  });
+
+  return { ok: errors.length === 0, errors };
 };
 
 export const runToolWithFunctionCall = async (
@@ -63,6 +129,8 @@ export const runToolWithFunctionCall = async (
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = props;
   const assistantResponses = response?.assistantResponses || [];
+  const toolResultCache = response?.toolResultCache || {};
+  const toolValidationRetry = response?.toolValidationRetry || {};
 
   const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((node) => {
     const properties: Record<
@@ -257,13 +325,69 @@ export const runToolWithFunctionCall = async (
 
         if (!toolNode) return;
 
-        const startParams = (() => {
+        const parseArgs = (): Record<string, unknown> => {
           try {
-            return json5.parse(tool.arguments);
-          } catch (error) {
+            const parsed = json5.parse(tool.arguments || '') as unknown;
+            return isRecord(parsed) ? parsed : {};
+          } catch {
             return {};
           }
-        })();
+        };
+
+        const args = parseArgs();
+        const validation = validateToolArgs({ toolNode, args });
+        if (!validation.ok) {
+          const retryKey = `validate:${toolNode.nodeId}:${tool.arguments || ''}`;
+          toolValidationRetry[retryKey] = (toolValidationRetry[retryKey] || 0) + 1;
+
+          const errText = `__TOOL_VALIDATION_ERROR__\n工具：${toolNode.name}\n原因：\n${validation.errors
+            .map((e) => `- ${e}`)
+            .join('\n')}\n\n要求：请不要猜测缺失值；先向用户澄清或给出可确定的参数后再调用工具。`;
+
+          const functionCallMsg: ChatCompletionFunctionMessageParam = {
+            role: ChatCompletionRequestMessageRoleEnum.Function,
+            name: tool.name,
+            content: errText
+          };
+
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.toolResponse,
+            data: {
+              tool: {
+                id: tool.id,
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                params: tool.arguments || '',
+                response: sliceStrStartEnd(errText, 500, 500)
+              }
+            }
+          });
+
+          return { toolRunResponse: createEmptyDispatchFlowResponse(), functionCallMsg };
+        }
+
+        const signature = `${toolNode.nodeId}|${stableStringify(args)}`;
+        if (toolResultCache[signature]) {
+          const cached = toolResultCache[signature];
+          const functionCallMsg: ChatCompletionFunctionMessageParam = {
+            role: ChatCompletionRequestMessageRoleEnum.Function,
+            name: tool.name,
+            content: cached
+          };
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.toolResponse,
+            data: {
+              tool: {
+                id: tool.id,
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                params: tool.arguments || '',
+                response: sliceStrStartEnd(cached, 500, 500)
+              }
+            }
+          });
+          return { toolRunResponse: createEmptyDispatchFlowResponse(), functionCallMsg };
+        }
 
         const toolRunResponse = await dispatchWorkFlow({
           ...props,
@@ -273,7 +397,7 @@ export const runToolWithFunctionCall = async (
               ? {
                   ...item,
                   isEntry: true,
-                  inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
+                  inputs: updateToolInputValue({ params: args, inputs: item.inputs })
                 }
               : {
                   ...item,
@@ -283,6 +407,7 @@ export const runToolWithFunctionCall = async (
         });
 
         const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+        toolResultCache[signature] = stringToolResponse;
 
         const functionCallMsg: ChatCompletionFunctionMessageParam = {
           role: ChatCompletionRequestMessageRoleEnum.Function,
@@ -383,6 +508,8 @@ export const runToolWithFunctionCall = async (
         runTimes:
           (response?.runTimes || 0) +
           flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+        toolResultCache,
+        toolValidationRetry,
         reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
       };
     }
@@ -399,6 +526,8 @@ export const runToolWithFunctionCall = async (
         runTimes:
           (response?.runTimes || 0) +
           flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+        toolResultCache,
+        toolValidationRetry,
         reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
       }
     );
@@ -421,6 +550,8 @@ export const runToolWithFunctionCall = async (
       completeMessages,
       assistantResponses: [...assistantResponses, ...(toolNodeAssistant?.value || [])],
       runTimes: (response?.runTimes || 0) + 1,
+      toolResultCache,
+      toolValidationRetry,
       reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
     };
   }
