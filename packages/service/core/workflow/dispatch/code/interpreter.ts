@@ -46,6 +46,9 @@ type ToolOutput = {
   [NodeOutputKeyEnum.code]: string;
 };
 
+// 最大允许的stdout输出长度（字符数），超过此长度会触发警告和重试
+const MAX_STDOUT_LENGTH = 4000;
+
 const DEFAULT_SYSTEM_PROMPT =
   'You are a senior Python engineer acting as a Code Interpreter.\n' +
   'Your job is to translate the user task into runnable Python code and execute it in a sandbox.\n' +
@@ -55,13 +58,21 @@ const DEFAULT_SYSTEM_PROMPT =
   '- Your code can read/write local files in the working directory.\n' +
   '- Network access may be restricted; do not rely on external HTTP calls.\n' +
   '\n' +
+  'CRITICAL - Data Processing Rules:\n' +
+  '- ALL data processing, analysis, aggregation, and transformation MUST be done in your Python code.\n' +
+  '- DO NOT return raw data, long lists, or full datasets to stdout for "further analysis".\n' +
+  '- Compute statistics, summaries, and final results IN CODE, then print only the final answer.\n' +
+  '- For large datasets: calculate counts, averages, top-N items, etc. in code; print a concise summary.\n' +
+  '- For text analysis: perform all NLP/text processing in code; print only the conclusion.\n' +
+  '\n' +
   'Output rules:\n' +
   '- Output ONLY Python code (prefer a fenced ```python code block```). No explanations.\n' +
   '- Make the code self-contained and directly runnable as a script.\n' +
-  '- Always print the final answer to stdout. If structured output is needed, print JSON.\n' +
-  '- If you generate a chart/image, save it as a local file (e.g. plt.savefig("output.png")).\n' +
+  '- Print CONCISE final results to stdout (max 4000 chars recommended). If structured, use compact JSON.\n' +
+  '- For visualizations: save as local files (e.g. plt.savefig("output.png")), print only the filename.\n' +
   '- NEVER output images as Base64, data URIs, or long binary strings in stdout.\n' +
-  '- The service will return generated files (and may return an image URL). In stdout, only print a short summary and the local file name(s).\n' +
+  '- NEVER return full file contents, raw data dumps, or intermediate processing results to stdout.\n' +
+  '- The service will return generated files and image URLs. In stdout, print only a brief summary.\n' +
   '- Prefer the standard library. If you use optional libraries (pandas/numpy/matplotlib), handle ImportError and degrade gracefully.\n' +
   '- Be robust with file names: list the working directory and infer the correct local file to open when needed.\n';
 
@@ -109,12 +120,17 @@ You will have these variables available in the runtime (already defined for you)
 - FILES: list[str] (input file URLs, may be empty)
 
 Write a runnable Python script to solve the task.
-Rules:
+
+CRITICAL Rules:
 - Output ONLY code (prefer a \`\`\`python code block\`\`\`).
-- Print the final answer to stdout (use JSON if helpful).
-- If files are needed, inspect the working directory (e.g. os.listdir('.')) and open the correct local file.
-- If you generate an image/chart, save it to a local file (e.g. output.png).
-- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings, no '已转为 Base64' narratives). Let the Code Interpreter service return the image URL/file list.`;
+- Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
+- Print ONLY final results to stdout (max ~4000 chars). Use concise summaries, not raw data.
+- For large datasets: calculate statistics/summaries in code, print compact results only.
+- For files/images: save to local files, print only filenames/brief descriptions.
+- If you generate an image/chart, save it to a local file (e.g. output.png), print "Saved to output.png".
+- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
+- DO NOT return full file contents, raw arrays, or intermediate data to stdout.
+- Inspect working directory if needed: os.listdir('.') to find downloaded files.`;
 
   return [
     {
@@ -158,12 +174,17 @@ Runtime error:
 ${errorText}
 
 Fix the code so it runs successfully and solves the task.
-Rules:
+
+CRITICAL Rules:
 - Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
-- Print the final answer to stdout (use JSON if helpful).
+- Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
+- Print ONLY final results to stdout (max ~4000 chars). Use concise summaries, not raw data.
+- For large datasets: calculate statistics/summaries in code, print compact results only.
 - Be robust with local file names: list the working directory and open the correct downloaded file.
-- If you generate an image/chart, save it to a local file (e.g. output.png).
-- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings, no '已转为 Base64' narratives). Let the Code Interpreter service return the image URL/file list.`;
+- For files/images: save to local files, print only filenames/brief descriptions.
+- If you generate an image/chart, save it to a local file (e.g. output.png), print "Saved to output.png".
+- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
+- DO NOT return full file contents, raw arrays, or intermediate data to stdout.`;
 
   return [
     {
@@ -417,17 +438,29 @@ const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = '')
   const outputFiles = parseStringArray(raw.files);
 
   const isBase64Output = resultText ? hasBase64ImageLikeOutput(resultText) : false;
-  const unifiedResult: string =
-    // If stdout looks like a base64 image payload, prefer returning the file URL(s) instead.
-    resultText && !isBase64Output
+  const isTooLong = resultText.length > MAX_STDOUT_LENGTH;
+
+  let unifiedResult: string;
+
+  if (isBase64Output) {
+    // 检测到 base64 输出，优先返回文件/图片地址
+    unifiedResult =
+      imageUrl || outputFiles.length > 0
+        ? imageUrl || outputFiles.join('\n')
+        : '检测到 Base64 图片输出。请在代码中将图片保存为本地文件（如 plt.savefig("output.png")），由服务端返回图片地址，不要打印 Base64 字符串。';
+  } else if (isTooLong) {
+    // 输出过长，截断并提示
+    unifiedResult = `输出内容过长 (${resultText.length} 字符)。建议在代码中完成数据处理和汇总，只打印最终结果摘要。\n\n输出预览（前 500 字符）:\n${resultText.slice(0, 500)}...\n\n${imageUrl ? `\n图片地址: ${imageUrl}` : ''}${outputFiles.length > 0 ? `\n生成文件: ${outputFiles.join(', ')}` : ''}`;
+  } else {
+    // 正常输出
+    unifiedResult = resultText
       ? resultText
       : imageUrl
         ? imageUrl
         : outputFiles.length > 0
           ? outputFiles.join('\n')
-          : isBase64Output
-            ? '检测到疑似 Base64 图片输出。请改为将图片保存为本地文件（如 output.png），由 Code Interpreter 服务端返回图片地址。'
-            : resultText;
+          : '';
+  }
 
   return {
     [NodeOutputKeyEnum.result]: unifiedResult,
@@ -586,9 +619,17 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       executionLog = runResult.log;
 
       const rawResultText = typeof runResult.raw.result === 'string' ? runResult.raw.result : '';
+
+      // 检测1: Base64图片输出
       if (hasBase64ImageLikeOutput(rawResultText)) {
         lastErrorText =
           'Output contains Base64 image content. Please save images to local files (e.g. output.png) and do NOT print Base64/data URIs; rely on the Code Interpreter service to return image URLs/files.';
+        if (attempt < maxRetry) continue;
+      }
+
+      // 检测2: 输出长度过长
+      if (rawResultText.length > MAX_STDOUT_LENGTH) {
+        lastErrorText = `Output is too long (${rawResultText.length} chars, max recommended: ${MAX_STDOUT_LENGTH}). You must process/summarize data IN YOUR CODE before printing. Do NOT return raw data, full file contents, or long lists. Calculate statistics, counts, summaries, or save results to files instead.`;
         if (attempt < maxRetry) continue;
       }
 
