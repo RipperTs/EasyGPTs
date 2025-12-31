@@ -67,5 +67,33 @@
 ## 常见坑（本次踩过）
 
 - **忘记注册前端 `nodeTypes`**
-  - 现象：画布中节点显示为“小空白框”，控制台报错：`[React Flow]: Node type "xxx" not found. Using fallback type "default"`。
+  - 现象：画布中节点显示为"小空白框"，控制台报错：`[React Flow]: Node type "xxx" not found. Using fallback type "default"`。
   - 修复：在 `projects/app/src/pages/app/detail/components/WorkflowComponents/Flow/index.tsx` 的 `nodeTypes` 补上对应类型映射。
+
+---
+
+## Agent Prompt 开发规范
+
+### Prompt 语言规范
+
+#### 核心原则
+- **内部 Prompt 使用英文**：所有 Agent 内部的 system prompt、user prompt 必须使用英文
+- **用户输出使用中文**：最终面向用户的输出内容必须使用简体中文
+- **保持一致性**：与现有 agent 代码风格保持一致（如 Planner、Executor、Critic 等）
+
+#### 适用范围
+
+**✅ 必须使用英文的场景：**
+- System prompts for LLM calls (如 Task Analyzer, Planner, Executor, Replanner, Critic)
+- Tool instructions and guidelines
+- Internal reasoning prompts
+- Agent 内部角色定义和规则说明
+- 工具调用的参数描述和约束条件
+- JSON schema 和格式要求说明
+
+**❌ 必须使用中文的场景：**
+- User-facing responses (面向用户的最终回复)
+- UI text and labels (界面文本和标签)
+- Error messages shown to users (用户可见的错误信息)
+- Todo list content (任务列表内容)
+- Step result synthesis (步骤结果合成)

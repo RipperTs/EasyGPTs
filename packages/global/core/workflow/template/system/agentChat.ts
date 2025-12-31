@@ -32,11 +32,21 @@ export const AgentChatModule: FlowNodeTemplateType = {
     'Plan-and-Execute 对话模式：结构化规划 → 逐步执行 → 持续重规划与收敛答复，适合复杂任务与数据分析场景。',
   showStatus: true,
   isTool: true,
-  version: '484',
+  version: '485',
   inputs: [
     {
       ...Input_Template_SettingAiModel,
       llmModelType: LLMModelTypeEnum.all
+    },
+    {
+      key: NodeInputKeyEnum.agentIntentModel,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference],
+      label: '意图识别模型',
+      description: '用于预判任务是否需要“规划-执行”；留空则使用主模型。',
+      valueType: WorkflowIOValueTypeEnum.string,
+      required: false,
+      llmModelType: LLMModelTypeEnum.all,
+      value: ''
     },
     Input_Template_System_Prompt,
     // --- ai settings modal

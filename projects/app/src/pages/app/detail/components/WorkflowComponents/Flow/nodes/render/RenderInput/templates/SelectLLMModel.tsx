@@ -38,25 +38,38 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   );
 
   useEffect(() => {
-    if (!item.value && modelList.length > 0) {
+    if (item.required && !item.value && modelList.length > 0) {
       onChangeModel(modelList[0].model);
     }
   }, []);
 
   const Render = useMemo(() => {
+    const options = (
+      item.required
+        ? []
+        : [
+            {
+              value: '',
+              label: '跟随主模型'
+            }
+          ]
+    ).concat(
+      modelList.map((item) => ({
+        value: item.model,
+        label: item.name
+      }))
+    );
+
     return (
       <AIModelSelector
         minW={'350px'}
         width={'100%'}
         value={item.value}
-        list={modelList.map((item) => ({
-          value: item.model,
-          label: item.name
-        }))}
+        list={options}
         onchange={onChangeModel}
       />
     );
-  }, [item.value, modelList, onChangeModel]);
+  }, [item.required, item.value, modelList, onChangeModel]);
 
   return Render;
 };

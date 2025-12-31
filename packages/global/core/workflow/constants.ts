@@ -234,7 +234,8 @@ export enum NodeInputKeyEnum {
 
   // agent chat (plan-and-execute)
   agentMaxPlanSteps = 'agentMaxPlanSteps',
-  agentMaxLoops = 'agentMaxLoops'
+  agentMaxLoops = 'agentMaxLoops',
+  agentIntentModel = 'agentIntentModel'
 }
 
 // AI 推理强度等级
