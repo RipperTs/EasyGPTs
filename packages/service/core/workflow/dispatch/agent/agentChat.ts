@@ -1895,17 +1895,43 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // 快速路径：明显简单的问题跳过 Task Analyzer
   const obviouslySimple = isObviouslySimple(userChatInput, toolNodes.length);
 
-  // Step 1: Analyze task complexity (如果不是明显简单的问题)
+  // Step 1: 并行化 Task Analyzer 和 Planner (性能优化)
+  // 假设大部分任务都是 complex，提前并行调用 Planner
+  // 如果 Task Analyzer 判断是 simple，则丢弃 Planner 结果
   let complexity: 'simple' | 'complex' = 'simple';
+  let plannerResult: PlannerResult | null = null;
+
   if (!obviouslySimple) {
-    const analysis = await callTaskAnalyzer({
-      modelKey,
-      goal: userChatInput,
-      toolNodes
-    });
+    const [analysis, planner] = await Promise.all([
+      callTaskAnalyzer({
+        modelKey,
+        goal: userChatInput,
+        toolNodes
+      }),
+      callPlanner({
+        modelKey,
+        systemPrompt,
+        goal: userChatInput,
+        complexity: 'complex', // 假设复杂任务，提前规划
+        maxPlanSteps,
+        toolNodes,
+        enableReasoning,
+        reasoningEffort
+      })
+    ]);
+
     totalTokens += analysis.tokens;
     totalRunTimes += 1;
     complexity = analysis.complexity;
+
+    // 如果确实是 complex，使用并行得到的 Planner 结果
+    if (complexity === 'complex') {
+      plannerResult = planner;
+      totalTokens += planner.tokens;
+      totalRunTimes += 1;
+      reasoningText = (planner.reasoningText || '').trim();
+    }
+    // 如果是 simple，丢弃 planner 结果（浪费部分 token，但提升整体响应速度）
   }
 
   // For SIMPLE tasks, directly execute without full plan-execute loop
@@ -2010,122 +2036,38 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // Step 2: For COMPLEX tasks, use full plan-execute loop
   const adaptiveMaxSteps = maxPlanSteps;
 
-  // P1: 澄清优先。复杂任务且有工具时，先判断是否必须向用户补充关键参数
+  // 性能优化：跳过前置判断，直接使用并行得到的 Planner 结果
   let clarify: ClarifyResult = { needClarify: false, reason: '', questions: [], tokens: 0 };
-  if (toolNodes.length > 0) {
-    clarify = await callClarifier({
+
+  // 如果没有并行获得 Planner 结果（不应该发生），则串行调用
+  if (!plannerResult) {
+    plannerResult = await callPlanner({
       modelKey,
       systemPrompt,
       goal: userChatInput,
-      toolNodes
+      complexity,
+      maxPlanSteps: adaptiveMaxSteps,
+      toolNodes,
+      enableReasoning,
+      reasoningEffort
     });
-    totalTokens += clarify.tokens;
+    totalTokens += plannerResult.tokens;
     totalRunTimes += 1;
+    reasoningText = (plannerResult.reasoningText || '').trim();
   }
 
-  if (clarify.needClarify && clarify.questions.length > 0) {
-    const clarifyText = `为了确保结果可靠，我需要你先补充几个关键信息：\n${clarify.questions
-      .map((q, i) => `${i + 1}. ${q}`)
-      .join('\n')}`;
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.fastAnswer,
-      data: textAdaptGptResponse({
-        text: clarifyText,
-        reasoning_content: '',
-        model: model.model
-      })
-    });
-
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelKey,
-      tokens: totalTokens,
-      modelType: ModelTypeEnum.llm
-    });
-
-    const finalAssistantResponses: AIChatItemValueItemType[] = [
-      {
-        type: ChatItemValueTypeEnum.text as AIChatItemValueItemType['type'],
-        text: { content: clarifyText }
-      }
-    ];
-
-    return {
-      [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
-      [NodeOutputKeyEnum.answerText]: clarifyText,
-      [NodeOutputKeyEnum.reasoningText]: '',
-      [NodeOutputKeyEnum.rawResponse]: {
-        traceId,
-        plan: [],
-        pastSteps: [{ step: userChatInput, result: clarifyText }],
-        finalDecision: 'response',
-        planSteps: [],
-        toolsCatalogText,
-        workingMemory: {
-          summary: '',
-          constraints: [],
-          knownFacts: [],
-          openQuestions: []
-        },
-        clarify: {
-          needClarify: true,
-          reason: clarify.reason,
-          questions: clarify.questions
-        },
-        replanHistory,
-        usage: {
-          totalTokens,
-          totalRunTimes
-        }
-      },
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints,
-        toolCallTokens: totalTokens,
-        model: modelName,
-        query: userChatInput,
-        toolDetail: []
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints,
-          model: modelName,
-          tokens: totalTokens
-        }
-      ]
-    };
-  }
-
-  // P2: 工作记忆压缩（降低 history 噪音，增强跨步一致性）
-  const workingMemoryResult = await callWorkingMemory({
-    modelKey,
-    systemPrompt,
-    goal: userChatInput,
-    toolNodes
-  });
-  totalTokens += workingMemoryResult.tokens;
-  totalRunTimes += 1;
-  const workingMemory = workingMemoryResult.memory;
-  const workingMemoryText = renderWorkingMemoryText(workingMemory);
-
-  const planner = await callPlanner({
-    modelKey,
-    systemPrompt,
-    goal: `${userChatInput}${workingMemoryText}`,
-    complexity,
-    maxPlanSteps: adaptiveMaxSteps,
-    toolNodes,
-    enableReasoning,
-    reasoningEffort
-  });
-
-  totalTokens += planner.tokens;
-  totalRunTimes += 1;
-  reasoningText = (planner.reasoningText || '').trim();
+  // Working Memory 设为空（后续步骤执行时会自动维护上下文）
+  const workingMemory: WorkingMemory = {
+    summary: '',
+    constraints: [],
+    knownFacts: [],
+    openQuestions: []
+  };
+  const workingMemoryText = '';
 
   const initialPlan =
-    planner.steps.length > 0
-      ? planner.steps
+    plannerResult.steps.length > 0
+      ? plannerResult.steps
       : [
           {
             id: 'S1',
