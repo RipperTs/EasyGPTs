@@ -16,6 +16,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -333,15 +334,12 @@ const runPythonInCodeInterpreter = async ({
   const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
   const executeCode = buildExecuteCode({ pythonCode, task, files });
 
-  console.info(
-    '[CodeInterpreter] request',
-    JSON.stringify({
-      url: requestUrl,
-      files,
-      codeLength: executeCode.length,
-      codePreview: executeCode.slice(0, 500)
-    })
-  );
+  addLog.debug('[CodeInterpreter] request', {
+    url: requestUrl,
+    files,
+    codeLength: executeCode.length,
+    codePreview: executeCode.slice(0, 500)
+  });
 
   const { data } = await axios.post(
     requestUrl,
