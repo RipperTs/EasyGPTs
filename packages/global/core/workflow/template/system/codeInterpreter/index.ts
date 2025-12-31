@@ -26,7 +26,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     '能够依据用户的自然语言需求，生成并运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
   showStatus: true,
   isTool: true,
-  version: '498',
+  version: '499',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
