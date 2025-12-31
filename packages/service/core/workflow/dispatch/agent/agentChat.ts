@@ -1009,12 +1009,27 @@ const callTaskAnalyzer = async (params: {
   modelKey: string;
   goal: string;
   toolNodes: RuntimeNodeItemType[];
+  histories?: ChatItemType[];
 }): Promise<TaskAnalysisResult> => {
-  const { modelKey, goal, toolNodes } = params;
+  const { modelKey, goal, toolNodes, histories } = params;
   const model = getLLMModel(modelKey);
   if (!model) return { complexity: 'simple', reason: 'No model available', tokens: 0 };
 
   const toolsText = renderToolsCatalogText(toolNodes, 3200);
+
+  // 提取最近的历史对话（用于理解上下文）
+  const recentHistory =
+    Array.isArray(histories) && histories.length > 0
+      ? histories
+          .slice(-3) // 取最近 3 轮对话
+          .map((h) => {
+            const userMsg = h.value.find((v) => v.type === ChatItemValueTypeEnum.text)?.text
+              ?.content;
+            return userMsg ? `- ${truncateText(userMsg, 200)}` : '';
+          })
+          .filter(Boolean)
+          .join('\n')
+      : '';
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -1032,12 +1047,17 @@ const callTaskAnalyzer = async (params: {
 - Multiple tools or data sources needed
 - Tasks with dependencies between steps
 - Comparative analysis or synthesis required
+- Follow-up questions that need context from conversation history
+
+**IMPORTANT**: If there is conversation history, and the current question appears to be a follow-up (e.g., "what about...", "any recommendations for..."), treat it as COMPLEX to ensure proper context handling.
 
 Output JSON only: {"complexity": "simple"|"complex", "reason": "brief explanation"}`
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `## User Goal
+      content: `${
+        recentHistory ? `## Recent Conversation History\n${recentHistory}\n\n` : ''
+      }## Current User Goal
 ${goal}
 
 ## Available Tools
@@ -1180,6 +1200,7 @@ const callPlanner = async (params: {
   toolNodes: RuntimeNodeItemType[];
   enableReasoning: boolean;
   reasoningEffort?: string;
+  histories?: ChatItemType[];
 }): Promise<PlannerResult> => {
   const {
     modelKey,
@@ -1189,7 +1210,8 @@ const callPlanner = async (params: {
     maxPlanSteps,
     toolNodes,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    histories
   } = params;
 
   const model = getLLMModel(modelKey);
@@ -1203,6 +1225,20 @@ const callPlanner = async (params: {
   // Adaptive step limits based on complexity
   const stepRange = complexity === 'simple' ? '1-2' : `2-${maxPlanSteps}`;
 
+  // 提取最近的历史对话（用于理解上下文）
+  const recentHistory =
+    Array.isArray(histories) && histories.length > 0
+      ? histories
+          .slice(-3) // 取最近 3 轮对话
+          .map((h) => {
+            const userMsg = h.value.find((v) => v.type === ChatItemValueTypeEnum.text)?.text
+              ?.content;
+            return userMsg ? `- ${truncateText(userMsg, 200)}` : '';
+          })
+          .filter(Boolean)
+          .join('\n')
+      : '';
+
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
@@ -1210,15 +1246,17 @@ const callPlanner = async (params: {
 
 ## Planning Principles
 
-1. **Tool-Aware Planning**: Match each step to available tool capabilities. If a tool can accomplish the step, reference it explicitly.
+1. **Context Awareness**: If there is conversation history, the current goal may be a follow-up question. Understand the context and plan accordingly.
 
-2. **Dependency Analysis**: Identify which steps depend on outputs from previous steps. Ensure logical ordering.
+2. **Tool-Aware Planning**: Match each step to available tool capabilities. If a tool can accomplish the step, reference it explicitly.
 
-3. **Adaptive Granularity**:
+3. **Dependency Analysis**: Identify which steps depend on outputs from previous steps. Ensure logical ordering.
+
+4. **Adaptive Granularity**:
    - SIMPLE tasks: ${stepRange} steps maximum
    - Each step should be atomic and executable
 
-4. **Actionable Steps**: Each step must:
+5. **Actionable Steps**: Each step must:
    - Start with an action verb (搜索, 查询, 计算, 对比, 提取, 分析, etc.)
    - Specify the target data or operation clearly
    - Be self-contained with necessary context
@@ -1249,7 +1287,9 @@ Respond with JSON only:
     },
     {
       role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `## User goal
+      content: `${
+        recentHistory ? `## Recent Conversation History\n${recentHistory}\n\n` : ''
+      }## Current User goal
 ${goal}
 
 ## Task complexity
@@ -1825,10 +1865,14 @@ const shouldCallCritic = (stepAnswer: string, isLastStep: boolean, hasToolCalls:
 };
 
 // 简单问题快速判断（跳过 Task Analyzer）
-const isObviouslySimple = (input: string, toolCount: number) => {
+const isObviouslySimple = (input: string, toolCount: number, hasHistory: boolean) => {
   const trimmed = input.trim();
   // 没有工具可用，直接走简单路径
   if (toolCount === 0) return true;
+
+  // 如果有历史对话，可能是追问，需要结合上下文，不视为简单问题
+  if (hasHistory) return false;
+
   // 很短的问候语或简单问题
   if (trimmed.length < 15 && /^(你好|hi|hello|谢谢|thanks|帮我|请问|什么是)/i.test(trimmed)) {
     return true;
@@ -1892,8 +1936,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   let totalRunTimes = 0;
   let reasoningText = '';
 
+  // 判断是否有历史对话（用于追问检测）
+  const hasHistory = Array.isArray(histories) && histories.length > 0;
+
   // 快速路径：明显简单的问题跳过 Task Analyzer
-  const obviouslySimple = isObviouslySimple(userChatInput, toolNodes.length);
+  const obviouslySimple = isObviouslySimple(userChatInput, toolNodes.length, hasHistory);
 
   // Step 1: 并行化 Task Analyzer 和 Planner (性能优化)
   // 假设大部分任务都是 complex，提前并行调用 Planner
@@ -1906,7 +1953,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       callTaskAnalyzer({
         modelKey,
         goal: userChatInput,
-        toolNodes
+        toolNodes,
+        histories
       }),
       callPlanner({
         modelKey,
@@ -1916,7 +1964,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         maxPlanSteps,
         toolNodes,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        histories
       })
     ]);
 
@@ -2049,7 +2098,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       maxPlanSteps: adaptiveMaxSteps,
       toolNodes,
       enableReasoning,
-      reasoningEffort
+      reasoningEffort,
+      histories
     });
     totalTokens += plannerResult.tokens;
     totalRunTimes += 1;
