@@ -61,6 +61,7 @@ import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
+import { dispatchCodeGenerator } from './code/generator';
 import { dispatchCodeInterpreter } from './code/interpreter';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
@@ -99,6 +100,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
   [FlowNodeTypeEnum.code]: dispatchRunCode,
+  [FlowNodeTypeEnum.codeGenerator]: dispatchCodeGenerator,
   [FlowNodeTypeEnum.codeInterpreter]: dispatchCodeInterpreter,
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,

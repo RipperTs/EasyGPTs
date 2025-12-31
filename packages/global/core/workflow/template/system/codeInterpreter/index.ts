@@ -10,7 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
-import { Input_Template_SelectAIModel, Input_Template_UserChatInput } from '../../input';
+import { Input_Template_SelectAIModel } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { getHandleConfig } from '../../utils';
 
@@ -21,16 +21,16 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeInter',
-  name: '代码解释器',
-  intro:
-    '能够依据用户的自然语言需求，生成并运行 Python 代码，以解决数据分析、编程和数学等领域的复杂问题。',
+  name: '代码执行器',
+  intro: '在沙箱环境中执行 Python 代码。支持数据分析、可视化、文件处理等操作。',
   showStatus: true,
   isTool: true,
-  version: '499',
+  version: '500',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
-      llmModelType: LLMModelTypeEnum.all
+      llmModelType: LLMModelTypeEnum.all,
+      description: '仅在代码执行失败时用于自动修复代码。'
     },
     {
       key: NodeInputKeyEnum.codeInterpreterMaxRetry,
@@ -47,16 +47,22 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.fileUrlList,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      label: '文档链接',
+      label: '文件链接',
       description:
         '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
       value: []
     },
     {
-      ...Input_Template_UserChatInput,
-      label: '任务描述',
-      toolDescription: '用自然语言描述你希望通过 Python 代码完成的任务。'
+      key: NodeInputKeyEnum.code,
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: 'Python 代码',
+      description: '要在沙箱环境中执行的 Python 代码。代码中可使用 FILES 变量访问文件列表。',
+      placeholder:
+        'import matplotlib.pyplot as plt\n\ndata = [1, 2, 3, 4, 5]\nplt.plot(data)\nplt.savefig("chart.png")',
+      required: true,
+      toolDescription: '要执行的 Python 代码'
     }
   ],
   outputs: [

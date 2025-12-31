@@ -23,7 +23,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.codeInterpreterMaxRetry]?: number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.code]: string;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -50,8 +50,8 @@ type ToolOutput = {
 const MAX_STDOUT_LENGTH = 4000;
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a senior Python engineer acting as a Code Interpreter.\n' +
-  'Your job is to translate the user task into runnable Python code and execute it in a sandbox.\n' +
+  'You are a senior Python engineer acting as a Code Debugger for Code Interpreter.\n' +
+  'Your job is to fix broken Python code that failed during execution in a sandbox.\n' +
   '\n' +
   'Execution environment:\n' +
   '- The server will download each URL in `files` into the current working directory before running the code.\n' +
@@ -99,62 +99,13 @@ const extractPythonCodeFromModelOutput = (raw: string) => {
   return (fenced ?? text).trim();
 };
 
-const buildGenerateCodeMessages = ({
-  systemPrompt,
-  task,
-  files
-}: {
-  systemPrompt: string;
-  task: string;
-  files: string[];
-}): ChatCompletionMessageParam[] => {
-  const filesPrompt =
-    files.length > 0
-      ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
-      : '\n\nInput file URLs (files): (none)';
-  const userPrompt = `Task:
-${task}
-${filesPrompt}
-
-You will have these variables available in the runtime (already defined for you):
-- TASK: str (the task above)
-- FILES: list[str] (input file URLs, may be empty)
-
-Write a runnable Python script to solve the task.
-
-CRITICAL Rules:
-- Output ONLY code (prefer a \`\`\`python code block\`\`\`).
-- Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
-- Print ONLY final text results to stdout (max ~4000 chars). Use concise summaries, not raw data.
-- For large datasets: calculate statistics/summaries in code, print compact results only.
-- For visualizations/files: save to local files (e.g. plt.savefig("chart.png"), df.to_csv("output.csv")).
-  The Code Interpreter service will automatically detect generated files and return their URLs.
-  DO NOT print filenames to stdout - stdout is for text results only (or leave empty if only generating files).
-- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
-- DO NOT return full file contents, raw arrays, or intermediate data to stdout.
-- Inspect working directory if needed: os.listdir('.') to find downloaded files.`;
-
-  return [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: systemPrompt
-    },
-    {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: userPrompt
-    }
-  ];
-};
-
 const buildFixCodeMessages = ({
   systemPrompt,
-  task,
   files,
   currentCode,
   errorText
 }: {
   systemPrompt: string;
-  task: string;
   files: string[];
   currentCode: string;
   errorText: string;
@@ -163,11 +114,9 @@ const buildFixCodeMessages = ({
     files.length > 0
       ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
       : '\n\nInput file URLs (files): (none)';
-  const userPrompt = `Task:
-${task}
-${filesPrompt}
+  const userPrompt = `${filesPrompt}
 
-Current code:
+Failed code:
 \`\`\`python
 ${currentCode}
 \`\`\`
@@ -175,7 +124,7 @@ ${currentCode}
 Runtime error:
 ${errorText}
 
-Fix the code so it runs successfully and solves the task.
+Fix the code so it runs successfully.
 
 CRITICAL Rules:
 - Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
@@ -325,22 +274,16 @@ const parseCodeInterpreterFiles = ({
 
 const buildExecuteCode = ({
   pythonCode,
-  task,
   files
 }: {
   pythonCode: string;
-  task: string;
   files: string[];
 }) => `# -*- coding: utf-8 -*-
 """
-Task:
-${task}
-
 Input file URLs (downloaded into current working directory before execution):
-${files.map((url) => `- ${url}`).join('\n')}
+${files.length > 0 ? files.map((url) => `- ${url}`).join('\n') : '(none)'}
 """
 
-TASK = ${JSON.stringify(task)}
 FILES = ${JSON.stringify(files)}
 
 ${pythonCode.trim()}
@@ -348,11 +291,9 @@ ${pythonCode.trim()}
 
 const runPythonInCodeInterpreter = async ({
   pythonCode,
-  task,
   files
 }: {
   pythonCode: string;
-  task: string;
   files: string[];
 }): Promise<{ raw: Record<string, unknown>; log: string }> => {
   if (!process.env.CODE_INTERPRETER_URL) {
@@ -360,7 +301,7 @@ const runPythonInCodeInterpreter = async ({
   }
 
   const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
-  const executeCode = buildExecuteCode({ pythonCode, task, files });
+  const executeCode = buildExecuteCode({ pythonCode, files });
 
   addLog.debug('[CodeInterpreter] request', {
     url: requestUrl,
@@ -483,7 +424,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     histories,
     chatConfig,
     requestOrigin,
-    params: { model, systemPrompt, codeInterpreterMaxRetry, fileUrlList, userChatInput }
+    params: { model, systemPrompt, codeInterpreterMaxRetry, fileUrlList, code }
   } = props;
 
   if (!process.env.CODE_INTERPRETER_URL) {
@@ -510,8 +451,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     };
   }
 
-  if (!userChatInput) {
-    const message = '任务描述为空';
+  if (!code || !code.trim()) {
+    const message = '代码为空';
     const pluginOutput = {
       [NodeOutputKeyEnum.result]: '',
       [NodeOutputKeyEnum.error]: message,
@@ -574,7 +515,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     timeout: 480000
   } as const;
 
-  let currentCode = '';
+  let currentCode = code.trim();
   let executionLog = '';
   let lastErrorText = '';
   let totalTokens = 0;
@@ -583,40 +524,38 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
   for (attempt = 1; attempt <= maxRetry; attempt++) {
     try {
-      const messages =
-        attempt === 1
-          ? buildGenerateCodeMessages({
-              systemPrompt: finalSystemPrompt,
-              task: userChatInput,
-              files
-            })
-          : buildFixCodeMessages({
-              systemPrompt: finalSystemPrompt,
-              task: userChatInput,
-              files,
-              currentCode,
-              errorText: lastErrorText
-            });
+      // 第一次尝试：直接执行用户代码
+      // 后续尝试：调用 AI 修复代码
+      if (attempt > 1) {
+        const messages = buildFixCodeMessages({
+          systemPrompt: finalSystemPrompt,
+          files,
+          currentCode,
+          errorText: lastErrorText
+        });
 
-      const { code, tokens, raw } = await callModelGetCode({
-        model: llmModel.model,
-        messages,
-        aiParams
-      });
-      totalTokens += tokens;
-      lastRaw = raw;
+        const {
+          code: fixedCode,
+          tokens,
+          raw
+        } = await callModelGetCode({
+          model: llmModel.model,
+          messages,
+          aiParams
+        });
+        totalTokens += tokens;
+        lastRaw = raw;
 
-      if (!code) {
-        lastErrorText = 'Empty code generated by the model';
-        currentCode = code;
-        continue;
+        if (!fixedCode) {
+          lastErrorText = 'Empty code generated by the model';
+          continue;
+        }
+
+        currentCode = fixedCode;
       }
-
-      currentCode = code;
 
       const runResult = await runPythonInCodeInterpreter({
         pythonCode: currentCode,
-        task: userChatInput,
         files
       });
       executionLog = runResult.log;
@@ -652,11 +591,11 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
           model: modelName,
           tokens: totalTokens,
-          query: userChatInput,
           nodeInputs: {
             systemPrompt: finalSystemPrompt,
             maxRetry,
-            files
+            files,
+            inputCode: code
           },
           nodeOutputs: {
             attempts: attempt,
@@ -717,13 +656,13 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       tokens: totalTokens,
-      query: userChatInput,
       errorText: finalErrText,
       error: { message: finalErrText },
       nodeInputs: {
         systemPrompt: finalSystemPrompt,
         maxRetry,
-        files
+        files,
+        inputCode: code
       },
       nodeOutputs: {
         attempts: attempt || maxRetry,

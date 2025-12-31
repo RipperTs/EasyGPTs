@@ -26,6 +26,7 @@ import type { FlowNodeTemplateType } from '../type/node';
 import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';
 import { CodeNode } from './system/sandbox';
+import { CodeGeneratorModule } from './system/codeGenerator';
 import { CodeInterpreterModule } from './system/codeInterpreter';
 import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
@@ -58,6 +59,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
+  CodeGeneratorModule,
   CodeInterpreterModule,
   TerminateWorkflowModule
 ];
