@@ -17,11 +17,16 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { addLog } from '../../../../common/system/log';
+import {
+  fetchCodeInterpreterCapabilities,
+  summarizeCodeInterpreterCapabilities
+} from './capabilities';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.codeInterpreterMaxRetry]?: number;
+  [NodeInputKeyEnum.codeInterpreterTimeout]?: number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.code]: string;
 }>;
@@ -91,6 +96,20 @@ const parseRetryTimes = (value: unknown, defaultValue = 3) => {
   return Math.min(Math.max(rounded, 1), 10);
 };
 
+const parseTimeoutSeconds = (value: unknown, defaultValue = 120) => {
+  const num =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : defaultValue;
+
+  if (!Number.isFinite(num)) return defaultValue;
+
+  const rounded = Math.round(num);
+  return Math.min(Math.max(rounded, 5), 600);
+};
+
 const extractPythonCodeFromModelOutput = (raw: string) => {
   const text = raw.trim();
   if (!text) return '';
@@ -103,18 +122,22 @@ const buildFixCodeMessages = ({
   systemPrompt,
   files,
   currentCode,
-  errorText
+  errorText,
+  capabilitiesText
 }: {
   systemPrompt: string;
   files: string[];
   currentCode: string;
   errorText: string;
+  capabilitiesText?: string;
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
       ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
       : '\n\nInput file URLs (files): (none)';
+  const capabilitiesPrompt = capabilitiesText ? `\n\n${capabilitiesText}` : '';
   const userPrompt = `${filesPrompt}
+${capabilitiesPrompt}
 
 Failed code:
 \`\`\`python
@@ -291,10 +314,12 @@ ${pythonCode.trim()}
 
 const runPythonInCodeInterpreter = async ({
   pythonCode,
-  files
+  files,
+  timeoutSeconds
 }: {
   pythonCode: string;
   files: string[];
+  timeoutSeconds: number;
 }): Promise<{ raw: Record<string, unknown>; log: string }> => {
   if (!process.env.CODE_INTERPRETER_URL) {
     throw new Error('Can not find CODE_INTERPRETER_URL in env');
@@ -321,7 +346,7 @@ const runPythonInCodeInterpreter = async ({
         'Content-Type': 'application/json',
         'X-Request-Type': 'CODE_INTERPRETER'
       },
-      timeout: 120000 // 可选：超时
+      timeout: timeoutSeconds * 1000
     }
   );
 
@@ -424,7 +449,14 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     histories,
     chatConfig,
     requestOrigin,
-    params: { model, systemPrompt, codeInterpreterMaxRetry, fileUrlList, code }
+    params: {
+      model,
+      systemPrompt,
+      codeInterpreterMaxRetry,
+      codeInterpreterTimeout,
+      fileUrlList,
+      code
+    }
   } = props;
 
   if (!process.env.CODE_INTERPRETER_URL) {
@@ -501,6 +533,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
   }
 
   const maxRetry = parseRetryTimes(codeInterpreterMaxRetry, 3);
+  const timeoutSeconds = parseTimeoutSeconds(codeInterpreterTimeout, 120);
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
   const files = parseCodeInterpreterFiles({
     fileUrlList,
@@ -508,6 +541,14 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     requestOrigin,
     maxFiles
   });
+
+  const capabilities = await fetchCodeInterpreterCapabilities({
+    baseUrl: process.env.CODE_INTERPRETER_URL.trim(),
+    timeoutMs: 5000
+  });
+  const capabilitiesText = capabilities
+    ? summarizeCodeInterpreterCapabilities(capabilities)
+    : undefined;
 
   const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
   const aiParams = {
@@ -531,7 +572,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           systemPrompt: finalSystemPrompt,
           files,
           currentCode,
-          errorText: lastErrorText
+          errorText: lastErrorText,
+          capabilitiesText
         });
 
         const {
@@ -556,7 +598,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
       const runResult = await runPythonInCodeInterpreter({
         pythonCode: currentCode,
-        files
+        files,
+        timeoutSeconds
       });
       executionLog = runResult.log;
 
@@ -594,6 +637,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           nodeInputs: {
             systemPrompt: finalSystemPrompt,
             maxRetry,
+            timeoutSeconds,
+            capabilities: capabilitiesText,
             files,
             inputCode: code
           },
@@ -661,6 +706,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       nodeInputs: {
         systemPrompt: finalSystemPrompt,
         maxRetry,
+        timeoutSeconds,
+        capabilities: capabilitiesText,
         files,
         inputCode: code
       },

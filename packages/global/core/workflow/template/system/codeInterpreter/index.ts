@@ -25,7 +25,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   intro: '在沙箱环境中执行 Python 代码。支持数据分析、可视化、文件处理等操作。',
   showStatus: true,
   isTool: true,
-  version: '500',
+  version: '501',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -42,6 +42,17 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       min: 1,
       max: 10,
       value: 5
+    },
+    {
+      key: NodeInputKeyEnum.codeInterpreterTimeout,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      valueType: WorkflowIOValueTypeEnum.number,
+      label: '执行超时（秒）',
+      description: '请求代码执行服务的超时时间（仅影响请求等待时间）。',
+      required: true,
+      min: 5,
+      max: 600,
+      value: 120
     },
     {
       key: NodeInputKeyEnum.fileUrlList,
@@ -88,6 +99,34 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.execution_time,
       label: '执行耗时（秒）',
       valueType: WorkflowIOValueTypeEnum.number,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.image_url,
+      key: NodeOutputKeyEnum.image_url,
+      label: '图片地址',
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.files,
+      key: NodeOutputKeyEnum.files,
+      label: '生成文件',
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.inputs,
+      key: NodeOutputKeyEnum.inputs,
+      label: '输入文件',
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.code,
+      key: NodeOutputKeyEnum.code,
+      label: '最终执行代码',
+      valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
   ]

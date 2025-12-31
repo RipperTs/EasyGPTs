@@ -13,10 +13,15 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  fetchCodeInterpreterCapabilities,
+  summarizeCodeInterpreterCapabilities
+} from './capabilities';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
+  [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.userChatInput]: string;
 }>;
 
@@ -60,6 +65,11 @@ const extractPythonCodeFromModelOutput = (raw: string) => {
   return (fenced ?? text).trim();
 };
 
+const parseStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+};
+
 const parseFilesFromHistories = (histories: ChatItemType[]) => {
   return histories
     .filter((item) => {
@@ -83,19 +93,23 @@ const parseFilesFromHistories = (histories: ChatItemType[]) => {
 const buildGenerateCodeMessages = ({
   systemPrompt,
   task,
-  files
+  files,
+  capabilitiesText
 }: {
   systemPrompt: string;
   task: string;
   files: string[];
+  capabilitiesText?: string;
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
       ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
       : '\n\nInput file URLs (files): (none)';
+  const capabilitiesPrompt = capabilitiesText ? `\n\n${capabilitiesText}` : '';
   const userPrompt = `Task:
 ${task}
 ${filesPrompt}
+${capabilitiesPrompt}
 
 You will have these variables available in the runtime (already defined for you):
 - FILES: list[str] (input file URLs, may be empty)
@@ -131,7 +145,8 @@ export const dispatchCodeGenerator = async (props: Props): Promise<Response> => 
     user,
     node,
     histories,
-    params: { model, systemPrompt, userChatInput }
+    chatConfig,
+    params: { model, systemPrompt, fileUrlList, userChatInput }
   } = props;
 
   if (!userChatInput || !userChatInput.trim()) {
@@ -160,16 +175,33 @@ export const dispatchCodeGenerator = async (props: Props): Promise<Response> => 
   }
 
   // 收集文件列表（来自对话历史里的上传文件）
+  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const inputUrls = parseStringArray(fileUrlList);
   const historyUrls = parseFilesFromHistories(histories);
-  const files = historyUrls.filter(Boolean);
+  const files = Array.from(new Set([...inputUrls, ...historyUrls].filter(Boolean))).slice(
+    0,
+    maxFiles
+  );
 
   const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
+
+  const capabilities =
+    process.env.CODE_INTERPRETER_URL && process.env.CODE_INTERPRETER_URL.trim()
+      ? await fetchCodeInterpreterCapabilities({
+          baseUrl: process.env.CODE_INTERPRETER_URL.trim(),
+          timeoutMs: 5000
+        })
+      : null;
+  const capabilitiesText = capabilities
+    ? summarizeCodeInterpreterCapabilities(capabilities)
+    : undefined;
 
   // 构建消息
   const messages = buildGenerateCodeMessages({
     systemPrompt: finalSystemPrompt,
     task: userChatInput,
-    files
+    files,
+    capabilitiesText
   });
 
   // 调用 AI 生成代码
@@ -205,6 +237,7 @@ export const dispatchCodeGenerator = async (props: Props): Promise<Response> => 
         query: userChatInput,
         nodeInputs: {
           systemPrompt: finalSystemPrompt,
+          capabilities: capabilitiesText,
           files
         },
         nodeOutputs: {

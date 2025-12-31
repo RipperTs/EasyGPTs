@@ -26,7 +26,7 @@ export const CodeGeneratorModule: FlowNodeTemplateType = {
     '根据用户的自然语言需求，生成可执行的 Python 代码。可配合代码执行器使用，实现从需求到执行的完整流程。',
   showStatus: true,
   isTool: true,
-  version: '501',
+  version: '502',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -41,6 +41,17 @@ export const CodeGeneratorModule: FlowNodeTemplateType = {
       value: '',
       placeholder:
         '你可以自定义 System Prompt，引导 AI 生成符合特定需求的代码。留空则使用默认 Prompt。'
+    },
+    {
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      label: '文件链接',
+      description:
+        '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
+      required: false,
+      value: [],
+      toolDescription: '需要处理的文件链接列表，可留空'
     },
     {
       ...Input_Template_UserChatInput,
