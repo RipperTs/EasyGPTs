@@ -1012,8 +1012,7 @@ ${decisionResponse ? truncateText(decisionResponse, 1200) : '（无）'}
       ...model.defaultConfig,
       model: model.model,
       temperature: computedTemperature({ model, temperature: 0.2 }),
-      // 注意: 最终答复可能较长，不限制 max_tokens 会, 对使用 vLLM 部署的模型兼容性更好
-      // max_tokens: computedMaxToken({ model, maxToken: 900 }),
+      max_tokens: computedMaxToken({ model, maxToken: 900 }),
       stream: false,
       messages
     };
