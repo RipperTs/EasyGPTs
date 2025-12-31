@@ -36,7 +36,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiModel]: string;
-  [NodeInputKeyEnum.agentIntentModel]?: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;
@@ -51,11 +50,6 @@ type Props = ModuleDispatchProps<{
 
 type RawResponse = {
   traceId: string;
-  taskAnalysis?: {
-    complexity: 'simple' | 'complex';
-    reason: string;
-    modelKey: string;
-  };
   plan: string[];
   pastSteps: { step: string; result: string }[];
   finalDecision: 'response' | 'fallback';
@@ -111,13 +105,6 @@ type AgentPastStep = {
     issues: string[];
     suggestion: string;
   };
-};
-
-// Task Analyzer result type
-type TaskAnalysisResult = {
-  complexity: 'simple' | 'complex';
-  reason: string;
-  tokens: number;
 };
 
 type Response = DispatchNodeResultType<{
@@ -1046,86 +1033,6 @@ ${decisionResponse ? truncateText(decisionResponse, 1200) : '（无）'}
   }
 };
 
-// Task Analyzer: Determine if task is simple (direct answer) or complex (needs planning)
-const callTaskAnalyzer = async (params: {
-  modelKey: string;
-  goal: string;
-  toolNodes: RuntimeNodeItemType[];
-}): Promise<TaskAnalysisResult> => {
-  const { modelKey, goal, toolNodes } = params;
-  const model = getLLMModel(modelKey);
-  if (!model) return { complexity: 'complex', reason: 'No model available', tokens: 0 };
-
-  const toolsText = renderToolsCatalogText(toolNodes, 3200);
-
-  const messages: ChatCompletionMessageParam[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: `You are a Task Intent & Complexity Classifier. Decide whether the request should be handled as:
-- "simple": can be answered directly in one response (no explicit plan needed).
-- "complex": needs planning/step-by-step execution, multiple sub-tasks, or structured deliverables.
-
-Guidelines:
-- If the request contains multiple requirements/constraints/stages, output "complex".
-- If it is open-ended creation (build/design/implement/write a complete solution), output "complex".
-- If it likely needs clarification, iteration, verification, or tool usage, output "complex".
-- Only output "simple" when it is truly a quick, single-shot response.
-
-Output JSON only: {"complexity":"simple"|"complex","reason":"brief explanation"}`
-    },
-    {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `## User Goal
-${goal}
-
-## Available Tools
-${toolsText}
-
-Analyze complexity and output JSON:`
-    }
-  ];
-
-  const ai = getAIApi({ timeout: 60000 });
-  const requestBody: Record<string, unknown> = {
-    ...model.defaultConfig,
-    model: model.model,
-    temperature: 0,
-    max_tokens: 150,
-    stream: false,
-    messages
-  };
-
-  try {
-    const resp = (await ai.chat.completions.create(
-      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
-    )) as unknown as ChatCompletion;
-
-    const content = resp.choices?.[0]?.message?.content || '';
-    const assistantMsg: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content
-    };
-    const tokens =
-      resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
-
-    const jsonStr = extractFirstJsonValue(content) || content.trim();
-    const parsed = json5.parse(jsonStr) as unknown;
-
-    if (parsed && typeof parsed === 'object') {
-      const obj = parsed as { complexity?: unknown; reason?: unknown };
-      return {
-        complexity: obj.complexity === 'complex' ? 'complex' : 'simple',
-        reason: typeof obj.reason === 'string' ? obj.reason : '',
-        tokens
-      };
-    }
-  } catch {
-    // Default to complex on parse failure (avoid skipping planning)
-  }
-
-  return { complexity: 'complex', reason: 'Analysis failed, defaulting to complex', tokens: 0 };
-};
-
 const callStepResultSynthesis = async (params: {
   modelKey: string;
   systemPrompt?: string;
@@ -1862,12 +1769,98 @@ const shouldCallCritic = (stepAnswer: string, isLastStep: boolean, hasToolCalls:
   return false;
 };
 
-// 简单问题快速判断（跳过 Task Analyzer）
+const normalizeChatForRule = (input: string) => {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[，。！？!?,.、；;：:“”"'`~()（）【】[\]{}<>《》]/g, '');
+};
+
+const SIMPLE_CHAT_NORMALIZED_SET = new Set(
+  [
+    // greetings
+    '你好',
+    '您好',
+    '早上好',
+    '中午好',
+    '下午好',
+    '晚上好',
+    '嗨',
+    '哈喽',
+    'hi',
+    'hello',
+    'hey',
+    // thanks
+    '谢谢',
+    '多谢',
+    '谢了',
+    '谢啦',
+    'thanks',
+    'thankyou',
+    'thx',
+    // bye
+    '再见',
+    '拜拜',
+    'bye',
+    'goodbye',
+    'seeyou',
+    // apology
+    '对不起',
+    '抱歉',
+    'sorry',
+    // ping
+    '在吗',
+    '在不在',
+    '还在吗',
+    // meta
+    '你是谁',
+    '你是什么',
+    '你是做什么的',
+    '你能做什么',
+    '你会什么',
+    '怎么用',
+    '帮助',
+    'help',
+    '使用说明'
+  ].map(normalizeChatForRule)
+);
+
+// 闲聊/寒暄快速判断（不走任务规划）：只覆盖“极其确定”的短对话，其他一律走任务规划
 const isObviouslySimple = (input: string) => {
-  const trimmed = input.trim();
-  // 只对极其明显的简单问候/感谢返回 true，其他都走 Task Analyzer
-  // 很短的问候语（严格限制）
-  if (trimmed.length <= 10 && /^(你好|hi|hello|谢谢|thanks)$/i.test(trimmed)) {
+  const raw = input.trim();
+  if (!raw) return true;
+  if (raw.includes('\n')) return false;
+  if (raw.length > 40) return false;
+
+  // 只要出现明显“要做事”的指令词，就不当成闲聊
+  if (
+    /(帮我|请|麻烦|需要|想要|给我|如何|怎么|写|生成|实现|开发|设计|代码|bug|报错|优化|方案|规划|步骤|总结|对比|分析|整理|翻译|改写|润色|制作|表格|sql|接口|api|测试|部署|查询|计算)/i.test(
+      raw
+    )
+  ) {
+    return false;
+  }
+
+  const normalized = normalizeChatForRule(raw);
+  if (!normalized) return true;
+
+  if (SIMPLE_CHAT_NORMALIZED_SET.has(normalized)) return true;
+
+  // 短确认/短否定：例如“好的/ok/收到/明白了/可以吗/行吗”
+  if (
+    /^(ok|okay|kk|好的|好|行|可以|收到|明白了?|了解了?|嗯+|是的|对|yes|yep|no|不是|不)(吗)?$/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  // 只有问号
+  if (/^[?？]+$/.test(raw)) return true;
+
+  // 纯笑声/语气词
+  if (/^(哈)+$/.test(normalized) || /^h{2,}$/.test(normalized) || /^lol+$/.test(normalized)) {
     return true;
   }
 
@@ -1891,7 +1884,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     histories,
     params: {
       model: modelKey,
-      agentIntentModel,
       systemPrompt,
       stringQuoteText,
       userChatInput,
@@ -1926,86 +1918,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   const replanHistory: NonNullable<RawResponse['replanHistory']> = [];
 
   let totalTokens = 0;
-  let intentTokens = 0;
-  let intentModelKeyUsed = '';
   let totalRunTimes = 0;
   let reasoningText = '';
 
-  // 快速路径：明显简单的问题跳过 Task Analyzer
-  const obviouslySimple = isObviouslySimple(userChatInput);
-
-  const pickIntentModelKey = (preferred: unknown) => {
-    const preferredKey = typeof preferred === 'string' ? preferred.trim() : '';
-    if (!preferredKey) return modelKey;
-    return getLLMModel(preferredKey) ? preferredKey : modelKey;
-  };
-
-  // Step 1: Analyze task complexity (如果不是明显简单的问题)
-  let complexity: 'simple' | 'complex' = 'simple';
-  let taskAnalysis: RawResponse['taskAnalysis'];
-  if (!obviouslySimple) {
-    const analysisModelKey = pickIntentModelKey(agentIntentModel);
-    const analysis = await callTaskAnalyzer({
-      modelKey: analysisModelKey,
-      goal: userChatInput,
-      toolNodes
-    });
-    if (analysisModelKey === modelKey) totalTokens += analysis.tokens;
-    else {
-      intentTokens += analysis.tokens;
-      intentModelKeyUsed = analysisModelKey;
-    }
-    totalRunTimes += 1;
-    complexity = analysis.complexity;
-    taskAnalysis = {
-      complexity: analysis.complexity,
-      reason: analysis.reason,
-      modelKey: analysisModelKey
-    };
-  }
-
-  const getBillingResult = () => {
-    const main = formatModelChars2Points({
-      model: modelKey,
-      tokens: totalTokens,
-      modelType: ModelTypeEnum.llm
-    });
-
-    const intent =
-      intentTokens > 0 && intentModelKeyUsed && intentModelKeyUsed !== modelKey
-        ? formatModelChars2Points({
-            model: intentModelKeyUsed,
-            tokens: intentTokens,
-            modelType: ModelTypeEnum.llm
-          })
-        : { totalPoints: 0, modelName: '' };
-
-    const moduleUsages: ChatNodeUsageType[] = [
-      {
-        moduleName: name,
-        totalPoints: main.totalPoints,
-        model: main.modelName,
-        tokens: totalTokens
-      },
-      ...(intent.totalPoints > 0
-        ? [
-            {
-              moduleName: `${name}（意图识别）`,
-              totalPoints: intent.totalPoints,
-              model: intent.modelName,
-              tokens: intentTokens
-            }
-          ]
-        : [])
-    ];
-
-    return {
-      totalTokensAll: totalTokens + intentTokens,
-      totalPointsAll: main.totalPoints + intent.totalPoints,
-      modelName: main.modelName,
-      moduleUsages
-    };
-  };
+  // 仅排除“闲聊/寒暄/确认”的短对话：不走任务规划；其他一律走任务规划
+  const complexity: 'simple' | 'complex' = isObviouslySimple(userChatInput) ? 'simple' : 'complex';
 
   // For SIMPLE tasks, directly execute without full plan-execute loop
   // 简单任务：直接执行，注入完整文档
@@ -2034,7 +1951,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     totalTokens += simpleNodeResponse?.toolCallTokens || 0;
     totalRunTimes += simpleResult[DispatchNodeResponseKeyEnum.runTimes] || 1;
 
-    const billing = getBillingResult();
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelKey,
+      tokens: totalTokens,
+      modelType: ModelTypeEnum.llm
+    });
 
     const simpleAssistant = simpleResult[DispatchNodeResponseKeyEnum.assistantResponses] || [];
     const previewToolItems = filterToolResponseToPreview(pickToolItems(simpleAssistant));
@@ -2061,7 +1982,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       [NodeOutputKeyEnum.reasoningText]: simpleReasoning,
       [NodeOutputKeyEnum.rawResponse]: {
         traceId,
-        taskAnalysis,
         plan: [],
         pastSteps: [{ step: userChatInput, result: simpleAnswer }],
         finalDecision: 'response',
@@ -2080,20 +2000,25 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         },
         replanHistory: [],
         usage: {
-          totalTokens: billing.totalTokensAll,
+          totalTokens,
           totalRunTimes
         }
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: billing.totalPointsAll,
-        toolCallTokens: billing.totalTokensAll,
-        model: billing.modelName,
+        totalPoints,
+        toolCallTokens: totalTokens,
+        model: modelName,
         query: userChatInput,
         toolDetail: simpleNodeResponse?.toolDetail || []
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        ...billing.moduleUsages,
+        {
+          moduleName: name,
+          totalPoints,
+          model: modelName,
+          tokens: totalTokens
+        },
         ...simpleUsages.slice(1)
       ]
     };
@@ -2128,7 +2053,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       })
     });
 
-    const billing = getBillingResult();
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelKey,
+      tokens: totalTokens,
+      modelType: ModelTypeEnum.llm
+    });
 
     const finalAssistantResponses: AIChatItemValueItemType[] = [
       {
@@ -2143,7 +2072,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       [NodeOutputKeyEnum.reasoningText]: '',
       [NodeOutputKeyEnum.rawResponse]: {
         traceId,
-        taskAnalysis,
         plan: [],
         pastSteps: [{ step: userChatInput, result: clarifyText }],
         finalDecision: 'response',
@@ -2162,19 +2090,26 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         },
         replanHistory,
         usage: {
-          totalTokens: billing.totalTokensAll,
+          totalTokens,
           totalRunTimes
         }
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: billing.totalPointsAll,
-        toolCallTokens: billing.totalTokensAll,
-        model: billing.modelName,
+        totalPoints,
+        toolCallTokens: totalTokens,
+        model: modelName,
         query: userChatInput,
         toolDetail: []
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [...billing.moduleUsages]
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+        {
+          moduleName: name,
+          totalPoints,
+          model: modelName,
+          tokens: totalTokens
+        }
+      ]
     };
   }
 
@@ -2532,7 +2467,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         });
       }
 
-      const billing = getBillingResult();
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: modelKey,
+        tokens: totalTokens,
+        modelType: ModelTypeEnum.llm
+      });
 
       const previewToolItems = filterToolResponseToPreview(toolItems);
       const finalAssistantResponses: AIChatItemValueItemType[] = [
@@ -2569,7 +2508,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         [NodeOutputKeyEnum.reasoningText]: reasoningText,
         [NodeOutputKeyEnum.rawResponse]: {
           traceId,
-          taskAnalysis,
           plan: planQueue.map((s) => s.title),
           pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
           finalDecision: 'response',
@@ -2583,15 +2521,15 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           },
           replanHistory,
           usage: {
-            totalTokens: billing.totalTokensAll,
+            totalTokens,
             totalRunTimes
           }
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          totalPoints: billing.totalPointsAll,
-          toolCallTokens: billing.totalTokensAll,
-          model: billing.modelName,
+          totalPoints,
+          toolCallTokens: totalTokens,
+          model: modelName,
           query: userChatInput,
           historyPreview: getHistoryPreview(
             GPTMessages2Chats(
@@ -2615,7 +2553,15 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           ),
           toolDetail
         },
-        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [...billing.moduleUsages, ...nodeUsages]
+        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+          {
+            moduleName: name,
+            totalPoints,
+            model: modelName,
+            tokens: totalTokens
+          },
+          ...nodeUsages
+        ]
       };
     }
 
@@ -2672,7 +2618,11 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     pastSteps[pastSteps.length - 1]?.result ||
     (planQueue.length > 0 ? `未完成全部步骤，当前停在：${planQueue[0].title}` : '未生成有效结果');
 
-  const billing = getBillingResult();
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelKey,
+    tokens: totalTokens,
+    modelType: ModelTypeEnum.llm
+  });
 
   const previewToolItems = filterToolResponseToPreview(toolItems);
   const finalAssistantResponses: AIChatItemValueItemType[] = [
@@ -2718,7 +2668,6 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     [NodeOutputKeyEnum.reasoningText]: reasoningText,
     [NodeOutputKeyEnum.rawResponse]: {
       traceId,
-      taskAnalysis,
       plan: planQueue.map((s) => s.title),
       pastSteps: pastSteps.map((p) => ({ step: p.step.title, result: p.result })),
       finalDecision: 'fallback',
@@ -2732,18 +2681,26 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       },
       replanHistory,
       usage: {
-        totalTokens: billing.totalTokensAll,
+        totalTokens,
         totalRunTimes
       }
     },
     [DispatchNodeResponseKeyEnum.assistantResponses]: finalAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: billing.totalPointsAll,
-      toolCallTokens: billing.totalTokensAll,
-      model: billing.modelName,
+      totalPoints,
+      toolCallTokens: totalTokens,
+      model: modelName,
       query: userChatInput,
       toolDetail
     },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [...billing.moduleUsages, ...nodeUsages]
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+      {
+        moduleName: name,
+        totalPoints,
+        model: modelName,
+        tokens: totalTokens
+      },
+      ...nodeUsages
+    ]
   };
 }
