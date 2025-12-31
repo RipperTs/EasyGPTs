@@ -14,6 +14,7 @@ import {
   Input_Template_History,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
+  Input_Template_Text_Quote,
   Input_Template_UserChatInput
 } from '../input';
 import { getHandleConfig } from '../utils';
@@ -94,6 +95,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
       max: 50
     },
     Input_Template_History,
+    Input_Template_Text_Quote,
     Input_Template_UserChatInput
   ],
   outputs: [
