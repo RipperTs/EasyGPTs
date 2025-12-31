@@ -220,6 +220,7 @@ export enum NodeInputKeyEnum {
 
   // read files
   fileUrlList = 'fileUrlList',
+  readFilesMaxLength = 'readFilesMaxLength',
 
   // user select
   userSelectOptions = 'userSelectOptions',

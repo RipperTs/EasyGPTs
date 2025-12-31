@@ -15,6 +15,7 @@ import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
+  [NodeInputKeyEnum.readFilesMaxLength]?: number;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
@@ -47,9 +48,13 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     runningAppInfo: { teamId },
     histories,
     chatConfig,
-    params: { fileUrlList = [] }
+    params: { fileUrlList = [], readFilesMaxLength = 0 }
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const maxOutputLength =
+    typeof readFilesMaxLength === 'number' && Number.isFinite(readFilesMaxLength)
+      ? Math.max(0, Math.floor(readFilesMaxLength))
+      : 0;
 
   // Get files from histories
   const filesFromHistories = histories
@@ -194,9 +199,10 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       .filter(Boolean)
   );
   const text = readFilesResult.map((item) => item?.text ?? '').join('\n******\n');
+  const outputText = maxOutputLength > 0 ? text.slice(0, maxOutputLength) : text;
 
   return {
-    [NodeOutputKeyEnum.text]: text,
+    [NodeOutputKeyEnum.text]: outputText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       readFiles: readFilesResult.map((item) => ({
         name: item?.filename || '',
@@ -207,7 +213,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         .join('\n******\n')
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      fileContent: text
+      fileContent: outputText
     }
   };
 };

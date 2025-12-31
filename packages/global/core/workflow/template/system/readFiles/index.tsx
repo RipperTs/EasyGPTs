@@ -23,7 +23,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
-  version: '489',
+  version: '490',
   isTool: true,
   inputs: [
     {
@@ -33,6 +33,16 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
       label: i18nT('app:workflow.file_url'),
       required: true,
       value: []
+    },
+    {
+      key: NodeInputKeyEnum.readFilesMaxLength,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      valueType: WorkflowIOValueTypeEnum.number,
+      label: '输出内容最大长度',
+      description: '用于截断节点输出文本的最大字符数；0 表示不截断。',
+      required: false,
+      min: 0,
+      value: 0
     }
   ],
   outputs: [
