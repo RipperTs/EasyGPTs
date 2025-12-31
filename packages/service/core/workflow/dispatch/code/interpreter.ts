@@ -59,7 +59,9 @@ const DEFAULT_SYSTEM_PROMPT =
   '- Output ONLY Python code (prefer a fenced ```python code block```). No explanations.\n' +
   '- Make the code self-contained and directly runnable as a script.\n' +
   '- Always print the final answer to stdout. If structured output is needed, print JSON.\n' +
-  '- If you generate a chart/image, save it (e.g. plt.savefig("output.png")) so it can be returned.\n' +
+  '- If you generate a chart/image, save it as a local file (e.g. plt.savefig("output.png")).\n' +
+  '- NEVER output images as Base64, data URIs, or long binary strings in stdout.\n' +
+  '- The service will return generated files (and may return an image URL). In stdout, only print a short summary and the local file name(s).\n' +
   '- Prefer the standard library. If you use optional libraries (pandas/numpy/matplotlib), handle ImportError and degrade gracefully.\n' +
   '- Be robust with file names: list the working directory and infer the correct local file to open when needed.\n';
 
@@ -111,7 +113,8 @@ Rules:
 - Output ONLY code (prefer a \`\`\`python code block\`\`\`).
 - Print the final answer to stdout (use JSON if helpful).
 - If files are needed, inspect the working directory (e.g. os.listdir('.')) and open the correct local file.
-- If you generate an image/chart, save it to a file (e.g. output.png).`;
+- If you generate an image/chart, save it to a local file (e.g. output.png).
+- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings, no '已转为 Base64' narratives). Let the Code Interpreter service return the image URL/file list.`;
 
   return [
     {
@@ -159,7 +162,8 @@ Rules:
 - Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
 - Print the final answer to stdout (use JSON if helpful).
 - Be robust with local file names: list the working directory and open the correct downloaded file.
-- If you generate an image/chart, save it to a file (e.g. output.png).`;
+- If you generate an image/chart, save it to a local file (e.g. output.png).
+- DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings, no '已转为 Base64' narratives). Let the Code Interpreter service return the image URL/file list.`;
 
   return [
     {
@@ -391,18 +395,39 @@ const parseNullableString = (value: unknown) => {
   return typeof value === 'string' ? value : JSON.stringify(value);
 };
 
+const hasBase64ImageLikeOutput = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  if (/data:image\/[a-z0-9.+-]+;base64,/i.test(trimmed)) return true;
+
+  // Common image signatures/prefixes after base64 encoding.
+  const hasCommonPrefix = /(iVBORw0KGgo|R0lGODlh|\/9j\/|UklGR)/.test(trimmed);
+  if (hasCommonPrefix) return true;
+  const hasLongChunk = /[A-Za-z0-9+/]{500,}={0,2}/.test(trimmed);
+  const mentionsImageType = /\b(png|jpe?g|gif|webp|svg)\b/i.test(trimmed);
+
+  const hasBase64Word = /base64/i.test(trimmed);
+  return hasBase64Word && (hasLongChunk || mentionsImageType);
+};
+
 const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = ''): ToolOutput => {
   const resultText = typeof raw.result === 'string' ? raw.result.trim() : '';
   const imageUrl = typeof raw.image_url === 'string' ? raw.image_url.trim() : '';
   const outputFiles = parseStringArray(raw.files);
 
-  const unifiedResult: string = resultText
-    ? resultText
-    : imageUrl
-      ? imageUrl
-      : outputFiles.length > 0
-        ? outputFiles.join('\n')
-        : '';
+  const isBase64Output = resultText ? hasBase64ImageLikeOutput(resultText) : false;
+  const unifiedResult: string =
+    // If stdout looks like a base64 image payload, prefer returning the file URL(s) instead.
+    resultText && !isBase64Output
+      ? resultText
+      : imageUrl
+        ? imageUrl
+        : outputFiles.length > 0
+          ? outputFiles.join('\n')
+          : isBase64Output
+            ? '检测到疑似 Base64 图片输出。请改为将图片保存为本地文件（如 output.png），由 Code Interpreter 服务端返回图片地址。'
+            : resultText;
 
   return {
     [NodeOutputKeyEnum.result]: unifiedResult,
@@ -559,6 +584,14 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         files
       });
       executionLog = runResult.log;
+
+      const rawResultText = typeof runResult.raw.result === 'string' ? runResult.raw.result : '';
+      if (hasBase64ImageLikeOutput(rawResultText)) {
+        lastErrorText =
+          'Output contains Base64 image content. Please save images to local files (e.g. output.png) and do NOT print Base64/data URIs; rely on the Code Interpreter service to return image URLs/files.';
+        if (attempt < maxRetry) continue;
+      }
+
       const toolOutput = parseCodeInterpreterToolOutput(runResult.raw, currentCode);
       const toolResponse = toolOutput[NodeOutputKeyEnum.result];
 
