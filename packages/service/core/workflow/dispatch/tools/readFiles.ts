@@ -13,56 +13,16 @@ import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
-const isHttpUrl = (url: string) => /^https?:\/\//i.test(url);
-
-const parsePublicFileUrl = ({
-  url,
-  requestOrigin
-}: {
-  url: string;
-  requestOrigin?: string;
-}): string => {
-  if (!process.env.FE_DOMAIN) {
-    return url;
-  }
-
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return '';
-
-  const baseOrigin = process.env.FE_DOMAIN.trim();
-
-  // 如果是HTTP URL，替换为FE_DOMAIN的域名（保留路径和查询参数）
-  if (isHttpUrl(trimmed)) {
-    try {
-      const urlObj = new URL(trimmed);
-      const baseUrlObj = new URL(baseOrigin);
-      // 替换协议、域名和端口，保留路径和查询参数
-      urlObj.protocol = baseUrlObj.protocol;
-      urlObj.hostname = baseUrlObj.hostname;
-      urlObj.port = baseUrlObj.port;
-      return urlObj.toString();
-    } catch {
-      return trimmed;
-    }
-  }
-
-  if (!baseOrigin) return '';
-
-  try {
-    return new URL(trimmed, baseOrigin).toString();
-  } catch {
-    return '';
-  }
-};
-
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
   [NodeInputKeyEnum.readFilesMaxLength]?: number;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
-  [NodeOutputKeyEnum.readFilesFileList]: Array<{ filename: string; url: string }>;
+  [NodeOutputKeyEnum.readFilesFileList]: {
+    filename: string;
+    url: string;
+  }[];
 }>;
 
 const formatResponseObject = ({
@@ -85,6 +45,45 @@ ${content}
 ${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
 </Content>`
 });
+
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const getFeDomainOrigin = (): string => {
+  const raw = process.env.FE_DOMAIN?.trim() || '';
+  if (!raw) {
+    throw new Error('Can not find FE_DOMAIN in env');
+  }
+  return isHttpUrl(raw) ? raw : `https://${raw}`;
+};
+
+const parsePublicFileUrl = ({ url }: { url: string }): string => {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return '';
+
+  const baseOrigin = getFeDomainOrigin();
+
+  // 如果是 HTTP URL，替换为 FE_DOMAIN 的域名（保留路径和查询参数）
+  if (isHttpUrl(trimmed)) {
+    try {
+      const urlObj = new URL(trimmed);
+      const baseUrlObj = new URL(baseOrigin);
+
+      urlObj.protocol = baseUrlObj.protocol;
+      urlObj.hostname = baseUrlObj.hostname;
+      urlObj.port = baseUrlObj.port;
+      return urlObj.toString();
+    } catch {
+      return trimmed;
+    }
+  }
+
+  try {
+    return new URL(trimmed, baseOrigin).toString();
+  } catch {
+    return trimmed;
+  }
+};
 
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
@@ -244,28 +243,30 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   );
   const text = readFilesResult.map((item) => item?.text ?? '').join('\n******\n');
   const outputText = maxOutputLength > 0 ? text.slice(0, maxOutputLength) : text;
-
-  // 构建文件列表，将 URL 域名替换为 FE_DOMAIN
-  const fileList = readFilesResult.map((item) => ({
-    filename: item?.filename || '',
-    url: parsePublicFileUrl({ url: item?.url || '', requestOrigin })
-  }));
+  const outputFileList = readFilesResult
+    .map((item) => {
+      if (!item) return null;
+      return {
+        filename: item.filename || '',
+        url: parsePublicFileUrl({ url: item.url })
+      };
+    })
+    .filter((item): item is { filename: string; url: string } => Boolean(item?.url));
 
   return {
     [NodeOutputKeyEnum.text]: outputText,
-    [NodeOutputKeyEnum.readFilesFileList]: fileList,
+    [NodeOutputKeyEnum.readFilesFileList]: outputFileList,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      readFiles: readFilesResult.map((item) => ({
-        name: item?.filename || '',
-        url: item?.url || ''
+      readFiles: outputFileList.map((item) => ({
+        name: item.filename || '',
+        url: item.url || ''
       })),
       readFilesResult: readFilesResult
         .map((item) => item?.nodeResponsePreviewText ?? '')
         .join('\n******\n')
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      fileContent: outputText,
-      readFilesFileList: fileList
+      fileContent: outputText
     }
   };
 };

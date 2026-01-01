@@ -26,7 +26,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     '面向 Agent 的 Python 分析/计算工具：输入“任务描述 + 文件链接”，自动生成并执行 Python，适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
   showStatus: true,
   isTool: true,
-  version: '505',
+  version: '506',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -69,12 +69,11 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.fileUrlList,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      label: '输入文件链接（可选）',
+      label: '文件链接（可选）',
       description:
         '需要在沙箱中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
-      value: [],
-      toolDescription: '可选：输入文件 URL 列表（http(s)），沙箱会自动下载到当前工作目录'
+      value: []
     },
     {
       key: NodeInputKeyEnum.userChatInput,
