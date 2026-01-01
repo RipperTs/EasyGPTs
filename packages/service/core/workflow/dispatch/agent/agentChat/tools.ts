@@ -152,13 +152,16 @@ How to call it effectively:
 - You do NOT need to write full Python code yourself unless necessary.
 - Do NOT pass raw Python code as a tool argument; describe the task and let the sandbox generate/repair code.
 - Require concise stdout (short summary/JSON). Save large outputs to files instead.
+- For charts/images/tables: ALWAYS ask the tool to save artifacts to files (PNG/CSV) and return file URLs/list.
+- NEVER ask it to embed images as Base64/data URIs or print large blobs in stdout.
 
 Decision rule: "Does this need code to RUN and COMPUTE, or can the answer be generated directly?"
 When planning steps that genuinely need Code Interpreter, mention it in toolHints with expected inputs/outputs.`;
 
 const TOOL_PREFERENCE_PROMPT_LIGHT = `## Tool Hint
 A Code Interpreter tool is available for steps requiring actual computation or file processing.
-Prefer providing a task description + file URLs; avoid using it for text-only tasks.`;
+Prefer providing a task description + file URLs; avoid using it for text-only tasks.
+When requesting charts/files, ask it to save artifacts and return URLs (not Base64).`;
 
 // Make tool discovery easier in mixed naming environments.
 const CODE_INTERPRETER_NAME_HINT = `Common names in this system: "Python 数据分析沙箱" (preferred), "代码解释器", "Code Interpreter".`;

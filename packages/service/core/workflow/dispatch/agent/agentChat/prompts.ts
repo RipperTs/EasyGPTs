@@ -77,6 +77,7 @@ Planning principles:
 3) Dependency ordering: ensure logical ordering and dependencies.
 4) Adaptive granularity: plan ${stepRange} steps. Each step must be atomic and executable.
 5) Heavy compute/offload rule: if a step involves data analysis, file processing, or complex computation, prefer using the Python sandbox tool (Code Interpreter / "数据分析沙箱") by passing a task description + file URLs, rather than writing long code in the plan.
+6) Artifact discipline: for large outputs (CSV/PNG/etc.), plan to generate artifacts as files in the sandbox and return file URLs/list. NEVER plan to embed Base64 images (or other huge blobs) into chat output.
 
 Anti-patterns to avoid:
 - "summarize" / "respond to user" / "final answer" steps (handled by the system)
@@ -187,6 +188,7 @@ Hard rules:
 2) If key info is still missing, explicitly state what is missing and ask the user what to provide.
 3) Output MUST be in Simplified Chinese.
 4) Do NOT output JSON.
+5) Do NOT embed huge blobs (e.g., Base64 images/data URIs). If tools produced artifacts, present them as download links / image URLs (e.g., markdown image with URL).
 
  Style rules (to avoid repetitive boilerplate):
  - Do NOT follow a fixed template every time. Do NOT force headings like "TL;DR" unless it truly helps.
@@ -257,6 +259,7 @@ Core rules:
 - If a tool returns empty/error: retry with adjusted parameters → try an alternative tool → if still blocked, report the concrete reason and the best fallback approach.
  - For heavy compute/data/file steps: prefer calling the Python sandbox tool (Code Interpreter / "数据分析沙箱") with a clear TASK description and FILE URLs, instead of emitting long Python code in text.
  - If the step says "use Python code" / "write a script", treat it as "call the Python sandbox tool", not "write code in chat". Describe the task precisely; the tool will generate/repair code internally.
+ - For charts/files: instruct the sandbox to SAVE artifacts (e.g. PNG/CSV) and return URLs/list; NEVER request Base64/data URIs in tool tasks or in step outputs.
 
 2) Focus on the current step
 - Only execute the current step. Do not pre-complete future steps.
