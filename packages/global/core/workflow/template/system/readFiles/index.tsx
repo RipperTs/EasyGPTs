@@ -23,7 +23,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
-  version: '490',
+  version: '493',
   isTool: true,
   inputs: [
     {
@@ -52,6 +52,14 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
       label: i18nT('app:workflow.read_files_result'),
       description: i18nT('app:workflow.read_files_result_desc'),
       valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.readFilesFileList,
+      key: NodeOutputKeyEnum.readFilesFileList,
+      label: '文件列表（JSON）',
+      description: '数组 JSON：每项包含 filename 和 url（文件下载链接）。',
+      valueType: WorkflowIOValueTypeEnum.arrayObject,
       type: FlowNodeOutputTypeEnum.static
     }
   ]

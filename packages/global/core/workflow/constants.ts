@@ -305,7 +305,9 @@ export enum NodeOutputKeyEnum {
 
   // time semantic parse
   timeSemanticOriginalText = 'timeSemanticOriginalText',
-  timeSemanticResult = 'timeSemanticResult'
+  timeSemanticResult = 'timeSemanticResult',
+  // read files
+  readFilesFileList = 'readFilesFileList'
 }
 
 export enum VariableInputEnum {
