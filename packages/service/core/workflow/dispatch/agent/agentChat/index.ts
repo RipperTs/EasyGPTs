@@ -948,8 +948,26 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     toolPreviewItems: []
   };
 
+  const pushFlowNodeStatus = (statusName: string) => {
+    if (!stream) return;
+    const safeName = truncateText(statusName.trim() || name, 50);
+    if (!safeName) return;
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.flowNodeStatus,
+      data: {
+        status: 'running',
+        name: safeName
+      }
+    });
+  };
+  const formatStepStatusName = (params: { stepTitle: string; current: number; total: number }) => {
+    const title = normalizeStepText(params.stepTitle);
+    return `${params.current}/${params.total}：${title || '未命名任务'}`;
+  };
+
   // Mode: ReAct (single tool-loop run)
   if (orchestrationMode === 'react') {
+    pushFlowNodeStatus('执行中');
     const result = await dispatchRunTools({
       ...props,
       runtimeEdges: effectiveRuntimeEdges,
@@ -1028,6 +1046,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // Clarification gate (HITL-style)
   if (clarifyEnabled && toolNodes.length > 0) {
+    pushFlowNodeStatus('任务澄清');
     const clarify = await callClarifier({
       modelKey,
       systemPrompt,
@@ -1097,6 +1116,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     openQuestions: []
   };
   if (workingMemoryEnabled) {
+    pushFlowNodeStatus('提取工作记忆');
     const wm = await callWorkingMemory({
       modelKey,
       systemPrompt,
@@ -1129,6 +1149,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       data: { hasHistory, toolCount: toolNodes.length }
     });
 
+    pushFlowNodeStatus('任务规划');
     plannerResult = await callPlanner({
       modelKey,
       systemPrompt,
@@ -1174,6 +1195,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     complexity = analysis.complexity;
 
     if (complexity === 'complex') {
+      pushFlowNodeStatus('任务规划');
       plannerResult = planner;
       totalTokens += planner.tokens;
       totalRunTimes += 1;
@@ -1183,6 +1205,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // SIMPLE: run a single tool loop
   if (complexity === 'simple') {
+    pushFlowNodeStatus('生成回答');
     const simple = await dispatchRunTools({
       ...props,
       runtimeEdges: effectiveRuntimeEdges,
@@ -1261,6 +1284,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // COMPLEX: Plan-and-execute
   if (!plannerResult) {
+    pushFlowNodeStatus('任务规划');
     plannerResult = await callPlanner({
       modelKey,
       systemPrompt,
@@ -1342,6 +1366,13 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     trace.push({ at: nowIso(), type: 'act', message: 'executing step', data: { loop, step } });
 
+    pushFlowNodeStatus(
+      formatStepStatusName({
+        stepTitle: step.title,
+        current: pastSteps.length + 1,
+        total: todoAllSteps.length
+      })
+    );
     if (stream) {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
@@ -1434,6 +1465,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const hasToolCalls = stepToolItems.length > 0;
     const isLastStep = planQueue.length === 0;
     if (shouldCallCritic({ enabled: criticEnabled, stepAnswer, isLastStep, hasToolCalls })) {
+      pushFlowNodeStatus('任务评审');
       const critic = await callCritic({
         modelKey,
         systemPrompt,
@@ -1478,6 +1510,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     // Step memory extractor
     if (stepMemoryEnabled && (stepAnswer.length >= 30 || toolText.length >= 10)) {
+      pushFlowNodeStatus('提取步骤记忆');
       const extracted = await callStepMemoryExtractor({
         modelKey,
         systemPrompt,
@@ -1507,6 +1540,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     }
 
     // Replan
+    pushFlowNodeStatus('任务规划更新');
     let decision = await callReplanner({
       modelKey,
       systemPrompt,
@@ -1531,6 +1565,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     if (decision.action === 'respond') {
       pushTodoSnapshot();
 
+      pushFlowNodeStatus('任务总结');
       const synthesized = await callFinalSynthesis({
         modelKey,
         systemPrompt,
@@ -1676,6 +1711,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   }
 
   // Fallback synthesis
+  pushFlowNodeStatus('任务总结');
   const fallbackAnswer =
     (
       await (async () => {
