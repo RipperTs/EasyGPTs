@@ -16,6 +16,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { addLog } from '../../../../common/system/log';
 import {
   fetchCodeInterpreterCapabilities,
@@ -130,21 +131,31 @@ const buildFixCodeMessages = ({
   files,
   currentCode,
   errorText,
-  capabilitiesText
+  capabilitiesText,
+  task,
+  chatContext
 }: {
   systemPrompt: string;
   files: string[];
   currentCode: string;
   errorText: string;
   capabilitiesText?: string;
+  task?: string;
+  chatContext?: string;
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
       ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
       : '\n\nInput file URLs (files): (none)';
   const capabilitiesPrompt = capabilitiesText ? `\n\n${capabilitiesText}` : '';
+  const taskPrompt = task?.trim() ? `\n\nTask:\n${task.trim()}` : '';
+  const contextPrompt = chatContext?.trim()
+    ? `\n\nConversation context (recent excerpt):\n${chatContext.trim()}`
+    : '';
   const userPrompt = `${filesPrompt}
 ${capabilitiesPrompt}
+${taskPrompt}
+${contextPrompt}
 
 Failed code:
 \`\`\`python
@@ -184,26 +195,36 @@ const buildGenerateCodeMessages = ({
   systemPrompt,
   task,
   files,
-  capabilitiesText
+  capabilitiesText,
+  chatContext
 }: {
   systemPrompt: string;
   task: string;
   files: string[];
   capabilitiesText?: string;
+  chatContext?: string;
 }): ChatCompletionMessageParam[] => {
   const filesPrompt =
     files.length > 0
       ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
       : '\n\nInput file URLs (files): (none)';
   const capabilitiesPrompt = capabilitiesText ? `\n\n${capabilitiesText}` : '';
+  const contextPrompt = chatContext?.trim()
+    ? `\n\nConversation context (recent excerpt, may help when the task says \"save previous answer\"):\n${chatContext.trim()}`
+    : '';
 
   const userPrompt = `Task:
 ${task}
 ${filesPrompt}
 ${capabilitiesPrompt}
+${contextPrompt}
 
 You will have these variables available in the runtime (already defined for you):
 - FILES: list[str] (input file URLs, may be empty)
+- TASK: str (the task text)
+- LAST_ASSISTANT_MESSAGE: str (last assistant message from conversation history, may be empty)
+- LAST_USER_MESSAGE: str (last user message from conversation history, may be empty)
+- CHAT_CONTEXT: str (recent conversation excerpt, may be empty)
 
 Write a runnable Python script to solve the task.
 
@@ -287,6 +308,37 @@ const parseFilesFromHistories = (histories: ChatItemType[]) => {
     .flat();
 };
 
+const buildChatContextFromHistories = (
+  histories: ChatItemType[],
+  maxChars = 12000,
+  maxItems = 14
+) => {
+  const items = histories
+    .filter((h) => h.obj === ChatRoleEnum.Human || h.obj === ChatRoleEnum.AI)
+    .slice(-maxItems)
+    .map((h) => {
+      const role = h.obj === ChatRoleEnum.Human ? 'Human' : 'Assistant';
+      const text = chatValue2RuntimePrompt(h.value).text || '';
+      return text ? `${role}: ${text}` : '';
+    })
+    .filter(Boolean);
+
+  const joined = items.join('\n\n').trim();
+  if (!joined) return '';
+  if (joined.length <= maxChars) return joined;
+  return joined.slice(-maxChars);
+};
+
+const getLastRoleMessageText = (histories: ChatItemType[], role: ChatRoleEnum) => {
+  for (let i = histories.length - 1; i >= 0; i--) {
+    const item = histories[i];
+    if (item.obj !== role) continue;
+    const text = chatValue2RuntimePrompt(item.value).text || '';
+    if (text.trim()) return text.trim();
+  }
+  return '';
+};
+
 const parsePublicFileUrl = ({
   url,
   requestOrigin
@@ -351,9 +403,17 @@ const parseCodeInterpreterFiles = ({
 };
 
 const buildExecuteCode = ({
+  task,
+  chatContext,
+  lastUserMessage,
+  lastAssistantMessage,
   pythonCode,
   files
 }: {
+  task: string;
+  chatContext: string;
+  lastUserMessage: string;
+  lastAssistantMessage: string;
   pythonCode: string;
   files: string[];
 }) => `# -*- coding: utf-8 -*-
@@ -362,16 +422,28 @@ Input file URLs (downloaded into current working directory before execution):
 ${files.length > 0 ? files.map((url) => `- ${url}`).join('\n') : '(none)'}
 """
 
+TASK = ${JSON.stringify(task)}
+CHAT_CONTEXT = ${JSON.stringify(chatContext)}
+LAST_USER_MESSAGE = ${JSON.stringify(lastUserMessage)}
+LAST_ASSISTANT_MESSAGE = ${JSON.stringify(lastAssistantMessage)}
 FILES = ${JSON.stringify(files)}
 
 ${pythonCode.trim()}
 `;
 
 const runPythonInCodeInterpreter = async ({
+  task,
+  chatContext,
+  lastUserMessage,
+  lastAssistantMessage,
   pythonCode,
   files,
   timeoutSeconds
 }: {
+  task: string;
+  chatContext: string;
+  lastUserMessage: string;
+  lastAssistantMessage: string;
   pythonCode: string;
   files: string[];
   timeoutSeconds: number;
@@ -382,7 +454,14 @@ const runPythonInCodeInterpreter = async ({
 
   const apiKey = process.env.CODE_INTERPRETER_API_KEY?.trim();
   const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
-  const executeCode = buildExecuteCode({ pythonCode, files });
+  const executeCode = buildExecuteCode({
+    task,
+    chatContext,
+    lastUserMessage,
+    lastAssistantMessage,
+    pythonCode,
+    files
+  });
 
   addLog.debug('[CodeInterpreter] request', {
     url: requestUrl,
@@ -506,6 +585,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     histories,
     chatConfig,
     requestOrigin,
+    isToolCall,
     params: {
       model,
       systemPrompt,
@@ -543,6 +623,36 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
 
   const task = typeof userChatInput === 'string' ? userChatInput.trim() : '';
   const inputCode = typeof code === 'string' ? code.trim() : '';
+
+  if (isToolCall && inputCode) {
+    const message =
+      '工具调用模式不允许直接传入 Python 代码，请通过“任务描述 + 文件链接”让系统自动生成并执行。';
+    const pluginOutput = {
+      [NodeOutputKeyEnum.result]: '',
+      [NodeOutputKeyEnum.error]: message,
+      [NodeOutputKeyEnum.execution_time]: 0,
+      [NodeOutputKeyEnum.image_url]: '',
+      [NodeOutputKeyEnum.files]: [],
+      [NodeOutputKeyEnum.inputs]: [],
+      [NodeOutputKeyEnum.code]: ''
+    };
+
+    return {
+      ...pluginOutput,
+      [DispatchNodeResponseKeyEnum.toolResponses]: message,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        pluginOutput,
+        nodeInputs: {
+          isToolCall: true,
+          task,
+          files: []
+        },
+        textOutput: message
+      },
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+    };
+  }
 
   if (!task && !inputCode) {
     const message = '任务描述与代码均为空';
@@ -602,6 +712,9 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     requestOrigin,
     maxFiles
   });
+  const chatContext = buildChatContextFromHistories(histories, 12000, 14);
+  const lastUserMessage = getLastRoleMessageText(histories, ChatRoleEnum.Human);
+  const lastAssistantMessage = getLastRoleMessageText(histories, ChatRoleEnum.AI);
 
   const capabilities = await fetchCodeInterpreterCapabilities({
     baseUrl: process.env.CODE_INTERPRETER_URL.trim(),
@@ -635,7 +748,8 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       systemPrompt: finalSystemPrompt,
       task,
       files,
-      capabilitiesText
+      capabilitiesText,
+      chatContext
     });
     const {
       code: generatedCode,
@@ -694,7 +808,9 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
           files,
           currentCode,
           errorText: lastErrorText,
-          capabilitiesText
+          capabilitiesText,
+          task,
+          chatContext
         });
 
         const {
@@ -718,6 +834,10 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       }
 
       const runResult = await runPythonInCodeInterpreter({
+        task,
+        chatContext,
+        lastUserMessage,
+        lastAssistantMessage,
         pythonCode: currentCode,
         files,
         timeoutSeconds

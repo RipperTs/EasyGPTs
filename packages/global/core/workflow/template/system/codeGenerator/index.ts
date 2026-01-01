@@ -50,13 +50,11 @@ export const CodeGeneratorModule: FlowNodeTemplateType = {
       description:
         '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
-      value: [],
-      toolDescription: '需要处理的文件链接列表，可留空'
+      value: []
     },
     {
       ...Input_Template_UserChatInput,
-      label: '任务描述',
-      toolDescription: '用自然语言描述你希望通过 Python 代码完成的任务。'
+      label: '任务描述'
     }
   ],
   outputs: [

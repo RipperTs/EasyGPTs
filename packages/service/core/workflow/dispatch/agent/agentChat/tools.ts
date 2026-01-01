@@ -150,6 +150,7 @@ Do NOT use for:
 How to call it effectively:
 - Provide a clear TASK description and relevant FILE URLs.
 - You do NOT need to write full Python code yourself unless necessary.
+- Do NOT pass raw Python code as a tool argument; describe the task and let the sandbox generate/repair code.
 - Require concise stdout (short summary/JSON). Save large outputs to files instead.
 
 Decision rule: "Does this need code to RUN and COMPUTE, or can the answer be generated directly?"
@@ -158,6 +159,9 @@ When planning steps that genuinely need Code Interpreter, mention it in toolHint
 const TOOL_PREFERENCE_PROMPT_LIGHT = `## Tool Hint
 A Code Interpreter tool is available for steps requiring actual computation or file processing.
 Prefer providing a task description + file URLs; avoid using it for text-only tasks.`;
+
+// Make tool discovery easier in mixed naming environments.
+const CODE_INTERPRETER_NAME_HINT = `Common names in this system: "Python 数据分析沙箱" (preferred), "代码解释器", "Code Interpreter".`;
 
 export const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean => {
   return toolNodes.some(
@@ -177,7 +181,7 @@ export const withToolPreference = (
     return systemPrompt || '';
   }
   const hint = mode === 'light' ? TOOL_PREFERENCE_PROMPT_LIGHT : TOOL_PREFERENCE_PROMPT_STRONG;
-  return `${systemPrompt ? `${systemPrompt}\n\n` : ''}${hint}\n\n`;
+  return `${systemPrompt ? `${systemPrompt}\n\n` : ''}${hint}\n\n${CODE_INTERPRETER_NAME_HINT}\n\n`;
 };
 
 const READ_ONLY_ALLOWED_TOOL_TYPES = new Set<FlowNodeTypeEnum>([

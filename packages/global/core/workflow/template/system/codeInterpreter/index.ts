@@ -21,34 +21,34 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeInter',
-  name: '代码解释器（Python）',
+  name: 'Python 数据分析沙箱',
   intro:
-    '面向 Agent 的 Python 代码解释器：可直接输入任务描述，由系统自动生成并执行 Python（含自动修复重试），适合数据分析/文件处理/科学计算等高 Token 任务。',
+    '面向 Agent 的 Python 分析/计算工具：输入“任务描述 + 文件链接”，自动生成并执行 Python（含自动修复重试），适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
   showStatus: true,
   isTool: true,
-  version: '503',
+  version: '504',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.all,
-      description: '用于自动生成/修复 Python 代码（执行器只负责运行代码）。'
+      description: '用于自动生成/修复 Python 代码（沙箱只负责运行代码）。'
     },
     {
       key: NodeInputKeyEnum.aiSystemPrompt,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
-      label: '系统提示词（可选）',
+      label: '代码策略提示词（可选）',
       max: 3000,
       value: '',
       description:
-        '仅影响“生成/修复代码”的策略，不影响沙箱执行环境。建议留空使用默认最佳实践提示词。'
+        '仅影响“生成/修复代码”的策略，不影响沙箱执行环境。一般留空即可；需要强约束输出/库使用/格式时再填写。'
     },
     {
       key: NodeInputKeyEnum.codeInterpreterMaxRetry,
       renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
-      label: '自动修复重试次数',
-      description: '代码运行失败时，AI 会分析报错并修复代码后重试。',
+      label: '自动修复次数',
+      description: '运行失败/输出不合规（过长/Base64）时，自动让模型修复代码并重试。',
       required: true,
       min: 1,
       max: 10,
@@ -59,7 +59,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
       label: '执行超时（秒）',
-      description: '请求代码执行服务的超时时间（仅影响请求等待时间）。',
+      description: '请求沙箱执行服务的超时时间（仅影响本次请求等待时间）。',
       required: true,
       min: 5,
       max: 600,
@@ -69,12 +69,12 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.fileUrlList,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      label: '文件链接',
+      label: '输入文件链接（可选）',
       description:
-        '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
+        '需要在沙箱中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
       value: [],
-      toolDescription: '需要处理的文件链接列表（http(s)），可留空'
+      toolDescription: '可选：输入文件 URL 列表（http(s)），沙箱会自动下载到当前工作目录'
     },
     {
       key: NodeInputKeyEnum.userChatInput,
@@ -82,32 +82,30 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       label: '任务描述',
       description:
-        '用自然语言描述你希望通过 Python 完成的任务（数据分析/计算/文件处理等）。若提供了“Python 代码”，则以代码为准。',
+        '用自然语言描述你希望通过 Python 完成的任务（数据分析/计算/文件处理等）。建议写清：输入文件是什么、要做什么处理、希望输出什么（文本/图片/文件）。',
       placeholder:
-        '例如：读取上传的 CSV，按城市统计订单金额，输出 Top10，并画出柱状图保存为图片；同时导出统计结果为 result.csv。',
-      required: false,
-      toolDescription: '要完成的任务描述（会自动生成并执行 Python 代码）'
+        '例如：读取上传的 CSV，按城市统计订单金额，输出 Top10（文本摘要），并画柱状图保存为图片；同时导出统计结果为 result.csv。',
+      required: true,
+      toolDescription:
+        '必填：要完成的任务描述（用于自动生成并执行 Python）。请写清输入文件/处理目标/期望输出（文本摘要/图片/文件）'
     },
     {
       key: NodeInputKeyEnum.code,
-      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
-      label: 'Python 代码（可选）',
+      label: '高级：直接运行 Python 代码（可选）',
       description:
-        '可选：直接提供要执行的 Python 代码（高级用法）。代码中可使用 FILES 变量访问文件列表。',
-      placeholder:
-        'import matplotlib.pyplot as plt\n\ndata = [1, 2, 3, 4, 5]\nplt.plot(data)\nplt.savefig("chart.png")',
-      required: false,
-      toolDescription: '可选：直接提供要执行的 Python 代码（若不提供则根据任务描述自动生成）'
+        '仅供手动调试：可从上游节点引用一段 Python 代码并执行。工具调用模式不会使用该字段（会被服务端拒绝）。代码中可使用 FILES 变量访问文件列表。',
+      required: false
     }
   ],
   outputs: [
     {
       id: NodeOutputKeyEnum.result,
       key: NodeOutputKeyEnum.result,
-      label: '结果输出',
+      label: '文本结果（摘要）',
       description:
-        '统一输出：优先返回服务 result；若为空则返回 image_url；若仍为空则返回 files（以换行拼接）。',
+        '统一输出：优先返回 stdout 的摘要文本；若为空则返回 image_url；若仍为空则返回 files（以换行拼接）。',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -115,7 +113,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.error,
       key: NodeOutputKeyEnum.error,
       label: '错误信息',
-      description: '执行失败时返回错误信息；成功时为空字符串。',
+      description: '执行失败时返回错误信息；成功时为空字符串。Agent 可据此重试/改写任务描述。',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -130,6 +128,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.image_url,
       key: NodeOutputKeyEnum.image_url,
       label: '图片地址',
+      description: '绘图/可视化产物（如保存 png/jpg）对应的图片 URL（若有）。',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
@@ -137,6 +136,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.files,
       key: NodeOutputKeyEnum.files,
       label: '生成文件',
+      description: '代码运行过程中生成的文件 URL（如 CSV/JSON/XLSX/ZIP 等）。',
       valueType: WorkflowIOValueTypeEnum.arrayString,
       type: FlowNodeOutputTypeEnum.static
     },
