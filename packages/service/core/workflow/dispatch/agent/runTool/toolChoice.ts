@@ -26,7 +26,13 @@ import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
+import {
+  updateToolInputValue,
+  formatToolResponse,
+  isLLMEmptyResponseError,
+  sleep,
+  injectWorkflowStartOutputsForToolRun
+} from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
@@ -306,6 +312,11 @@ export const runToolWithToolChoice = async (
   } = workflowProps;
   const abortSignal = workflowProps.abortSignal;
   const ensureNotAborted = () => throwIfAborted({ abortSignal, res });
+
+  const runtimeNodesWithStartOutputs = injectWorkflowStartOutputsForToolRun({
+    runtimeNodes,
+    query: workflowProps.query
+  });
 
   if (maxRunToolTimes <= 0 && response) {
     return response;
@@ -613,7 +624,7 @@ export const runToolWithToolChoice = async (
           const toolRunResponse = await dispatchWorkFlow({
             ...workflowProps,
             isToolCall: true,
-            runtimeNodes: runtimeNodes.map((item) =>
+            runtimeNodes: runtimeNodesWithStartOutputs.map((item) =>
               item.nodeId === toolNode.nodeId
                 ? {
                     ...item,
@@ -872,7 +883,7 @@ export const runToolWithToolChoice = async (
                 const toolRunResponse = await dispatchWorkFlow({
                   ...workflowProps,
                   isToolCall: true,
-                  runtimeNodes: runtimeNodes.map((item) =>
+                  runtimeNodes: runtimeNodesWithStartOutputs.map((item) =>
                     item.nodeId === toolNode.nodeId
                       ? {
                           ...item,

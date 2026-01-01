@@ -26,7 +26,13 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
+import {
+  updateToolInputValue,
+  formatToolResponse,
+  isLLMEmptyResponseError,
+  sleep,
+  injectWorkflowStartOutputsForToolRun
+} from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { throwIfAborted } from '../../utils/abort';
@@ -124,6 +130,7 @@ export const runToolWithFunctionCall = async (
     res,
     requestOrigin,
     runtimeNodes,
+    query,
     node,
     stream,
     workflowStreamResponse,
@@ -399,10 +406,15 @@ export const runToolWithFunctionCall = async (
           return { toolRunResponse: createEmptyDispatchFlowResponse(), functionCallMsg };
         }
 
+        const runtimeNodesWithStartOutputs = injectWorkflowStartOutputsForToolRun({
+          runtimeNodes,
+          query
+        });
+
         const toolRunResponse = await dispatchWorkFlow({
           ...props,
           isToolCall: true,
-          runtimeNodes: runtimeNodes.map((item) =>
+          runtimeNodes: runtimeNodesWithStartOutputs.map((item) =>
             item.nodeId === toolNode.nodeId
               ? {
                   ...item,
