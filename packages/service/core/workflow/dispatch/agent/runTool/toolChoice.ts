@@ -32,6 +32,7 @@ import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools
 import { addLog } from '../../../../../common/system/log';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type';
+import { throwIfAborted } from '../../utils/abort';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -165,8 +166,10 @@ const callRepairToolArgs = async (params: {
   badArguments: string;
   errors: string[];
   temperature: number;
+  abortSignal?: AbortSignal;
 }): Promise<{ args?: Record<string, unknown>; needClarifyQuestions?: string[] }> => {
-  const { toolModel, toolNode, lastUserText, badArguments, errors, temperature } = params;
+  const { toolModel, toolNode, lastUserText, badArguments, errors, temperature, abortSignal } =
+    params;
   const schemaText = JSON.stringify(
     (toolNode.toolParams || []).map((p) => {
       const rec = p as unknown as {
@@ -234,7 +237,8 @@ ${errors.map((e) => `- ${e}`).join('\n')}
       messages: repairMessages
     };
     const resp = (await ai.chat.completions.create(
-      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+      requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
+      abortSignal ? { signal: abortSignal } : undefined
     )) as unknown as ChatCompletion;
 
     const content = (resp.choices?.[0]?.message?.content || '').trim();
@@ -300,6 +304,8 @@ export const runToolWithToolChoice = async (
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = workflowProps;
+  const abortSignal = workflowProps.abortSignal;
+  const ensureNotAborted = () => throwIfAborted({ abortSignal, res });
 
   if (maxRunToolTimes <= 0 && response) {
     return response;
@@ -406,7 +412,9 @@ export const runToolWithToolChoice = async (
   });
 
   try {
+    ensureNotAborted();
     let aiResponse = await ai.chat.completions.create(requestBody as any, {
+      signal: abortSignal,
       headers: {
         Accept: 'application/json, text/plain, */*'
       }
@@ -455,9 +463,12 @@ export const runToolWithToolChoice = async (
       } catch (e) {
         if (!isLLMEmptyResponseError(e)) throw e;
 
+        ensureNotAborted();
         addLog.warn('LLM response empty, retry once', { model: toolModel.model });
         await sleep(150);
+        ensureNotAborted();
         aiResponse = await ai.chat.completions.create(requestBody as any, {
+          signal: abortSignal,
           headers: { Accept: 'application/json, text/plain, */*' }
         });
 
@@ -506,7 +517,8 @@ export const runToolWithToolChoice = async (
                 lastUserText: getLastUserText(messages),
                 badArguments: tool.function?.arguments || '',
                 errors: validation.errors,
-                temperature
+                temperature,
+                abortSignal
               });
 
               if (repaired.args) {
@@ -771,6 +783,7 @@ export const runToolWithToolChoice = async (
       };
     }
   } catch (error: any) {
+    ensureNotAborted();
     const msg = `${error?.message || ''}`;
     const status = error?.status ?? error?.code;
     addLog.warn(`LLM response error`, { requestBody, status, msg });
@@ -801,7 +814,9 @@ export const runToolWithToolChoice = async (
         } as any;
         try {
           const ai2 = getAIApi({ timeout: 480000 });
+          ensureNotAborted();
           const aiResponse2 = await ai2.chat.completions.create(requestBody as any, {
+            signal: abortSignal,
             headers: { Accept: 'application/json, text/plain, */*' }
           });
           const {

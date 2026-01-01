@@ -24,6 +24,7 @@ import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  abortSignal?: AbortSignal;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   user: UserModelSchema;

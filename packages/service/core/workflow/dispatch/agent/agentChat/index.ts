@@ -69,6 +69,7 @@ import {
   TASK_PREFIX
 } from './prompts';
 import { callChatCompletionJson, callChatCompletionText } from './llm';
+import { throwIfAborted } from '../../utils/abort';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
@@ -209,8 +210,10 @@ const callClarifier = async (params: {
   toolNodes: RuntimeNodeItemType[];
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<ClarifyResult> => {
-  const { modelKey, systemPrompt, goal, toolNodes, enableReasoning, reasoningEffort } = params;
+  const { modelKey, systemPrompt, goal, toolNodes, enableReasoning, reasoningEffort, abortSignal } =
+    params;
 
   const toolsText = renderToolsCatalogText(toolNodes, 5200);
   const messages: ChatCompletionMessageParam[] = [
@@ -228,7 +231,7 @@ const callClarifier = async (params: {
     needClarify?: unknown;
     reason?: unknown;
     questions?: unknown;
-  }>({ modelKey, messages, enableReasoning, reasoningEffort, maxToken: 220 });
+  }>({ modelKey, messages, enableReasoning, reasoningEffort, maxToken: 220, abortSignal });
 
   const needClarify = json?.needClarify === true;
   const reason = typeof json?.reason === 'string' ? json.reason.trim() : '';
@@ -251,8 +254,10 @@ const callWorkingMemory = async (params: {
   toolNodes: RuntimeNodeItemType[];
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ memory: WorkingMemory; tokens: number }> => {
-  const { modelKey, systemPrompt, goal, toolNodes, enableReasoning, reasoningEffort } = params;
+  const { modelKey, systemPrompt, goal, toolNodes, enableReasoning, reasoningEffort, abortSignal } =
+    params;
   const toolsText = renderToolsCatalogText(toolNodes, 2600);
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -270,7 +275,8 @@ const callWorkingMemory = async (params: {
     messages,
     enableReasoning,
     reasoningEffort,
-    maxToken: 320
+    maxToken: 320,
+    abortSignal
   });
 
   const memory: WorkingMemory = {
@@ -311,8 +317,10 @@ const callTaskAnalyzer = async (params: {
   histories?: ChatItemType[];
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ complexity: 'simple' | 'complex'; reason: string; tokens: number }> => {
-  const { modelKey, goal, toolNodes, histories, enableReasoning, reasoningEffort } = params;
+  const { modelKey, goal, toolNodes, histories, enableReasoning, reasoningEffort, abortSignal } =
+    params;
 
   const toolsText = renderToolsCatalogText(toolNodes, 3200);
   const recentHistory =
@@ -358,7 +366,8 @@ Output JSON only: {"complexity":"simple"|"complex","reason":"brief"}`
       messages,
       enableReasoning,
       reasoningEffort,
-      maxToken: 150
+      maxToken: 150,
+      abortSignal
     }
   );
 
@@ -380,6 +389,7 @@ const callPlanner = async (params: {
   enableReasoning: boolean;
   reasoningEffort?: string;
   histories?: ChatItemType[];
+  abortSignal?: AbortSignal;
 }): Promise<{ steps: AgentPlanStep[]; tokens: number; reasoningText: string }> => {
   const {
     modelKey,
@@ -391,7 +401,8 @@ const callPlanner = async (params: {
     toolPreference,
     enableReasoning,
     reasoningEffort,
-    histories
+    histories,
+    abortSignal
   } = params;
 
   const stepRange = complexity === 'simple' ? '1-2' : `2-${maxPlanSteps}`;
@@ -428,7 +439,8 @@ const callPlanner = async (params: {
     temperature: 0.2,
     timeout: 480000,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   });
 
   const structuredSteps = parsePlanStepsFromModelText(text, maxPlanSteps);
@@ -468,6 +480,7 @@ const callReplanner = async (params: {
   toolPreference: ToolPreferenceMode;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<ReplanResult> => {
   const {
     modelKey,
@@ -480,7 +493,8 @@ const callReplanner = async (params: {
     toolNodes,
     toolPreference,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   } = params;
 
   const completionRate =
@@ -531,7 +545,8 @@ const callReplanner = async (params: {
     timeout: 480000,
     enableReasoning,
     reasoningEffort,
-    temperature: 0.2
+    temperature: 0.2,
+    abortSignal
   });
 
   const action = typeof json?.action === 'string' ? json.action : '';
@@ -585,9 +600,19 @@ const callCritic = async (params: {
   toolText: string;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<CriticResult> => {
-  const { modelKey, systemPrompt, goal, step, result, toolText, enableReasoning, reasoningEffort } =
-    params;
+  const {
+    modelKey,
+    systemPrompt,
+    goal,
+    step,
+    result,
+    toolText,
+    enableReasoning,
+    reasoningEffort,
+    abortSignal
+  } = params;
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -615,7 +640,8 @@ const callCritic = async (params: {
     enableReasoning,
     reasoningEffort,
     maxToken: 400,
-    temperature: 0.1
+    temperature: 0.1,
+    abortSignal
   });
 
   const score =
@@ -645,6 +671,7 @@ const callStepMemoryExtractor = async (params: {
   toolText: string;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ memory?: AgentPastStep['memory']; tokens: number }> => {
   const {
     modelKey,
@@ -654,7 +681,8 @@ const callStepMemoryExtractor = async (params: {
     stepResult,
     toolText,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   } = params;
 
   const messages: ChatCompletionMessageParam[] = [
@@ -674,7 +702,8 @@ const callStepMemoryExtractor = async (params: {
     timeout: 120000,
     enableReasoning,
     reasoningEffort,
-    maxToken: 360
+    maxToken: 360,
+    abortSignal
   });
 
   if (!json) return { memory: undefined, tokens };
@@ -744,6 +773,7 @@ const callFinalSynthesis = async (params: {
   decisionResponse?: string;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ text: string; tokens: number }> => {
   const {
     modelKey,
@@ -753,7 +783,8 @@ const callFinalSynthesis = async (params: {
     pastSteps,
     decisionResponse,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   } = params;
 
   const memoryText = renderWorkingMemoryText(workingMemory);
@@ -799,7 +830,8 @@ const callFinalSynthesis = async (params: {
     temperature: 0.2,
     timeout: 120000,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   });
   return { text: text.trim(), tokens };
 };
@@ -811,8 +843,9 @@ const callStepResultSynthesis = async (params: {
   toolText: string;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ text: string; tokens: number }> => {
-  const { modelKey, goal, step, toolText, enableReasoning, reasoningEffort } = params;
+  const { modelKey, goal, step, toolText, enableReasoning, reasoningEffort, abortSignal } = params;
   const messages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
@@ -832,13 +865,18 @@ const callStepResultSynthesis = async (params: {
     maxToken: 220,
     timeout: 60000,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   });
 
   return { text, tokens };
 };
 
 export async function dispatchAgentChat(props: Props): Promise<Response> {
+  const abortSignal = props.abortSignal;
+  const res = props.res;
+  const ensureNotAborted = () => throwIfAborted({ abortSignal, res });
+
   const {
     node: { nodeId, name },
     runtimeNodes,
@@ -868,6 +906,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   const model = getLLMModel(modelKey);
   if (!model) return Promise.reject('LLM model not found');
+
+  ensureNotAborted();
 
   const enableReasoning = !!aiChatReasoning && !!model.reasoning;
   const reasoningEffort =
@@ -977,6 +1017,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // Mode: ReAct (single tool-loop run)
   if (orchestrationMode === 'react') {
+    ensureNotAborted();
     pushFlowNodeStatus('执行中');
     const result = await dispatchRunTools({
       ...props,
@@ -994,6 +1035,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       },
       histories
     });
+
+    ensureNotAborted();
 
     const answer = (result[NodeOutputKeyEnum.answerText] || '').trim();
     const rText = result[NodeOutputKeyEnum.reasoningText] || '';
@@ -1058,13 +1101,15 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // Clarification gate (HITL-style)
   if (clarifyEnabled && toolNodes.length > 0) {
     pushFlowNodeStatus('任务澄清');
+    ensureNotAborted();
     const clarify = await callClarifier({
       modelKey,
       systemPrompt,
       goal: userChatInput,
       toolNodes,
       enableReasoning,
-      reasoningEffort
+      reasoningEffort,
+      abortSignal
     });
     totalTokens += clarify.tokens;
     totalRunTimes += 1;
@@ -1129,13 +1174,15 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   };
   if (workingMemoryEnabled) {
     pushFlowNodeStatus('提取工作记忆');
+    ensureNotAborted();
     const wm = await callWorkingMemory({
       modelKey,
       systemPrompt,
       goal: userChatInput,
       toolNodes,
       enableReasoning,
-      reasoningEffort
+      reasoningEffort,
+      abortSignal
     });
     workingMemory = wm.memory;
     totalTokens += wm.tokens;
@@ -1162,6 +1209,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     });
 
     pushFlowNodeStatus('任务规划');
+    ensureNotAborted();
     plannerResult = await callPlanner({
       modelKey,
       systemPrompt,
@@ -1172,7 +1220,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       toolPreference,
       enableReasoning,
       reasoningEffort,
-      histories
+      histories,
+      abortSignal
     });
 
     totalTokens += plannerResult.tokens;
@@ -1180,6 +1229,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     if (plannerResult.reasoningText) reasoningText = plannerResult.reasoningText.trim();
   } else if (!obviouslySimple) {
     pushFlowNodeStatus('任务评估');
+    ensureNotAborted();
     const [analysis, planner] = await Promise.all([
       callTaskAnalyzer({
         modelKey,
@@ -1187,7 +1237,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         toolNodes,
         histories,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        abortSignal
       }),
       callPlanner({
         modelKey,
@@ -1199,7 +1250,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         toolPreference,
         enableReasoning,
         reasoningEffort,
-        histories
+        histories,
+        abortSignal
       })
     ]);
 
@@ -1220,6 +1272,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // SIMPLE: run a single tool loop
   if (complexity === 'simple') {
     pushFlowNodeStatus('生成回答');
+    ensureNotAborted();
     const simple = await dispatchRunTools({
       ...props,
       runtimeEdges: effectiveRuntimeEdges,
@@ -1236,6 +1289,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       },
       histories
     });
+    ensureNotAborted();
 
     const answer = (simple[NodeOutputKeyEnum.answerText] || '').trim();
     const simpleReasoning = simple[NodeOutputKeyEnum.reasoningText] || '';
@@ -1300,6 +1354,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // COMPLEX: Plan-and-execute
   if (!plannerResult) {
     pushFlowNodeStatus('任务规划');
+    ensureNotAborted();
     plannerResult = await callPlanner({
       modelKey,
       systemPrompt,
@@ -1310,7 +1365,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       toolPreference,
       enableReasoning,
       reasoningEffort,
-      histories
+      histories,
+      abortSignal
     });
     totalTokens += plannerResult.tokens;
     totalRunTimes += 1;
@@ -1377,6 +1433,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   const lastCriticByStepId = new Map<string, CriticResult>();
 
   for (let loop = 0; loop < maxLoops; loop++) {
+    ensureNotAborted();
     const step = planQueue.shift();
     if (!step) break;
     const stepIndex = pastSteps.length + 1;
@@ -1420,6 +1477,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         : {})
     });
 
+    ensureNotAborted();
     const stepResult = await dispatchRunTools({
       ...props,
       runtimeEdges: effectiveRuntimeEdges,
@@ -1436,6 +1494,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       },
       histories
     });
+    ensureNotAborted();
 
     let stepAnswer = (stepResult[NodeOutputKeyEnum.answerText] || '').trim();
     const stepReasoning = stepResult[NodeOutputKeyEnum.reasoningText];
@@ -1463,13 +1522,15 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     // If answer is empty (some reasoning models output reasoning-only), synthesize from tool results.
     if (!stepAnswer && toolText) {
       pushFlowNodeStatus('整理工具结果');
+      ensureNotAborted();
       const synthesized = await callStepResultSynthesis({
         modelKey,
         goal: userChatInput,
         step,
         toolText,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        abortSignal
       });
       totalTokens += synthesized.tokens;
       totalRunTimes += 1;
@@ -1491,6 +1552,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const isLastStep = planQueue.length === 0;
     if (shouldCallCritic({ enabled: criticEnabled, stepAnswer, isLastStep, hasToolCalls })) {
       pushFlowNodeStatus('任务评审');
+      ensureNotAborted();
       const critic = await callCritic({
         modelKey,
         systemPrompt,
@@ -1499,7 +1561,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         result: stepAnswer,
         toolText,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        abortSignal
       });
       totalTokens += critic.tokens;
       totalRunTimes += 1;
@@ -1537,6 +1600,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     // Step memory extractor
     if (stepMemoryEnabled && (stepAnswer.length >= 30 || toolText.length >= 10)) {
       pushFlowNodeStatus('提取步骤记忆');
+      ensureNotAborted();
       const extracted = await callStepMemoryExtractor({
         modelKey,
         systemPrompt,
@@ -1545,7 +1609,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         stepResult: stepAnswer,
         toolText,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        abortSignal
       });
       totalTokens += extracted.tokens;
       totalRunTimes += 1;
@@ -1567,6 +1632,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     // Replan
     pushFlowNodeStatus('任务规划更新');
+    ensureNotAborted();
     let decision = await callReplanner({
       modelKey,
       systemPrompt,
@@ -1578,7 +1644,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       toolNodes,
       toolPreference,
       enableReasoning,
-      reasoningEffort
+      reasoningEffort,
+      abortSignal
     });
     totalTokens += decision.tokens;
     totalRunTimes += 1;
@@ -1592,6 +1659,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       pushTodoSnapshot();
 
       pushFlowNodeStatus('任务总结');
+      ensureNotAborted();
       const synthesized = await callFinalSynthesis({
         modelKey,
         systemPrompt,
@@ -1600,7 +1668,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         pastSteps,
         decisionResponse: decision.response,
         enableReasoning,
-        reasoningEffort
+        reasoningEffort,
+        abortSignal
       });
       totalTokens += synthesized.tokens;
       totalRunTimes += 1;
@@ -1742,10 +1811,12 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
   // Fallback synthesis
   pushFlowNodeStatus('任务总结');
+  ensureNotAborted();
   const fallbackAnswer =
     (
       await (async () => {
         if (pastSteps.length === 0) return '';
+        ensureNotAborted();
         const synthesized = await callFinalSynthesis({
           modelKey,
           systemPrompt,
@@ -1753,7 +1824,8 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           workingMemory,
           pastSteps,
           enableReasoning,
-          reasoningEffort
+          reasoningEffort,
+          abortSignal
         });
         totalTokens += synthesized.tokens;
         totalRunTimes += 1;

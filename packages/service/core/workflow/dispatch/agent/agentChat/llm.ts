@@ -29,6 +29,7 @@ export const callChatCompletionText = async (params: {
   timeout?: number;
   enableReasoning: boolean;
   reasoningEffort?: string;
+  abortSignal?: AbortSignal;
 }): Promise<{ text: string; tokens: number; reasoningText: string }> => {
   const {
     modelKey,
@@ -37,7 +38,8 @@ export const callChatCompletionText = async (params: {
     maxToken,
     timeout = 60000,
     enableReasoning,
-    reasoningEffort
+    reasoningEffort,
+    abortSignal
   } = params;
 
   const model = getLLMModel(modelKey);
@@ -55,7 +57,8 @@ export const callChatCompletionText = async (params: {
   };
 
   const resp = (await ai.chat.completions.create(
-    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
+    abortSignal ? { signal: abortSignal } : undefined
   )) as unknown as ChatCompletion;
 
   const text = (resp.choices?.[0]?.message?.content || '').trim();
@@ -79,6 +82,7 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
   reasoningEffort?: string;
   maxToken?: number;
   temperature?: number;
+  abortSignal?: AbortSignal;
 }): Promise<{ json: T | null; tokens: number; reasoningText: string; rawText: string }> => {
   const {
     modelKey,
@@ -87,7 +91,8 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
     enableReasoning,
     reasoningEffort,
     maxToken,
-    temperature = 0
+    temperature = 0,
+    abortSignal
   } = params;
   const model = getLLMModel(modelKey);
   if (!model) return { json: null, tokens: 0, reasoningText: '', rawText: '' };
@@ -104,7 +109,8 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
   };
 
   const resp = (await ai.chat.completions.create(
-    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0]
+    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
+    abortSignal ? { signal: abortSignal } : undefined
   )) as unknown as ChatCompletion;
 
   const rawText = resp.choices?.[0]?.message?.content || '';

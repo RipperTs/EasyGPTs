@@ -27,6 +27,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
+import { throwIfAborted } from '../../utils/abort';
 
 type FunctionCallCompletion = {
   id: string;
@@ -68,6 +69,8 @@ export const runToolWithPromptCall = async (
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = props;
+  const abortSignal = props.abortSignal;
+  const ensureNotAborted = () => throwIfAborted({ abortSignal, res });
   const assistantResponses = response?.assistantResponses || [];
 
   const toolsPrompt = JSON.stringify(
@@ -146,6 +149,7 @@ export const runToolWithPromptCall = async (
   });
   const createAiResponse = () =>
     ai.chat.completions.create(requestBody as any, {
+      signal: abortSignal,
       headers: { Accept: 'application/json, text/plain, */*' }
     });
 
@@ -171,12 +175,15 @@ export const runToolWithPromptCall = async (
   };
 
   const { answer, reasoning } = await (async () => {
+    ensureNotAborted();
     let aiResponse = await createAiResponse();
     try {
       return await parseAiResponse(aiResponse);
     } catch (e) {
       if (!isLLMEmptyResponseError(e)) throw e;
+      ensureNotAborted();
       await sleep(150);
+      ensureNotAborted();
       aiResponse = await createAiResponse();
       try {
         return await parseAiResponse(aiResponse);

@@ -126,6 +126,7 @@ type Props = ChatDispatchProps & {
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
   let {
     res,
+    abortSignal: inputAbortSignal,
     runtimeNodes = [],
     runtimeEdges = [],
     histories = [],
@@ -134,6 +135,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     stream = false,
     ...props
   } = data;
+
+  const abortSignal = (() => {
+    if (inputAbortSignal) return inputAbortSignal;
+    const controller = new AbortController();
+    const abort = () => {
+      if (controller.signal.aborted) return;
+      controller.abort('client_disconnected');
+    };
+    if (res) {
+      res.once('close', abort);
+      res.once('error', abort);
+      if (res.closed) abort();
+    }
+    return controller.signal;
+  })();
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
@@ -382,10 +398,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     node: RuntimeNodeItemType,
     skippedNodeIdList = new Set<string>()
   ): Promise<RuntimeNodeItemType[]> {
-    if (workflowStopped || res?.closed || props.maxRunTimes <= 0) return [];
+    if (workflowStopped || res?.closed || abortSignal.aborted || props.maxRunTimes <= 0) return [];
     // Thread avoidance
     await surrenderProcess();
-    if (workflowStopped || res?.closed || props.maxRunTimes <= 0) return [];
+    if (workflowStopped || res?.closed || abortSignal.aborted || props.maxRunTimes <= 0) return [];
 
     addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, appId: props.runningAppInfo.id });
 
@@ -572,6 +588,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const dispatchData: ModuleDispatchProps<Record<string, any>> = {
       ...props,
       res,
+      abortSignal,
       variables,
       histories,
       user,
@@ -653,12 +670,18 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   const pluginOutputModule = runtimeNodes.find(
     (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
   );
-  if (pluginOutputModule && props.mode !== 'debug' && !workflowStopped) {
+  if (
+    pluginOutputModule &&
+    props.mode !== 'debug' &&
+    !workflowStopped &&
+    !abortSignal.aborted &&
+    !res?.closed
+  ) {
     await nodeRunWithActive(pluginOutputModule);
   }
 
   // Interactive node
-  if (workflowInteractiveResponse) {
+  if (workflowInteractiveResponse && !abortSignal.aborted && !res?.closed) {
     const interactiveResult = handleInteractiveResult({
       entryNodeIds: workflowInteractiveResponse.entryNodeIds,
       interactiveResponse: workflowInteractiveResponse.interactiveResponse

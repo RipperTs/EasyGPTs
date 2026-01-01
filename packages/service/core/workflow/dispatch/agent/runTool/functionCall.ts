@@ -29,6 +29,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue, formatToolResponse, isLLMEmptyResponseError, sleep } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import { throwIfAborted } from '../../utils/abort';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -128,6 +129,8 @@ export const runToolWithFunctionCall = async (
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = props;
+  const abortSignal = props.abortSignal;
+  const ensureNotAborted = () => throwIfAborted({ abortSignal, res });
   const assistantResponses = response?.assistantResponses || [];
   const toolResultCache = response?.toolResultCache || {};
   const toolValidationRetry = response?.toolValidationRetry || {};
@@ -216,7 +219,9 @@ export const runToolWithFunctionCall = async (
   });
   const createAiResponse = async () => {
     try {
+      ensureNotAborted();
       return await ai.chat.completions.create(requestBody as any, {
+        signal: abortSignal,
         headers: { Accept: 'application/json, text/plain, */*' }
       });
     } catch (error: unknown) {
@@ -247,7 +252,9 @@ export const runToolWithFunctionCall = async (
             function_call: 'auto'
           } as any;
           const ai2 = getAIApi({ timeout: 480000 });
+          ensureNotAborted();
           return ai2.chat.completions.create(requestBody as any, {
+            signal: abortSignal,
             headers: { Accept: 'application/json, text/plain, */*' }
           });
         }
@@ -295,12 +302,15 @@ export const runToolWithFunctionCall = async (
   };
 
   const { answer, functionCalls, reasoning } = await (async () => {
+    ensureNotAborted();
     let aiResponse = await createAiResponse();
     try {
       return await parseAiResponse(aiResponse);
     } catch (e) {
       if (!isLLMEmptyResponseError(e)) throw e;
+      ensureNotAborted();
       await sleep(150);
+      ensureNotAborted();
       aiResponse = await createAiResponse();
       try {
         return await parseAiResponse(aiResponse);
