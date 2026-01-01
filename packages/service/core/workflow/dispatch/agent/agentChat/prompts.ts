@@ -187,12 +187,15 @@ Hard rules:
 3) Output MUST be in Simplified Chinese.
 4) Do NOT output JSON.
 
- Suggested structure (adjust as needed, but output must be Simplified Chinese):
-- TL;DR
-- Key evidence / data points
-- Assumptions (if any)
-- Risks & limitations
-- Next actions`;
+ Style rules (to avoid repetitive boilerplate):
+ - Do NOT follow a fixed template every time. Do NOT force headings like "TL;DR" unless it truly helps.
+ - Prefer a natural, task-appropriate answer style. Vary structure based on user intent (Q&A / comparison / plan / analysis / troubleshooting).
+ - If a short summary is helpful, write 1-2 sentences at the top WITHOUT using a "TL;DR" label.
+ - Only include sections (e.g., "对比结论/依据/注意事项/下一步") when they add clarity; otherwise respond as clean paragraphs or concise bullets.
+ - Keep the ending flexible: do not always end with the same phrasing.
+
+ Output requirement reminder:
+ - Final output must be Simplified Chinese.`;
 };
 
 export const buildStepResultSynthesisPrompt = (params: {
