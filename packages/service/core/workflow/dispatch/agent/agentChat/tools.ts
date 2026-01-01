@@ -163,6 +163,16 @@ Prefer providing a task description + file URLs; avoid using it for text-only ta
 // Make tool discovery easier in mixed naming environments.
 const CODE_INTERPRETER_NAME_HINT = `Common names in this system: "Python 数据分析沙箱" (preferred), "代码解释器", "Code Interpreter".`;
 
+const READ_FILES_NAME_HINT = `Common names in this system: "读取文件", "Read Files", "readFiles".`;
+
+const FILE_TOOL_HINT = `## File-first Tool Rule
+If the conversation includes uploaded documents (file_url parts / Document > 0) AND the user request depends on the document content:
+1) Call the file parsing tool (${READ_FILES_NAME_HINT}) FIRST.
+2) Use its outputs for downstream tool calls and reasoning:
+   - readFilesFileList: JSON array of { filename, url } (canonical download links)
+   - system_text: parsed text content (may be truncated)
+Only then proceed to the actual task.`;
+
 export const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean => {
   return toolNodes.some(
     (node) =>
@@ -172,16 +182,37 @@ export const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean =>
   );
 };
 
+export const hasReadFilesTool = (toolNodes: RuntimeNodeItemType[]): boolean => {
+  return toolNodes.some(
+    (node) =>
+      node.flowNodeType === FlowNodeTypeEnum.readFiles ||
+      /read.*files?|读取文件|文档.*解析|文件.*解析/i.test(node.name || '') ||
+      /read.*files?|读取文件|文档.*解析|文件.*解析/i.test(node.intro || '')
+  );
+};
+
 export const withToolPreference = (
   systemPrompt: string | undefined,
   toolNodes: RuntimeNodeItemType[],
   mode: ToolPreferenceMode
 ): string => {
-  if (mode === 'none' || !hasCodeInterpreter(toolNodes)) {
-    return systemPrompt || '';
+  const parts: string[] = [];
+  if (systemPrompt) parts.push(systemPrompt);
+
+  if (hasReadFilesTool(toolNodes)) {
+    parts.push(FILE_TOOL_HINT);
   }
-  const hint = mode === 'light' ? TOOL_PREFERENCE_PROMPT_LIGHT : TOOL_PREFERENCE_PROMPT_STRONG;
-  return `${systemPrompt ? `${systemPrompt}\n\n` : ''}${hint}\n\n${CODE_INTERPRETER_NAME_HINT}\n\n`;
+
+  if (mode !== 'none' && hasCodeInterpreter(toolNodes)) {
+    const hint = mode === 'light' ? TOOL_PREFERENCE_PROMPT_LIGHT : TOOL_PREFERENCE_PROMPT_STRONG;
+    parts.push(hint, CODE_INTERPRETER_NAME_HINT);
+  }
+
+  const merged = parts
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join('\n\n');
+  return merged ? `${merged}\n\n` : '';
 };
 
 const READ_ONLY_ALLOWED_TOOL_TYPES = new Set<FlowNodeTypeEnum>([

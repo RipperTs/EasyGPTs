@@ -56,6 +56,13 @@ export const getMultiplePrompt = (obj: {
 Document：{{fileCount}}
 Image：{{imgCount}}
 ------
+If Document > 0 and the user request depends on the document content, do this FIRST:
+1) Call the file parsing tool (usually named "读取文件"/"Read Files"/"readFiles") with the file URLs from this message.
+2) Use its outputs for subsequent steps:
+   - readFilesFileList: JSON array of { filename, url } (download links)
+   - system_text: parsed text content (may be truncated)
+Then continue solving the task.
+
 {{question}}`;
   return replaceVariable(prompt, obj);
 };

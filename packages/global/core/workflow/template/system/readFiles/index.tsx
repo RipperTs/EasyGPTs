@@ -23,7 +23,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
   name: i18nT('app:workflow.read_files'),
   intro: '解析对话中所有上传的文档，并返回对应文档内容和文档名称以及文档访问链接信息。',
   showStatus: true,
-  version: '493',
+  version: '494',
   isTool: true,
   inputs: [
     {
