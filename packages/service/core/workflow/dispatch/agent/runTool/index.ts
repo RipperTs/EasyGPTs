@@ -28,6 +28,7 @@ import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
+import { filterToolNodesByRelevance } from './toolFilter';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -115,6 +116,19 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolParams
       };
     });
+  const filteredToolNodes = filterToolNodesByRelevance({
+    toolNodes,
+    queryText: [
+      userChatInput || '',
+      getHistoryPreview(chatHistories, 400)
+        .map((i) => i.value)
+        .filter(Boolean)
+        .join('\n')
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    maxTools: 30
+  });
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),
@@ -156,7 +170,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
-        toolNodes,
+        toolNodes: filteredToolNodes,
         toolModel,
         maxRunToolTimes: 30,
         messages: adaptMessages,
@@ -167,7 +181,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.functionCall) {
       return runToolWithFunctionCall({
         ...props,
-        toolNodes,
+        toolNodes: filteredToolNodes,
         toolModel,
         messages: adaptMessages,
         enableReasoning,
@@ -196,7 +210,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     return runToolWithPromptCall({
       ...props,
-      toolNodes,
+      toolNodes: filteredToolNodes,
       toolModel,
       messages: adaptMessages,
       enableReasoning,

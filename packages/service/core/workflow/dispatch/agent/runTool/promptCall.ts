@@ -279,9 +279,9 @@ export const runToolWithPromptCall = async (
       data: {
         tool: {
           id: toolJson.id,
-          toolName: '',
-          toolAvatar: '',
-          params: '',
+          toolName: toolNode.name,
+          toolAvatar: toolNode.avatar,
+          params: toolJson.arguments,
           response: sliceStrStartEnd(stringToolResponse, 500, 500)
         }
       }

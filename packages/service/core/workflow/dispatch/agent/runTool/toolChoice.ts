@@ -629,9 +629,9 @@ export const runToolWithToolChoice = async (
             data: {
               tool: {
                 id: tool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: '',
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                params: JSON.stringify(args),
                 response: sliceStrStartEnd(stringToolResponse, 500, 500)
               }
             }
@@ -885,9 +885,9 @@ export const runToolWithToolChoice = async (
                   data: {
                     tool: {
                       id: tool.id,
-                      toolName: '',
-                      toolAvatar: '',
-                      params: '',
+                      toolName: toolNode.name,
+                      toolAvatar: toolNode.avatar,
+                      params: tool.function.arguments,
                       response: sliceStrStartEnd(stringToolResponse, 500, 500)
                     }
                   }
@@ -996,8 +996,51 @@ async function streamResponse({
 
   let textAnswer = '';
   let reasoning = '';
-  let callingTool: { name: string; arguments: string } | null = null;
   let toolCalls: ChatCompletionMessageToolCall[] = [];
+  const toolCallMap = new Map<number, ChatCompletionMessageToolCall>();
+  const emittedToolCallIds = new Set<string>();
+
+  type ToolCallDelta = {
+    index?: number;
+    id?: string;
+    type?: string;
+    function?: {
+      name?: string;
+      arguments?: string;
+    };
+  };
+
+  const getToolIndex = (delta: ToolCallDelta) =>
+    typeof delta.index === 'number' && Number.isFinite(delta.index) ? delta.index : 0;
+
+  const tryEmitToolCall = (toolCall: ChatCompletionMessageToolCall) => {
+    if (emittedToolCallIds.has(toolCall.id)) return;
+
+    const functionName = toolCall.function?.name || '';
+    if (!functionName) return;
+
+    const toolNode = toolNodes.find((item) => item.nodeId === functionName);
+    if (!toolNode) return;
+
+    toolCall.toolName = toolNode.name;
+    toolCall.toolAvatar = toolNode.avatar;
+
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.toolCall,
+      data: {
+        tool: {
+          id: toolCall.id,
+          toolName: toolNode.name,
+          toolAvatar: toolNode.avatar,
+          functionName,
+          params: toolCall.function?.arguments ?? '',
+          response: ''
+        }
+      }
+    });
+
+    emittedToolCallIds.add(toolCall.id);
+  };
 
   for await (const part of stream) {
     if (res.closed) {
@@ -1033,73 +1076,54 @@ async function streamResponse({
           reasoning_content: reasoningContent
         })
       });
-    } else if (responseChoice?.tool_calls?.[0]) {
-      const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
-      // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
-      if (toolCall.id || callingTool) {
-        // Start call tool
-        if (toolCall.id) {
-          callingTool = {
-            name: toolCall.function?.name || '',
-            arguments: toolCall.function?.arguments || ''
-          };
-        } else if (callingTool) {
-          // Continue call
-          callingTool.name += toolCall.function.name || '';
-          callingTool.arguments += toolCall.function.arguments || '';
-        }
+    } else if (responseChoice?.tool_calls?.length) {
+      const deltas = responseChoice.tool_calls as unknown as ToolCallDelta[];
 
-        const toolFunction = callingTool!;
+      for (const delta of deltas) {
+        const idx = getToolIndex(delta);
 
-        const toolNode = toolNodes.find((item) => item.nodeId === toolFunction.name);
+        const namePart = delta.function?.name || '';
+        const argPart = delta.function?.arguments || '';
 
-        if (toolNode) {
-          // New tool, add to list.
+        const existing = toolCallMap.get(idx);
+        if (!existing) {
           const toolId = getNanoid();
-          toolCalls.push({
-            ...toolCall,
+          const newToolCall: ChatCompletionMessageToolCall = {
             id: toolId,
             type: 'function',
-            function: toolFunction,
-            toolName: toolNode.name,
-            toolAvatar: toolNode.avatar
-          });
-
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: toolId,
-                toolName: toolNode.name,
-                toolAvatar: toolNode.avatar,
-                functionName: toolFunction.name,
-                params: toolFunction?.arguments ?? '',
-                response: ''
-              }
+            function: {
+              name: namePart,
+              arguments: argPart
             }
-          });
-          callingTool = null;
-        }
-      } else {
-        /* arg 插入最后一个工具的参数里 */
-        const arg: string = toolCall?.function?.arguments ?? '';
-        const currentTool = toolCalls[toolCalls.length - 1];
-        if (currentTool && arg) {
-          currentTool.function.arguments += arg;
+          };
+          toolCalls.push(newToolCall);
+          toolCallMap.set(idx, newToolCall);
+          tryEmitToolCall(newToolCall);
+        } else {
+          if (namePart) {
+            existing.function.name = `${existing.function.name || ''}${namePart}`;
+          }
+          if (argPart) {
+            existing.function.arguments = `${existing.function.arguments || ''}${argPart}`;
+          }
 
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.toolParams,
-            data: {
-              tool: {
-                id: currentTool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: arg,
-                response: ''
+          if (argPart) {
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.toolParams,
+              data: {
+                tool: {
+                  id: existing.id,
+                  toolName: '',
+                  toolAvatar: '',
+                  params: argPart,
+                  response: ''
+                }
               }
-            }
-          });
+            });
+          }
+
+          tryEmitToolCall(existing);
         }
       }
     }

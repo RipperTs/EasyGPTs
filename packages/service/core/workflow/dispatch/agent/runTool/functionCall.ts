@@ -420,9 +420,9 @@ export const runToolWithFunctionCall = async (
           data: {
             tool: {
               id: tool.id,
-              toolName: '',
-              toolAvatar: '',
-              params: '',
+              toolName: toolNode.name,
+              toolAvatar: toolNode.avatar,
+              params: JSON.stringify(args),
               response: sliceStrStartEnd(stringToolResponse, 500, 500)
             }
           }
