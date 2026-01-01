@@ -28,7 +28,8 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeInterpreterMaxRetry]?: number;
   [NodeInputKeyEnum.codeInterpreterTimeout]?: number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.code]: string;
+  [NodeInputKeyEnum.userChatInput]?: string;
+  [NodeInputKeyEnum.code]?: string;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -51,17 +52,23 @@ type ToolOutput = {
   [NodeOutputKeyEnum.code]: string;
 };
 
-// 最大允许的stdout输出长度（字符数），超过此长度会触发警告和重试
-const MAX_STDOUT_LENGTH = 4000;
+// 最大允许的 stdout 输出长度（字符数），超过此长度会触发警告和重试
+const MAX_STDOUT_LENGTH = 2000;
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a senior Python engineer acting as a Code Debugger for Code Interpreter.\n' +
-  'Your job is to fix broken Python code that failed during execution in a sandbox.\n' +
+  'You are a senior Python engineer acting as a Code Interpreter Orchestrator.\n' +
+  'Your job is to generate and/or fix runnable Python code to solve the given task in a sandbox, then iterate until it succeeds.\n' +
   '\n' +
   'Execution environment:\n' +
   '- The server will download each URL in `files` into the current working directory before running the code.\n' +
   '- Your code can read/write local files in the working directory.\n' +
   '- Network access may be restricted; do not rely on external HTTP calls.\n' +
+  '\n' +
+  'CRITICAL - Token & Output Discipline:\n' +
+  '- This tool is used for heavy data/file/compute tasks. Use Python to compute and summarize results.\n' +
+  '- NEVER print large datasets, raw file contents, or long lists.\n' +
+  '- Prefer producing artifacts (CSV/JSON/PNG) and print only a short conclusion (<= 2000 chars).\n' +
+  '- If the best output is a file (cleaned dataset/report), write it to disk and keep stdout minimal.\n' +
   '\n' +
   'CRITICAL - Data Processing Rules:\n' +
   '- ALL data processing, analysis, aggregation, and transformation MUST be done in your Python code.\n' +
@@ -73,7 +80,7 @@ const DEFAULT_SYSTEM_PROMPT =
   'Output rules:\n' +
   '- Output ONLY Python code (prefer a fenced ```python code block```). No explanations.\n' +
   '- Make the code self-contained and directly runnable as a script.\n' +
-  '- Print CONCISE final text results to stdout (max 4000 chars). If structured, use compact JSON.\n' +
+  '- Print CONCISE final text results to stdout (max 2000 chars). If structured, use compact JSON.\n' +
   '- For visualizations/files: save them (e.g. plt.savefig("chart.png"), df.to_csv("data.csv")).\n' +
   '  The Code Interpreter service will AUTOMATICALLY detect and return file URLs in `image_url` and `files` response fields.\n' +
   '  DO NOT print filenames or file paths to stdout. Stdout is ONLY for text results (or can be empty if only generating files).\n' +
@@ -152,7 +159,7 @@ Fix the code so it runs successfully.
 CRITICAL Rules:
 - Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
 - Perform ALL data processing/analysis/aggregation IN YOUR CODE, not after execution.
-- Print ONLY final text results to stdout (max ~4000 chars). Use concise summaries, not raw data.
+- Print ONLY final text results to stdout (max ~2000 chars). Use concise summaries, not raw data.
 - For large datasets: calculate statistics/summaries in code, print compact results only.
 - Be robust with local file names: list the working directory and open the correct downloaded file.
 - For visualizations/files: save to local files (e.g. plt.savefig("chart.png"), df.to_csv("output.csv")).
@@ -160,6 +167,54 @@ CRITICAL Rules:
   DO NOT print filenames to stdout - stdout is for text results only (or leave empty if only generating files).
 - DO NOT encode images to Base64 (no \`data:image/...;base64,\`, no long Base64 strings).
 - DO NOT return full file contents, raw arrays, or intermediate data to stdout.`;
+
+  return [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: systemPrompt
+    },
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: userPrompt
+    }
+  ];
+};
+
+const buildGenerateCodeMessages = ({
+  systemPrompt,
+  task,
+  files,
+  capabilitiesText
+}: {
+  systemPrompt: string;
+  task: string;
+  files: string[];
+  capabilitiesText?: string;
+}): ChatCompletionMessageParam[] => {
+  const filesPrompt =
+    files.length > 0
+      ? `\n\nInput file URLs (files):\n${files.map((url) => `- ${url}`).join('\n')}`
+      : '\n\nInput file URLs (files): (none)';
+  const capabilitiesPrompt = capabilitiesText ? `\n\n${capabilitiesText}` : '';
+
+  const userPrompt = `Task:
+${task}
+${filesPrompt}
+${capabilitiesPrompt}
+
+You will have these variables available in the runtime (already defined for you):
+- FILES: list[str] (input file URLs, may be empty)
+
+Write a runnable Python script to solve the task.
+
+CRITICAL Rules:
+- Output ONLY code (MUST be a \`\`\`python code block\`\`\`).
+- Perform ALL data processing/analysis/aggregation IN YOUR CODE.
+- Print ONLY the final concise result (<= ~2000 chars). Prefer compact JSON.
+- NEVER print raw datasets / long lists / file contents.
+- For large outputs, write them to files (CSV/JSON/PNG) instead of stdout.
+- For charts, save images to local files (e.g. plt.savefig("chart.png")). The executor will return image_url/files.
+- Do NOT print filenames to stdout. Stdout is only for final text results (or empty).`;
 
   return [
     {
@@ -325,6 +380,7 @@ const runPythonInCodeInterpreter = async ({
     throw new Error('Can not find CODE_INTERPRETER_URL in env');
   }
 
+  const apiKey = process.env.CODE_INTERPRETER_API_KEY?.trim();
   const requestUrl = `${trimTrailingSlash(process.env.CODE_INTERPRETER_URL)}/api/v1/execute`;
   const executeCode = buildExecuteCode({ pythonCode, files });
 
@@ -344,7 +400,8 @@ const runPythonInCodeInterpreter = async ({
     {
       headers: {
         'Content-Type': 'application/json',
-        'X-Request-Type': 'CODE_INTERPRETER'
+        'X-Request-Type': 'CODE_INTERPRETER',
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
       },
       timeout: timeoutSeconds * 1000
     }
@@ -455,6 +512,7 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
       codeInterpreterMaxRetry,
       codeInterpreterTimeout,
       fileUrlList,
+      userChatInput,
       code
     }
   } = props;
@@ -483,8 +541,11 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     };
   }
 
-  if (!code || !code.trim()) {
-    const message = '代码为空';
+  const task = typeof userChatInput === 'string' ? userChatInput.trim() : '';
+  const inputCode = typeof code === 'string' ? code.trim() : '';
+
+  if (!task && !inputCode) {
+    const message = '任务描述与代码均为空';
     const pluginOutput = {
       [NodeOutputKeyEnum.result]: '',
       [NodeOutputKeyEnum.error]: message,
@@ -550,23 +611,83 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
     ? summarizeCodeInterpreterCapabilities(capabilities)
     : undefined;
 
-  const finalSystemPrompt = (systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT).trim();
+  const finalSystemPrompt = (
+    systemPrompt?.trim()
+      ? `${DEFAULT_SYSTEM_PROMPT}\n\n# User Overrides\n${systemPrompt.trim()}`
+      : DEFAULT_SYSTEM_PROMPT
+  ).trim();
   const aiParams = {
     userKey: user.openaiAccount,
     timeout: 480000
   } as const;
 
-  let currentCode = code.trim();
+  let currentCode = inputCode;
   let executionLog = '';
   let lastErrorText = '';
   let totalTokens = 0;
   let lastRaw = '';
+  let generatedRaw = '';
   let attempt = 0;
+
+  // If user didn't provide code, generate initial code from task first.
+  if (!currentCode) {
+    const messages = buildGenerateCodeMessages({
+      systemPrompt: finalSystemPrompt,
+      task,
+      files,
+      capabilitiesText
+    });
+    const {
+      code: generatedCode,
+      tokens,
+      raw
+    } = await callModelGetCode({
+      model: llmModel.model,
+      messages,
+      aiParams
+    });
+    totalTokens += tokens;
+    generatedRaw = raw;
+
+    if (!generatedCode) {
+      const message = '代码生成失败：模型未返回有效代码';
+      const pluginOutput = {
+        [NodeOutputKeyEnum.result]: '',
+        [NodeOutputKeyEnum.error]: message,
+        [NodeOutputKeyEnum.execution_time]: 0,
+        [NodeOutputKeyEnum.image_url]: '',
+        [NodeOutputKeyEnum.files]: [],
+        [NodeOutputKeyEnum.inputs]: files,
+        [NodeOutputKeyEnum.code]: ''
+      };
+
+      return {
+        ...pluginOutput,
+        [DispatchNodeResponseKeyEnum.toolResponses]: message,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          errorText: message,
+          pluginOutput,
+          nodeInputs: {
+            systemPrompt: finalSystemPrompt,
+            task,
+            files,
+            capabilities: capabilitiesText
+          },
+          nodeOutputs: {
+            rawResponse: raw
+          },
+          textOutput: message
+        },
+        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
+      };
+    }
+
+    currentCode = generatedCode.trim();
+  }
 
   for (attempt = 1; attempt <= maxRetry; attempt++) {
     try {
-      // 第一次尝试：直接执行用户代码
-      // 后续尝试：调用 AI 修复代码
+      // attempt=1: run current code; attempt>1: fix then run
       if (attempt > 1) {
         const messages = buildFixCodeMessages({
           systemPrompt: finalSystemPrompt,
@@ -640,10 +761,12 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
             timeoutSeconds,
             capabilities: capabilitiesText,
             files,
-            inputCode: code
+            task,
+            inputCode
           },
           nodeOutputs: {
             attempts: attempt,
+            generatedRawResponse: generatedRaw,
             rawResponse: lastRaw
           },
           code: currentCode,
@@ -709,10 +832,12 @@ export const dispatchCodeInterpreter = async (props: Props): Promise<Response> =
         timeoutSeconds,
         capabilities: capabilitiesText,
         files,
-        inputCode: code
+        task,
+        inputCode
       },
       nodeOutputs: {
         attempts: attempt || maxRetry,
+        generatedRawResponse: generatedRaw,
         rawResponse: lastRaw
       },
       code: currentCode,

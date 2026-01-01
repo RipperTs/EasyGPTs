@@ -21,16 +21,27 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeInter',
-  name: '代码执行器',
-  intro: '在沙箱环境中执行 Python 代码。支持数据分析、可视化、文件处理等操作。',
+  name: '代码解释器（Python）',
+  intro:
+    '面向 Agent 的 Python 代码解释器：可直接输入任务描述，由系统自动生成并执行 Python（含自动修复重试），适合数据分析/文件处理/科学计算等高 Token 任务。',
   showStatus: true,
   isTool: true,
-  version: '501',
+  version: '503',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.all,
-      description: '仅在代码执行失败时用于自动修复代码。'
+      description: '用于自动生成/修复 Python 代码（执行器只负责运行代码）。'
+    },
+    {
+      key: NodeInputKeyEnum.aiSystemPrompt,
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: '系统提示词（可选）',
+      max: 3000,
+      value: '',
+      description:
+        '仅影响“生成/修复代码”的策略，不影响沙箱执行环境。建议留空使用默认最佳实践提示词。'
     },
     {
       key: NodeInputKeyEnum.codeInterpreterMaxRetry,
@@ -62,18 +73,32 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       description:
         '需要在代码中操作的文件链接（http(s)）。可留空：将自动使用用户在当前对话中上传的文件。',
       required: false,
-      value: []
+      value: [],
+      toolDescription: '需要处理的文件链接列表（http(s)），可留空'
+    },
+    {
+      key: NodeInputKeyEnum.userChatInput,
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: '任务描述',
+      description:
+        '用自然语言描述你希望通过 Python 完成的任务（数据分析/计算/文件处理等）。若提供了“Python 代码”，则以代码为准。',
+      placeholder:
+        '例如：读取上传的 CSV，按城市统计订单金额，输出 Top10，并画出柱状图保存为图片；同时导出统计结果为 result.csv。',
+      required: false,
+      toolDescription: '要完成的任务描述（会自动生成并执行 Python 代码）'
     },
     {
       key: NodeInputKeyEnum.code,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
-      label: 'Python 代码',
-      description: '要在沙箱环境中执行的 Python 代码。代码中可使用 FILES 变量访问文件列表。',
+      label: 'Python 代码（可选）',
+      description:
+        '可选：直接提供要执行的 Python 代码（高级用法）。代码中可使用 FILES 变量访问文件列表。',
       placeholder:
         'import matplotlib.pyplot as plt\n\ndata = [1, 2, 3, 4, 5]\nplt.plot(data)\nplt.savefig("chart.png")',
-      required: true,
-      toolDescription: '要执行的 Python 代码'
+      required: false,
+      toolDescription: '可选：直接提供要执行的 Python 代码（若不提供则根据任务描述自动生成）'
     }
   ],
   outputs: [

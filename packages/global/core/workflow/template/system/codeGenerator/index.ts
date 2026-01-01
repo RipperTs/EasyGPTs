@@ -21,12 +21,12 @@ export const CodeGeneratorModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeGenerator',
-  name: '代码生成器',
+  name: '（已废弃）代码生成器',
   intro:
-    '根据用户的自然语言需求，生成可执行的 Python 代码。可配合代码执行器使用，实现从需求到执行的完整流程。',
+    '已废弃：请直接使用「代码解释器（Python）」节点（可直接输入任务描述，自动生成并执行 Python，并支持自动修复重试）。',
   showStatus: true,
-  isTool: true,
-  version: '502',
+  isTool: false,
+  version: '503',
   inputs: [
     {
       ...Input_Template_SelectAIModel,

@@ -133,25 +133,31 @@ export const extractToolPreviewText = (assistant: AIChatItemValueItemType[], max
 // Keep this in English to avoid interfering with user-visible Chinese outputs.
 const TOOL_PREFERENCE_PROMPT_STRONG = `## Code Interpreter Tool Usage (Critical)
 
-ONLY use Code Interpreter when the task REQUIRES code execution to compute/verify results.
+ONLY use Code Interpreter when the step truly REQUIRES code execution to compute/verify results.
 
 Use when:
 - Data analysis with real calculations (statistics, trends, correlations)
 - Numerical computation beyond simple arithmetic
-- File/data processing (CSV/Excel, structured extraction)
+- File/data processing (CSV/Excel/PDF-to-table if supported, structured extraction)
 - Generating visualizations from data
 - Algorithm execution for verification
 
 Do NOT use for:
-- Text generation, summarization, or writing
+- Pure text generation, summarization, or writing
 - Pure planning/brainstorming
 - Simple structured output that doesn't need computation
 
+How to call it effectively:
+- Provide a clear TASK description and relevant FILE URLs.
+- You do NOT need to write full Python code yourself unless necessary.
+- Require concise stdout (short summary/JSON). Save large outputs to files instead.
+
 Decision rule: "Does this need code to RUN and COMPUTE, or can the answer be generated directly?"
-When a step truly needs Code Interpreter, mention it in toolHints with inputs/expected outputs.`;
+When planning steps that genuinely need Code Interpreter, mention it in toolHints with expected inputs/outputs.`;
 
 const TOOL_PREFERENCE_PROMPT_LIGHT = `## Tool Hint
-A Code Interpreter tool is available for tasks requiring actual computation or file processing. Use only when necessary for compute, not for text-only tasks.`;
+A Code Interpreter tool is available for steps requiring actual computation or file processing.
+Prefer providing a task description + file URLs; avoid using it for text-only tasks.`;
 
 export const hasCodeInterpreter = (toolNodes: RuntimeNodeItemType[]): boolean => {
   return toolNodes.some(

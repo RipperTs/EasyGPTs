@@ -157,12 +157,14 @@ export const fetchCodeInterpreterCapabilities = async ({
   timeoutMs: number;
 }): Promise<CodeInterpreterCapabilities | null> => {
   const trimmedBase = trimTrailingSlash(baseUrl);
+  const apiKey = process.env.CODE_INTERPRETER_API_KEY?.trim();
 
   try {
     const { data } = await axios.get(`${trimmedBase}/capabilities`, {
       headers: {
         Accept: 'application/json',
-        'X-Request-Type': 'CODE_INTERPRETER'
+        'X-Request-Type': 'CODE_INTERPRETER',
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
       },
       timeout: timeoutMs
     });
