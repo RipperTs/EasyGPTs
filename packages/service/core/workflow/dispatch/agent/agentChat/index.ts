@@ -948,22 +948,32 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     toolPreviewItems: []
   };
 
-  const pushFlowNodeStatus = (statusName: string) => {
+  const pushFlowNodeStatus = (statusName: string, status: 'running' | 'finish' = 'running') => {
     if (!stream) return;
-    const safeName = truncateText(statusName.trim() || name, 50);
+    const safeName = truncateText(statusName.trim() || name, 30);
     if (!safeName) return;
     workflowStreamResponse?.({
       event: SseResponseEventEnum.flowNodeStatus,
       data: {
-        status: 'running',
+        status,
         name: safeName
       }
     });
   };
   const formatStepStatusName = (params: { stepTitle: string; current: number; total: number }) => {
     const title = normalizeStepText(params.stepTitle);
-    return `${params.current}/${params.total}：${title || '未命名任务'}`;
+    return `执行 ${params.current}/${params.total}：${title || '未命名任务'}`;
   };
+  const formatStepDoneStatusName = (params: {
+    stepTitle: string;
+    current: number;
+    total: number;
+  }) => {
+    const title = normalizeStepText(params.stepTitle);
+    return `完成 ${params.current}/${params.total}：${title || '未命名任务'}`;
+  };
+
+  pushFlowNodeStatus(`工具：${toolNodes.length}个`);
 
   // Mode: ReAct (single tool-loop run)
   if (orchestrationMode === 'react') {
@@ -1002,6 +1012,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const assistant = result[DispatchNodeResponseKeyEnum.assistantResponses] || [];
     const previewToolItems = filterToolResponseToPreview(pickToolItems(assistant));
 
+    pushFlowNodeStatus('已完成', 'finish');
     return {
       [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
       [NodeOutputKeyEnum.answerText]: answer,
@@ -1076,6 +1087,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         modelType: ModelTypeEnum.llm
       });
 
+      pushFlowNodeStatus('等待补充信息', 'finish');
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
         [NodeOutputKeyEnum.answerText]: answer,
@@ -1167,6 +1179,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     totalRunTimes += 1;
     if (plannerResult.reasoningText) reasoningText = plannerResult.reasoningText.trim();
   } else if (!obviouslySimple) {
+    pushFlowNodeStatus('任务评估');
     const [analysis, planner] = await Promise.all([
       callTaskAnalyzer({
         modelKey,
@@ -1193,6 +1206,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     totalTokens += analysis.tokens;
     totalRunTimes += 1;
     complexity = analysis.complexity;
+    pushFlowNodeStatus(`复杂度：${complexity === 'complex' ? '复杂' : '简单'}`);
 
     if (complexity === 'complex') {
       pushFlowNodeStatus('任务规划');
@@ -1239,6 +1253,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     const assistant = simple[DispatchNodeResponseKeyEnum.assistantResponses] || [];
     const previewToolItems = filterToolResponseToPreview(pickToolItems(assistant));
 
+    pushFlowNodeStatus('已完成', 'finish');
     return {
       [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
       [NodeOutputKeyEnum.answerText]: answer,
@@ -1321,6 +1336,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
     message: 'generated initial plan',
     data: { steps: todoAllSteps.map((s) => ({ id: s.id, title: s.title })) }
   });
+  pushFlowNodeStatus(`计划生成：${todoAllSteps.length}步`);
 
   const originalPlan = [...todoAllSteps];
   let planQueue = [...todoAllSteps];
@@ -1363,13 +1379,14 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   for (let loop = 0; loop < maxLoops; loop++) {
     const step = planQueue.shift();
     if (!step) break;
+    const stepIndex = pastSteps.length + 1;
 
     trace.push({ at: nowIso(), type: 'act', message: 'executing step', data: { loop, step } });
 
     pushFlowNodeStatus(
       formatStepStatusName({
         stepTitle: step.title,
-        current: pastSteps.length + 1,
+        current: stepIndex,
         total: todoAllSteps.length
       })
     );
@@ -1389,7 +1406,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       goal: userChatInput,
       workingMemoryText,
       step,
-      stepNumber: pastSteps.length + 1,
+      stepNumber: stepIndex,
       totalSteps: todoAllSteps.length,
       remainingPlan: planQueue,
       pastSteps,
@@ -1445,6 +1462,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     // If answer is empty (some reasoning models output reasoning-only), synthesize from tool results.
     if (!stepAnswer && toolText) {
+      pushFlowNodeStatus('整理工具结果');
       const synthesized = await callStepResultSynthesis({
         modelKey,
         goal: userChatInput,
@@ -1460,6 +1478,13 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
 
     const pastStep: AgentPastStep = { step, result: stepAnswer, toolText };
     pastSteps.push(pastStep);
+    pushFlowNodeStatus(
+      formatStepDoneStatusName({
+        stepTitle: step.title,
+        current: stepIndex,
+        total: todoAllSteps.length
+      })
+    );
 
     // Critic
     const hasToolCalls = stepToolItems.length > 0;
@@ -1489,6 +1514,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       if (critic.score < criticThreshold) {
         const currentRetry = stepRetryCount.get(step.id) || 0;
         if (currentRetry < MAX_STEP_RETRY) {
+          pushFlowNodeStatus(`准备重试 ${attempt + 1}/${MAX_STEP_RETRY + 1}`);
           stepRetryCount.set(step.id, currentRetry + 1);
           pastSteps.pop();
           planQueue.unshift(step);
@@ -1596,6 +1622,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
           })
         });
       }
+      pushFlowNodeStatus('已完成', 'finish');
 
       const { totalPoints, modelName } = formatModelChars2Points({
         model: modelKey,
@@ -1685,6 +1712,9 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       const nextQueueSource = filteredSuggested.length > 0 ? filteredSuggested : planQueue;
       planQueue = nextQueueSource.slice(0, availableRemainingSlots);
       todoAllSteps = [...pastSteps.map((p) => p.step), ...planQueue];
+      pushFlowNodeStatus(
+        planQueue.length > 0 ? `下一步：${normalizeStepText(planQueue[0].title)}` : '继续执行'
+      );
 
       const afterRemaining = planQueue.map((s) => s.title);
       replanHistory.push({
@@ -1772,6 +1802,7 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
       model: model.model
     })
   });
+  pushFlowNodeStatus('已完成', 'finish');
 
   trace.push({ at: nowIso(), type: 'report', message: 'fallback', data: { fallbackAnswer } });
 
