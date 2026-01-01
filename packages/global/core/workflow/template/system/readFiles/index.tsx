@@ -21,7 +21,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/readFiles',
   name: i18nT('app:workflow.read_files'),
-  intro: i18nT('app:workflow.read_files_tip'),
+  intro: '解析对话中所有上传的文档，并返回对应文档内容和文档名称以及文档访问链接信息。',
   showStatus: true,
   version: '493',
   isTool: true,
