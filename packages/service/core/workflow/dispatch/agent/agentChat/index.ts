@@ -118,7 +118,7 @@ const parseToolPreference = (value: unknown): ToolPreferenceMode => {
 
 const isObviouslySimple = (input: string, toolCount: number, hasHistory: boolean) => {
   const trimmed = input.trim();
-  if (toolCount === 0) return true;
+  // 即使没有工具，也可能需要“规划-执行”来拆解复杂目标（对齐白皮书 Level 0/1 的差异）
   if (hasHistory) return false;
   if (trimmed.length < 15 && /^(你好|hi|hello|谢谢|thanks|帮我|请问|什么是)/i.test(trimmed)) {
     return true;
@@ -126,7 +126,27 @@ const isObviouslySimple = (input: string, toolCount: number, hasHistory: boolean
   if (trimmed.length < 30 && !/[，,、；;]|(并且|而且|同时|另外|还要|以及|和.*和)/.test(trimmed)) {
     return true;
   }
+  // 没有工具时，短且单一的问题通常不需要 todo
+  if (toolCount === 0 && trimmed.length < 40) return true;
   return false;
+};
+
+const isTrivialChitChat = (input: string) => {
+  const s = input.trim();
+  if (!s) return true;
+  return /^(好|好的|ok|okay|嗯|恩|行|可以|收到|了解|明白|谢谢|thanks|thx|继续|开始吧)[!！。.\s]*$/i.test(
+    s
+  );
+};
+
+// 追问通常很短，但强依赖上下文；为了更稳定触发 todo，这里做确定性升级到 complex
+const shouldForceComplexWithHistory = (params: { input: string; hasHistory: boolean }) => {
+  const { input, hasHistory } = params;
+  if (!hasHistory) return false;
+  if (isTrivialChitChat(input)) return false;
+
+  // 有历史对话且非寒暄/确认语时，统一升级为 complex，保证追问能稳定触发 todo 规划
+  return true;
 };
 
 const shouldCallCritic = (params: {
@@ -1094,12 +1114,38 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   // Complexity + planning (parallel)
   const hasHistory = Array.isArray(histories) && histories.length > 0;
   const obviouslySimple = isObviouslySimple(userChatInput, toolNodes.length, hasHistory);
+  const forceComplex = shouldForceComplexWithHistory({ input: userChatInput, hasHistory });
 
   let complexity: 'simple' | 'complex' = 'simple';
   let plannerResult: { steps: AgentPlanStep[]; tokens: number; reasoningText: string } | null =
     null;
 
-  if (!obviouslySimple) {
+  if (forceComplex) {
+    complexity = 'complex';
+    trace.push({
+      at: nowIso(),
+      type: 'plan',
+      message: 'forced complex due to follow-up context',
+      data: { hasHistory, toolCount: toolNodes.length }
+    });
+
+    plannerResult = await callPlanner({
+      modelKey,
+      systemPrompt,
+      goal: userChatInput,
+      complexity: 'complex',
+      maxPlanSteps,
+      toolNodes,
+      toolPreference,
+      enableReasoning,
+      reasoningEffort,
+      histories
+    });
+
+    totalTokens += plannerResult.tokens;
+    totalRunTimes += 1;
+    if (plannerResult.reasoningText) reasoningText = plannerResult.reasoningText.trim();
+  } else if (!obviouslySimple) {
     const [analysis, planner] = await Promise.all([
       callTaskAnalyzer({
         modelKey,
