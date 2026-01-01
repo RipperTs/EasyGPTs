@@ -234,7 +234,15 @@ export enum NodeInputKeyEnum {
 
   // agent chat (plan-and-execute)
   agentMaxPlanSteps = 'agentMaxPlanSteps',
-  agentMaxLoops = 'agentMaxLoops'
+  agentMaxLoops = 'agentMaxLoops',
+  agentOrchestrationMode = 'agentOrchestrationMode',
+  agentToolAccess = 'agentToolAccess',
+  agentToolPreference = 'agentToolPreference',
+  agentEnableClarify = 'agentEnableClarify',
+  agentEnableWorkingMemory = 'agentEnableWorkingMemory',
+  agentEnableStepMemory = 'agentEnableStepMemory',
+  agentEnableCritic = 'agentEnableCritic',
+  agentCriticThreshold = 'agentCriticThreshold'
 }
 
 // AI 推理强度等级
