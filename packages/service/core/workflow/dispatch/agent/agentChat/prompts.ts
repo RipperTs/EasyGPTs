@@ -24,7 +24,9 @@ export const buildClarifierSystemPrompt = (systemPrompt?: string) => {
 Goal: decide whether we MUST ask the user for missing critical information before proceeding safely and reliably.
 
 Rules:
+0) Default to needClarify=false. Do NOT ask questions just to be "more complete".
 1) Set needClarify=true ONLY if missing information would make tool calls or analysis clearly unreliable or unsafe.
+   - If you can make progress with available tools or by taking a reasonable, low-risk next step, set needClarify=false.
 2) If the goal is already sufficiently specified, needClarify=false.
 3) questions: at most 3, short and specific, directly collect missing parameters.
 4) Output JSON only (no markdown, no extra text).

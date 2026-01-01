@@ -28,7 +28,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/aiAgent',
   name: 'Agent 对话',
   intro:
-    '参考 Google Agent 白皮书的编排思想：Mission/Scene → Think/Act/Observe 循环，结合工具调用、短期工作记忆与可观测 Trace，适合复杂任务与多工具协作。',
+    'Mission/Scene → Think/Act/Observe 循环，结合工具调用、短期工作记忆与可观测 Trace，适合复杂任务与多工具协作。',
   showStatus: true,
   isTool: true,
   version: '484',
@@ -91,7 +91,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.agentToolAccess,
       renderTypeList: [FlowNodeInputTypeEnum.select],
       label: '工具权限',
-      description: '最小权限优先：在不影响任务完成前提下，尽量减少可调用工具范围。',
+      description: '在不影响任务完成前提下，尽量减少可调用工具范围。',
       valueType: WorkflowIOValueTypeEnum.string,
       value: 'standard',
       list: [
@@ -120,7 +120,7 @@ export const AgentChatModule: FlowNodeTemplateType = {
       label: '允许先澄清',
       description: '当关键信息缺失会导致工具调用/分析明显不可靠时，先返回澄清问题。',
       valueType: WorkflowIOValueTypeEnum.boolean,
-      value: true
+      value: false
     },
     {
       key: NodeInputKeyEnum.agentEnableWorkingMemory,

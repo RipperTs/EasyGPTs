@@ -140,6 +140,41 @@ const isTrivialChitChat = (input: string) => {
   );
 };
 
+const isVagueFirstTurnAsk = (input: string) => {
+  const s = input.trim();
+  if (!s) return true;
+
+  // 典型“没对象/没范围”的泛化指令：仅动词/语气词
+  if (
+    /^(帮我|请|麻烦|劳烦)?(看下|看看|分析|处理|总结|优化|解释|翻译|写|生成|整理|排查|检查|调试|修复)(一下|下|下吧|吧)?$/.test(
+      s
+    )
+  ) {
+    return true;
+  }
+  if (/^(怎么做|怎么弄|怎么实现|如何做|如何实现|怎么解决)[？?]*$/.test(s)) return true;
+  if (
+    /^(这个|那个|它|上面这个|上述|以上)(怎么|咋|如何)?(办|做|处理|分析|解决)?[呢吗吧？?]*$/.test(s)
+  )
+    return true;
+
+  return false;
+};
+
+const shouldRunClarifierGate = (params: {
+  enabled: boolean;
+  toolCount: number;
+  input: string;
+  hasHistory: boolean;
+}) => {
+  const { enabled, toolCount, input, hasHistory } = params;
+  if (!enabled) return false;
+  if (toolCount <= 0) return false;
+  if (hasHistory) return false; // 追问/上下文场景交给规划执行，不在入口硬拦截
+  if (isTrivialChitChat(input)) return false;
+  return isVagueFirstTurnAsk(input);
+};
+
 // 追问通常很短，但强依赖上下文；为了更稳定触发 todo，这里做确定性升级到 complex
 const shouldForceComplexWithHistory = (params: { input: string; hasHistory: boolean }) => {
   const { input, hasHistory } = params;
@@ -1099,7 +1134,14 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
   }
 
   // Clarification gate (HITL-style)
-  if (clarifyEnabled && toolNodes.length > 0) {
+  if (
+    shouldRunClarifierGate({
+      enabled: clarifyEnabled,
+      toolCount: toolNodes.length,
+      input: userChatInput,
+      hasHistory: Array.isArray(histories) && histories.length > 0
+    })
+  ) {
     pushFlowNodeStatus('任务澄清');
     ensureNotAborted();
     const clarify = await callClarifier({
@@ -1132,6 +1174,16 @@ export async function dispatchAgentChat(props: Props): Promise<Response> {
         modelType: ModelTypeEnum.llm
       });
 
+      if (stream) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: answer,
+            reasoning_content: '',
+            model: model.model
+          })
+        });
+      }
       pushFlowNodeStatus('等待补充信息', 'finish');
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: totalRunTimes,
