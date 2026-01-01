@@ -193,7 +193,6 @@ const READ_ONLY_ALLOWED_TOOL_TYPES = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.nl2sql,
   FlowNodeTypeEnum.readFiles,
   FlowNodeTypeEnum.codeInterpreter,
-  FlowNodeTypeEnum.codeGenerator,
   FlowNodeTypeEnum.textEditor
 ]);
 

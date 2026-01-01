@@ -21,12 +21,12 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeInter',
-  name: 'Python 数据分析沙箱',
+  name: '数据分析沙箱',
   intro:
-    '面向 Agent 的 Python 分析/计算工具：输入“任务描述 + 文件链接”，自动生成并执行 Python（含自动修复重试），适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
+    '面向 Agent 的 Python 分析/计算工具：输入“任务描述 + 文件链接”，自动生成并执行 Python，适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
   showStatus: true,
   isTool: true,
-  version: '504',
+  version: '505',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -91,7 +91,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.code,
-      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '高级：直接运行 Python 代码（可选）',
       description:
@@ -103,7 +103,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.result,
       key: NodeOutputKeyEnum.result,
-      label: '文本结果（摘要）',
+      label: '输出结果',
       description:
         '统一输出：优先返回 stdout 的摘要文本；若为空则返回 image_url；若仍为空则返回 files（以换行拼接）。',
       valueType: WorkflowIOValueTypeEnum.string,

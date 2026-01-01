@@ -76,7 +76,7 @@ Planning principles:
 2) Tool-aware planning: match steps to available tool capabilities when appropriate.
 3) Dependency ordering: ensure logical ordering and dependencies.
 4) Adaptive granularity: plan ${stepRange} steps. Each step must be atomic and executable.
-5) Heavy compute/offload rule: if a step involves data analysis, file processing, or complex computation, prefer using the Python sandbox tool (Code Interpreter / "Python 数据分析沙箱") by passing a task description + file URLs, rather than writing long code in the plan.
+5) Heavy compute/offload rule: if a step involves data analysis, file processing, or complex computation, prefer using the Python sandbox tool (Code Interpreter / "数据分析沙箱") by passing a task description + file URLs, rather than writing long code in the plan.
 
 Anti-patterns to avoid:
 - "summarize" / "respond to user" / "final answer" steps (handled by the system)
@@ -255,7 +255,7 @@ Core rules:
 - Prefer using available tools to obtain accurate data.
 - Do NOT guess or fabricate data that tools can provide.
 - If a tool returns empty/error: retry with adjusted parameters → try an alternative tool → if still blocked, report the concrete reason and the best fallback approach.
- - For heavy compute/data/file steps: prefer calling the Python sandbox tool (Code Interpreter / "Python 数据分析沙箱") with a clear TASK description and FILE URLs, instead of emitting long Python code in text.
+ - For heavy compute/data/file steps: prefer calling the Python sandbox tool (Code Interpreter / "数据分析沙箱") with a clear TASK description and FILE URLs, instead of emitting long Python code in text.
  - If the step says "use Python code" / "write a script", treat it as "call the Python sandbox tool", not "write code in chat". Describe the task precisely; the tool will generate/repair code internally.
 
 2) Focus on the current step
