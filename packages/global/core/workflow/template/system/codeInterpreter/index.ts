@@ -31,7 +31,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
     {
       ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.all,
-      description: '用于自动生成/修复 Python 代码（沙箱只负责运行代码）。'
+      description: '用于自动生成/修复 Python 代码。'
     },
     {
       key: NodeInputKeyEnum.aiSystemPrompt,
@@ -48,7 +48,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
       label: '自动修复次数',
-      description: '运行失败/输出不合规（过长/Base64）时，自动让模型修复代码并重试。',
+      description: '运行失败/输出不合规时，自动让模型修复代码并重试。',
       required: true,
       min: 1,
       max: 10,
