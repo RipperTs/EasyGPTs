@@ -222,7 +222,7 @@ export const iconPaths = {
   'core/workflow/template/BI': () => import('./icons/core/workflow/template/BI.svg'),
   'core/workflow/template/baseChart': () => import('./icons/core/workflow/template/baseChart.svg'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
-  'core/workflow/template/codeInter': () => import('./icons/core/workflow/template/code-inter.svg'),
+  'core/workflow/template/codeInter': () => import('./icons/core/workflow/template/codeInter.svg'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),
   'core/workflow/template/datasetConcat': () =>

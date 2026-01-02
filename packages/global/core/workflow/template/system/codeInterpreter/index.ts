@@ -23,7 +23,7 @@ export const CodeInterpreterModule: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/codeInter',
   name: '数据分析沙箱',
   intro:
-    '面向 Agent 的 Python 分析/计算工具：输入“任务描述 + 文件链接”，自动生成并执行 Python（自动探测文件头部片段/表头/列名去空格/字段别名，并在失败时增强自诊断），适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
+    '面向 Agent 的 Python 分析/计算工具：输入“任务描述”自动生成并执行 Python 代码，适合数据分析、文件处理、科学计算、表格/CSV/Excel 处理、绘图与生成报告等高 Token 任务。',
   showStatus: true,
   isTool: true,
   version: '510',

@@ -1345,6 +1345,25 @@ const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = '')
 
   let unifiedResult: string;
 
+  const safeJsonStringify = (value: unknown) => {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  };
+
+  const tryParseJson = (text: string): unknown | undefined => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (!/^[\[{]/.test(trimmed)) return;
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return;
+    }
+  };
+
   if (isBase64Output) {
     // 检测到 base64 输出，优先返回文件/图片地址
     unifiedResult =
@@ -1355,14 +1374,29 @@ const parseCodeInterpreterToolOutput = (raw: Record<string, unknown>, code = '')
     // 输出过长，截断并提示
     unifiedResult = `输出内容过长 (${resultText.length} 字符)。建议在代码中完成数据处理和汇总，只打印最终结果摘要。\n\n输出预览（前 500 字符）:\n${resultText.slice(0, 500)}...\n\n${imageUrl ? `\n图片地址: ${imageUrl}` : ''}${outputFiles.length > 0 ? `\n生成文件: ${outputFiles.join(', ')}` : ''}`;
   } else {
-    // 正常输出
-    unifiedResult = resultText
-      ? resultText
-      : imageUrl
-        ? imageUrl
-        : outputFiles.length > 0
-          ? outputFiles.join('\n')
-          : '';
+    // 正常输出：当存在 image_url/files 时，把它们合并进统一 result，确保上游模型能拿到可点击链接
+    if (imageUrl || outputFiles.length > 0) {
+      const parsed = resultText ? tryParseJson(resultText) : undefined;
+
+      if (isRecord(parsed)) {
+        const merged: Record<string, unknown> = { ...parsed };
+        if (imageUrl) merged.image_url = imageUrl;
+        if (outputFiles.length > 0) merged.files = outputFiles;
+        unifiedResult =
+          safeJsonStringify(merged) || resultText || imageUrl || outputFiles.join('\n');
+      } else if (resultText) {
+        // 非 JSON stdout：用结构化 JSON 包一层，避免调用方只拿到文件名/提示文本
+        const merged: Record<string, unknown> = { result: resultText };
+        if (imageUrl) merged.image_url = imageUrl;
+        if (outputFiles.length > 0) merged.files = outputFiles;
+        unifiedResult = safeJsonStringify(merged) || resultText;
+      } else {
+        // stdout 为空：保持原逻辑
+        unifiedResult = imageUrl ? imageUrl : outputFiles.join('\n');
+      }
+    } else {
+      unifiedResult = resultText || '';
+    }
   }
 
   return {
