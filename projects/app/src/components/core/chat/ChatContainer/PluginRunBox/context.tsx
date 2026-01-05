@@ -179,6 +179,7 @@ const PluginRunContextProvider = ({
       {
         dataId: getNanoid(24),
         obj: ChatRoleEnum.Human,
+        time: new Date(),
         status: 'finish',
         value: [
           {
@@ -195,6 +196,7 @@ const PluginRunContextProvider = ({
       {
         dataId: getNanoid(24),
         obj: ChatRoleEnum.AI,
+        time: new Date(),
         value: [
           {
             type: ChatItemValueTypeEnum.text,

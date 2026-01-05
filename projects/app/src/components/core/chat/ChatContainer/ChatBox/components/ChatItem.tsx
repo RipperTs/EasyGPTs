@@ -22,6 +22,7 @@ import { useTranslation } from 'next-i18next';
 import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -109,6 +110,14 @@ const AIContentCard = React.memo(function AIContentCard({
 
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
+
+  const timeStr = useMemo(() => {
+    const time = chat.time as unknown;
+    if (!time) return '';
+    const date = time instanceof Date ? time : new Date(String(time));
+    if (Number.isNaN(date.getTime())) return '';
+    return formatTime2YMDHM(date);
+  }, [chat.time]);
 
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
@@ -230,6 +239,13 @@ const ChatItem = (props: Props) => {
           </Flex>
         )}
       </Flex>
+      {!!timeStr && (
+        <Flex w={'100%'} mt={1} justifyContent={styleMap.justifyContent}>
+          <Box fontSize={'xs'} color={'myGray.500'}>
+            {timeStr}
+          </Box>
+        </Flex>
+      )}
       {/* content */}
       {splitAiResponseResults.map((value, i) => (
         <Box

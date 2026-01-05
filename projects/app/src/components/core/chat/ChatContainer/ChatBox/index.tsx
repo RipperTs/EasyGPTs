@@ -460,6 +460,7 @@ const ChatBox = (
             {
               dataId: getNanoid(24),
               obj: ChatRoleEnum.Human,
+              time: new Date(),
               value: [
                 ...files.map((file) => ({
                   type: ChatItemValueTypeEnum.file,
@@ -486,6 +487,7 @@ const ChatBox = (
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
+              time: new Date(),
               value: [
                 {
                   type: ChatItemValueTypeEnum.text,

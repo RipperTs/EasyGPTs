@@ -132,6 +132,7 @@ export type ResponseTagItemType = {
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId?: string;
+  time?: Date;
 } & ResponseTagItemType;
 
 // Frontend type
@@ -141,6 +142,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   moduleName?: string;
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
+  time?: Date;
 } & ChatBoxInputType &
   ResponseTagItemType;
 

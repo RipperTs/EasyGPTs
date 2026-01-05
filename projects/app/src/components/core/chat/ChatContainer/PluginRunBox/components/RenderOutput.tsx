@@ -6,6 +6,7 @@ import Markdown from '@/components/Markdown';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 const RenderOutput = () => {
   const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);
   const { t } = useTranslation();
@@ -17,6 +18,14 @@ const RenderOutput = () => {
     return JSON.stringify(pluginOutputs, null, 2);
   }, [histories]);
 
+  const responseTimeStr = useMemo(() => {
+    const time = histories?.[1]?.time as unknown;
+    if (!time) return '';
+    const date = time instanceof Date ? time : new Date(String(time));
+    if (Number.isNaN(date.getTime())) return '';
+    return formatTime2YMDHM(date);
+  }, [histories]);
+
   return (
     <>
       <Box border={'base'} rounded={'md'} bg={'myGray.25'}>
@@ -24,6 +33,11 @@ const RenderOutput = () => {
           <Box color={'myGray.900'} fontWeight={'bold'}>
             {t('chat:stream_output')}
           </Box>
+          {!!responseTimeStr && (
+            <Box mt={1} fontSize={'xs'} color={'myGray.500'}>
+              {responseTimeStr}
+            </Box>
+          )}
           {histories.length > 0 && histories[1]?.value.length > 0 ? (
             <Box mt={2}>
               {histories[1].value.map((value, i) => {

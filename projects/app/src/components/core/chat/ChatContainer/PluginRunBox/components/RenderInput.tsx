@@ -9,6 +9,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { isEqual } from 'lodash';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import Markdown from '@/components/Markdown';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 const RenderInput = () => {
   const {
@@ -74,6 +75,13 @@ const RenderInput = () => {
   }, [defaultFormValues, getValues, historyFormValues, reset, histories.length]);
 
   const isDisabledInput = histories.length > 0;
+  const lastRunTimeStr = useMemo(() => {
+    const time = histories?.[0]?.time as unknown;
+    if (!time) return '';
+    const date = time instanceof Date ? time : new Date(String(time));
+    if (Number.isNaN(date.getTime())) return '';
+    return formatTime2YMDHM(date);
+  }, [histories]);
 
   return (
     <>
@@ -123,6 +131,11 @@ const RenderInput = () => {
       })}
       {onStartChat && onNewChat && (
         <Flex justifyContent={'end'} mt={8}>
+          {!!lastRunTimeStr && (
+            <Box mr={3} fontSize={'xs'} color={'myGray.500'} alignSelf={'center'}>
+              {lastRunTimeStr}
+            </Box>
+          )}
           <Button
             isLoading={isChatting}
             onClick={() => {

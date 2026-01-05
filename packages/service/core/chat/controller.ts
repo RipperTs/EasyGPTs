@@ -21,7 +21,12 @@ export async function getChatItems({
     return { histories: [] };
   }
 
-  const histories = await MongoChatItem.find({ appId, chatId }, field)
+  const safeField = field
+    ? `${field}${field.includes('time') ? '' : ' time'}`
+    : // ensure `time` exists for frontend display
+      'time';
+
+  const histories = await MongoChatItem.find({ appId, chatId }, safeField)
     .sort({ _id: -1 })
     .limit(limit)
     .lean();

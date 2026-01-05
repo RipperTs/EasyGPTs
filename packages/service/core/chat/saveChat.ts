@@ -66,12 +66,14 @@ export async function saveChat({
     });
 
     await mongoSessionRun(async (session) => {
+      const now = new Date();
       await MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
           teamId,
           tmbId,
           appId,
+          time: now,
           ...item
         })),
         { session }

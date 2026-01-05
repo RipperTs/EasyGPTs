@@ -14,12 +14,14 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type HistoryItemType = {
   id: string;
   title: string;
   customTitle?: string;
   top?: boolean;
+  updateTime?: Date;
 };
 
 const ChatHistorySlider = ({
@@ -65,7 +67,13 @@ const ChatHistorySlider = ({
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = historyList.map((data) => {
       const item = data.data;
-      return { id: item.chatId, title: item.title, customTitle: item.customTitle, top: item.top };
+      return {
+        id: item.chatId,
+        title: item.title,
+        customTitle: item.customTitle,
+        top: item.top,
+        updateTime: item.updateTime
+      };
     });
     const newChat: HistoryItemType = {
       id: activeChatId,
@@ -257,8 +265,20 @@ const ChatHistorySlider = ({
                 name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
                 w={'16px'}
               />
-              <Box flex={'1 0 0'} ml={3} className="textEllipsis">
-                {item.customTitle || item.title}
+              <Box flex={'1 0 0'} w={0} ml={3}>
+                <Box className="textEllipsis">{item.customTitle || item.title}</Box>
+                {(() => {
+                  const time = item.updateTime as unknown;
+                  if (!time) return null;
+                  const date = time instanceof Date ? time : new Date(String(time));
+                  if (Number.isNaN(date.getTime())) return null;
+
+                  return (
+                    <Box fontSize={'xs'} color={'myGray.500'} className="textEllipsis">
+                      {formatTime2YMDHM(date)}
+                    </Box>
+                  );
+                })()}
               </Box>
               {!!item.id && (
                 <Box className="more" visibility={['visible', 'hidden']}>
