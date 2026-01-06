@@ -267,18 +267,6 @@ const ChatHistorySlider = ({
               />
               <Box flex={'1 0 0'} w={0} ml={3}>
                 <Box className="textEllipsis">{item.customTitle || item.title}</Box>
-                {(() => {
-                  const time = item.updateTime as unknown;
-                  if (!time) return null;
-                  const date = time instanceof Date ? time : new Date(String(time));
-                  if (Number.isNaN(date.getTime())) return null;
-
-                  return (
-                    <Box fontSize={'xs'} color={'myGray.500'} className="textEllipsis">
-                      {formatTime2YMDHM(date)}
-                    </Box>
-                  );
-                })()}
               </Box>
               {!!item.id && (
                 <Box className="more" visibility={['visible', 'hidden']}>
