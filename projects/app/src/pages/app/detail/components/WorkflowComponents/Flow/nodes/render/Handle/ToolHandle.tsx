@@ -7,7 +7,7 @@ import { useCallback, useMemo } from 'react';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
-const handleSize = '14px';
+const handleSize = '20px';
 
 type ToolHandleProps = BoxProps & {
   nodeId: string;
@@ -46,7 +46,7 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
             className="flow-handle"
             w={handleSize}
             h={handleSize}
-            border={'4px solid #8774EE'}
+            border={'5px solid #8774EE'}
             transform={'translate(0,-30%) rotate(45deg)'}
             pointerEvents={'none'}
             visibility={'visible'}
@@ -96,7 +96,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
           <Box
             w={handleSize}
             h={handleSize}
-            border={'4px solid #8774EE'}
+            border={'5px solid #8774EE'}
             transform={'translate(0,30%) rotate(45deg)'}
             pointerEvents={'none'}
           />
