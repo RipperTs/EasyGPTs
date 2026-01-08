@@ -10,7 +10,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { ChatItemCollectionName, MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export type GetTeamDashboardBody = {
@@ -72,7 +72,7 @@ export type TeamDashboardRes = {
     chats: number;
   }>;
   topMembers: Array<{
-    tmbId: string;
+    uid: string;
     name: string;
     questions: number;
     chats: number;
@@ -185,8 +185,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     sourceAgg,
     topAppQuestionsAgg,
     topAppChatsAgg,
-    topMemberQuestionsAgg,
-    topMemberChatsAgg,
+    topUserAgg,
     mcpToolTotal
   ] = await Promise.all([
     MongoApp.aggregate<{ _id: string; count: number }>([
@@ -334,21 +333,43 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       { $group: { _id: '$appId', chats: { $sum: 1 } } }
     ]),
-    MongoChatItem.aggregate<{ _id: unknown; questions: number }>([
+    MongoChat.aggregate<{ _id: string; questions: number; chats: number }>([
       {
         $match: {
           teamId: teamIdQuery,
-          obj: ChatRoleEnum.Human,
-          time: { $gte: startTime, $lte: endTime }
+          updateTime: { $gte: startTime, $lte: endTime },
+          outLinkUid: { $exists: true, $nin: ['', null], $not: /^shareChat-/ }
         }
       },
-      { $group: { _id: '$tmbId', questions: { $sum: 1 } } },
-      { $sort: { questions: -1 } },
+      {
+        $lookup: {
+          from: ChatItemCollectionName,
+          let: { chatId: '$chatId', appId: '$appId' },
+          pipeline: [
+            {
+              $match: {
+                obj: ChatRoleEnum.Human,
+                time: { $gte: startTime, $lte: endTime },
+                $expr: {
+                  $and: [{ $eq: ['$chatId', '$$chatId'] }, { $eq: ['$appId', '$$appId'] }]
+                }
+              }
+            },
+            { $group: { _id: null, count: { $sum: 1 } } }
+          ],
+          as: 'questionAgg'
+        }
+      },
+      {
+        $addFields: {
+          questions: {
+            $ifNull: [{ $arrayElemAt: ['$questionAgg.count', 0] }, 0]
+          }
+        }
+      },
+      { $group: { _id: '$outLinkUid', questions: { $sum: '$questions' }, chats: { $sum: 1 } } },
+      { $sort: { questions: -1, chats: -1 } },
       { $limit: 10 }
-    ]),
-    MongoChat.aggregate<{ _id: unknown; chats: number }>([
-      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
-      { $group: { _id: '$tmbId', chats: { $sum: 1 } } }
     ]),
     mcpToolTotalPromise
   ]);
@@ -426,26 +447,12 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     })
     .filter((i): i is NonNullable<typeof i> => Boolean(i));
 
-  const topMemberIds = topMemberQuestionsAgg.map((i) => i._id);
-  const topMemberInfo = await MongoTeamMember.find(
-    { teamId: teamIdQuery, _id: { $in: topMemberIds } },
-    '_id name'
-  ).lean();
-  const topMemberInfoMap = new Map(topMemberInfo.map((i) => [String(i._id), i.name]));
-  const topMemberChatsMap = new Map(topMemberChatsAgg.map((i) => [String(i._id), i.chats]));
-
-  const topMembers = topMemberQuestionsAgg
-    .map((item) => {
-      const name = topMemberInfoMap.get(String(item._id));
-      if (!name) return null;
-      return {
-        tmbId: String(item._id),
-        name,
-        questions: item.questions,
-        chats: topMemberChatsMap.get(String(item._id)) ?? 0
-      };
-    })
-    .filter((i): i is NonNullable<typeof i> => Boolean(i));
+  const topMembers = topUserAgg.map((item) => ({
+    uid: item._id,
+    name: item._id,
+    questions: item.questions,
+    chats: item.chats
+  }));
 
   return {
     range: {

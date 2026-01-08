@@ -390,7 +390,7 @@ const StatisticsPage = () => {
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
-                成员排行（按提问数，近{days}天）
+                用户排行（已登录，按提问数，近{days}天）
               </Text>
             </Flex>
 
@@ -402,7 +402,7 @@ const StatisticsPage = () => {
               ) : (
                 (data?.topMembers ?? []).map((item, idx) => (
                   <Flex
-                    key={item.tmbId}
+                    key={item.uid}
                     alignItems={'center'}
                     py={2}
                     px={2}
@@ -414,7 +414,7 @@ const StatisticsPage = () => {
                     </Text>
                     <Box flex={'1 0 0'} minW={0}>
                       <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
-                        {item.name}
+                        用户:{item.name}
                       </Text>
                       <Text fontSize={'xs'} color={'myGray.500'}>
                         {formatNum(item.chats)} 会话
