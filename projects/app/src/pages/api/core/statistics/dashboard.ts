@@ -45,12 +45,15 @@ export type TeamDashboardRes = {
     questionCount: number;
     answerCount: number;
     activeMemberCount: number;
+    activeLoginUserCount: number;
+    activeAnonymousUserCount: number;
   };
   trend: Array<{
     date: string;
     chats: number;
     questions: number;
-    activeMembers: number;
+    activeLoginUsers: number;
+    activeAnonymousUsers: number;
   }>;
   appType: Array<{
     type: string;
@@ -173,10 +176,12 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     chatCount,
     questionCount,
     answerCount,
-    activeMemberAgg,
+    activeOutLinkUidAgg,
+    activeOutLinkUidSplitAgg,
     questionTrendAgg,
     chatTrendAgg,
-    activeMembersTrendAgg,
+    activeOutLinkUidTrendAgg,
+    activeOutLinkUidTrendSplitAgg,
     sourceAgg,
     topAppQuestionsAgg,
     topAppChatsAgg,
@@ -214,15 +219,32 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       time: { $gte: startTime, $lte: endTime }
     }),
 
-    MongoChatItem.aggregate<{ _id: unknown }>([
+    MongoChat.aggregate<{ _id: string }>([
       {
         $match: {
           teamId: teamIdQuery,
-          obj: ChatRoleEnum.Human,
-          time: { $gte: startTime, $lte: endTime }
+          updateTime: { $gte: startTime, $lte: endTime },
+          outLinkUid: { $exists: true, $nin: ['', null] }
         }
       },
-      { $group: { _id: '$tmbId' } }
+      { $group: { _id: '$outLinkUid' } }
+    ]),
+    MongoChat.aggregate<{ _id: boolean; count: number }>([
+      {
+        $match: {
+          teamId: teamIdQuery,
+          updateTime: { $gte: startTime, $lte: endTime },
+          outLinkUid: { $exists: true, $nin: ['', null] }
+        }
+      },
+      { $group: { _id: '$outLinkUid' } },
+      {
+        $project: {
+          _id: 0,
+          isAnonymous: { $regexMatch: { input: '$_id', regex: '^shareChat-' } }
+        }
+      },
+      { $group: { _id: '$isAnonymous', count: { $sum: 1 } } }
     ]),
 
     MongoChatItem.aggregate<{ _id: string; count: number }>([
@@ -249,23 +271,47 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         }
       }
     ]),
-    MongoChatItem.aggregate<{ _id: string; count: number }>([
+    MongoChat.aggregate<{ _id: string; count: number }>([
       {
         $match: {
           teamId: teamIdQuery,
-          obj: ChatRoleEnum.Human,
-          time: { $gte: startTime, $lte: endTime }
+          updateTime: { $gte: startTime, $lte: endTime },
+          outLinkUid: { $exists: true, $nin: ['', null] }
         }
       },
       {
         $group: {
           _id: {
-            day: { $dateToString: { format: '%Y-%m-%d', date: '$time', timezone: tz } },
-            tmbId: '$tmbId'
+            day: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
+            outLinkUid: '$outLinkUid'
           }
         }
       },
       { $group: { _id: '$_id.day', count: { $sum: 1 } } }
+    ]),
+    MongoChat.aggregate<{ _id: { day: string; isAnonymous: boolean }; count: number }>([
+      {
+        $match: {
+          teamId: teamIdQuery,
+          updateTime: { $gte: startTime, $lte: endTime },
+          outLinkUid: { $exists: true, $nin: ['', null] }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            day: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
+            outLinkUid: '$outLinkUid'
+          }
+        }
+      },
+      {
+        $project: {
+          day: '$_id.day',
+          isAnonymous: { $regexMatch: { input: '$_id.outLinkUid', regex: '^shareChat-' } }
+        }
+      },
+      { $group: { _id: { day: '$day', isAnonymous: '$isAnonymous' }, count: { $sum: 1 } } }
     ]),
     MongoChat.aggregate<{ _id: string; count: number }>([
       { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
@@ -322,7 +368,9 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
   const appTotal = appWorkflow + appSimple;
   const pluginTotal = pluginApp + pluginHttp + toolSet;
 
-  const activeMemberCount = activeMemberAgg.length;
+  const activeMemberCount = activeOutLinkUidAgg.length;
+  const activeAnonymousUserCount = activeOutLinkUidSplitAgg.find((i) => i._id === true)?.count ?? 0;
+  const activeLoginUserCount = activeOutLinkUidSplitAgg.find((i) => i._id === false)?.count ?? 0;
 
   if (mcpToolTotal > 0) {
     appType.push({
@@ -333,14 +381,24 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
 
   const questionTrendMap = new Map(questionTrendAgg.map((i) => [i._id, i.count]));
   const chatTrendMap = new Map(chatTrendAgg.map((i) => [i._id, i.count]));
-  const activeMembersTrendMap = new Map(activeMembersTrendAgg.map((i) => [i._id, i.count]));
+  const activeLoginUsersTrendMap = new Map(
+    activeOutLinkUidTrendSplitAgg
+      .filter((i) => i._id.isAnonymous === false)
+      .map((i) => [i._id.day, i.count])
+  );
+  const activeAnonymousUsersTrendMap = new Map(
+    activeOutLinkUidTrendSplitAgg
+      .filter((i) => i._id.isAnonymous === true)
+      .map((i) => [i._id.day, i.count])
+  );
 
   const dateList = getDateList(rangeDays, endTime);
   const trend = dateList.map((date) => ({
     date,
     chats: chatTrendMap.get(date) ?? 0,
     questions: questionTrendMap.get(date) ?? 0,
-    activeMembers: activeMembersTrendMap.get(date) ?? 0
+    activeLoginUsers: activeLoginUsersTrendMap.get(date) ?? 0,
+    activeAnonymousUsers: activeAnonymousUsersTrendMap.get(date) ?? 0
   }));
 
   const source = sourceAgg.map((i) => ({ source: i._id, count: i.count }));
@@ -416,7 +474,9 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       chatCount,
       questionCount,
       answerCount,
-      activeMemberCount
+      activeMemberCount,
+      activeLoginUserCount,
+      activeAnonymousUserCount
     },
     trend,
     appType,

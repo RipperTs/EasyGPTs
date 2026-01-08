@@ -64,12 +64,13 @@ const StatisticsPage = () => {
   const dateList = data?.trend?.map((i) => i.date) ?? [];
   const questionsList = data?.trend?.map((i) => i.questions) ?? [];
   const chatsList = data?.trend?.map((i) => i.chats) ?? [];
-  const activeMembersList = data?.trend?.map((i) => i.activeMembers) ?? [];
+  const activeLoginUsersList = data?.trend?.map((i) => i.activeLoginUsers) ?? [];
+  const activeAnonymousUsersList = data?.trend?.map((i) => i.activeAnonymousUsers) ?? [];
 
   const trendOption: EChartsOption = useMemo(
     () => ({
       tooltip: { trigger: 'axis' },
-      legend: { top: 0, data: ['提问', '会话', '活跃成员'] },
+      legend: { top: 0, data: ['提问', '会话', '登录用户', '匿名用户'] },
       grid: { left: 40, right: 18, top: 40, bottom: 30 },
       xAxis: {
         type: 'category',
@@ -93,16 +94,26 @@ const StatisticsPage = () => {
           data: chatsList
         },
         {
-          name: '活跃成员',
+          name: '登录用户',
           type: 'bar',
           yAxisIndex: 1,
           barWidth: 10,
           itemStyle: { opacity: 0.75 },
-          data: activeMembersList
+          stack: 'activeUsers',
+          data: activeLoginUsersList
+        },
+        {
+          name: '匿名用户',
+          type: 'bar',
+          yAxisIndex: 1,
+          barWidth: 10,
+          itemStyle: { opacity: 0.75 },
+          stack: 'activeUsers',
+          data: activeAnonymousUsersList
         }
       ]
     }),
-    [activeMembersList, chatsList, dateList, questionsList]
+    [activeAnonymousUsersList, activeLoginUsersList, chatsList, dateList, questionsList]
   );
 
   const sourceOption: EChartsOption = useMemo(() => {
@@ -196,9 +207,11 @@ const StatisticsPage = () => {
       },
       {
         icon: 'support/user/userFill' as IconNameType,
-        label: `近${days}天活跃成员`,
+        label: `近${days}天活跃用户`,
         value: rangeStats.activeMemberCount,
-        desc: '按提问口径统计'
+        desc: `登录用户 ${formatNum(rangeStats.activeLoginUserCount)} · 匿名用户 ${formatNum(
+          rangeStats.activeAnonymousUserCount
+        )}`
       }
     ];
   }, [data?.overview, data?.rangeStats, days]);
