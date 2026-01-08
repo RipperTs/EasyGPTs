@@ -76,8 +76,8 @@ const StatisticsPage = () => {
   const trendOption: EChartsOption = useMemo(
     () => ({
       tooltip: { trigger: 'axis' },
-      legend: { top: 0, data: ['提问', '会话', '登录用户', '匿名用户'] },
-      grid: { left: 40, right: 18, top: 40, bottom: 30 },
+      legend: { top: 0, type: 'scroll', data: ['提问', '会话', '登录用户', '匿名用户'] },
+      grid: { left: 16, right: 16, top: 50, bottom: 30, containLabel: true },
       xAxis: {
         type: 'category',
         data: dateList,
@@ -129,14 +129,15 @@ const StatisticsPage = () => {
     }));
     return {
       tooltip: { trigger: 'item' },
-      legend: { type: 'scroll', orient: 'horizontal', top: 0 },
+      legend: { type: 'scroll', orient: 'horizontal', bottom: 0, left: 'center' },
       series: [
         {
           type: 'pie',
-          radius: ['35%', '70%'],
-          center: ['50%', '60%'],
+          radius: ['30%', '62%'],
+          center: ['50%', '45%'],
           avoidLabelOverlap: true,
-          label: { formatter: '{b}: {d}%' },
+          label: { formatter: '{b}: {d}%', fontSize: 12 },
+          labelLine: { length: 10, length2: 8 },
           data: source
         }
       ]
