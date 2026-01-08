@@ -17,12 +17,12 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type GetTeamDashboardBody = {
-  days?: 7 | 30 | 90;
+  days?: 7 | 30 | 90 | 365;
 };
 
 export type TeamDashboardRes = {
   range: {
-    days: 7 | 30 | 90;
+    days: 7 | 30 | 90 | 365;
     startTime: string;
     endTime: string;
   };
@@ -129,7 +129,7 @@ function getDateList(days: number, endTime: Date) {
 
 async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<TeamDashboardRes> {
   const { days = 30 } = req.body ?? {};
-  const rangeDays: 7 | 30 | 90 = days === 7 || days === 90 ? days : 30;
+  const rangeDays: 7 | 30 | 90 | 365 = days === 7 || days === 90 || days === 365 ? days : 30;
 
   const { teamId } = await authUserPer({
     req,

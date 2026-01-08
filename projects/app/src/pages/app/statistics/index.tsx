@@ -20,7 +20,7 @@ import type { EChartsOption } from 'echarts';
 
 const EChartsPanel = dynamic(() => import('./components/EChartsPanel'), { ssr: false });
 
-type RangeDays = 7 | 30 | 90;
+type RangeDays = 7 | 30 | 90 | 365;
 
 const formatNum = (num: number) => new Intl.NumberFormat('zh-CN').format(num);
 
@@ -58,6 +58,7 @@ const StatisticsPage = () => {
   const { isPc } = useSystem();
 
   const [days, setDays] = useState<RangeDays>(30);
+  const rangeText = useMemo(() => (days === 365 ? '近一年' : `近${days}天`), [days]);
 
   const { data, isFetching, refetch } = useQuery(
     ['teamDashboardStats', days],
@@ -196,17 +197,17 @@ const StatisticsPage = () => {
         icon: 'support/team/memberLight' as IconNameType,
         label: '团队成员',
         value: overview.memberTotal,
-        desc: `近${days}天活跃成员 ${formatNum(rangeStats.activeTeamMemberCount)}`
+        desc: `${rangeText}活跃成员 ${formatNum(rangeStats.activeTeamMemberCount)}`
       },
       {
         icon: 'core/chat/chatFill' as IconNameType,
-        label: `近${days}天会话`,
+        label: `${rangeText}会话`,
         value: rangeStats.chatCount,
         desc: `累计 ${overview.chatTotal}`
       },
       {
         icon: 'common/resultLight' as IconNameType,
-        label: `近${days}天问答`,
+        label: `${rangeText}问答`,
         value: rangeStats.questionCount + rangeStats.answerCount,
         desc: `提问 ${formatNum(rangeStats.questionCount)} · 回答 ${formatNum(
           rangeStats.answerCount
@@ -214,14 +215,14 @@ const StatisticsPage = () => {
       },
       {
         icon: 'support/user/userFill' as IconNameType,
-        label: `近${days}天活跃用户`,
+        label: `${rangeText}活跃用户`,
         value: rangeStats.activeMemberCount,
         desc: `登录用户 ${formatNum(rangeStats.activeLoginUserCount)} · 匿名用户 ${formatNum(
           rangeStats.activeAnonymousUserCount
         )}`
       }
     ];
-  }, [data?.overview, data?.rangeStats, days]);
+  }, [data?.overview, data?.rangeStats, days, rangeText]);
 
   return (
     <PageContainer isLoading={isFetching}>
@@ -235,10 +236,10 @@ const StatisticsPage = () => {
         >
           <Box>
             <Text fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
-              团队概览
+              数据概览
             </Text>
             <Text fontSize={'sm'} color={'myGray.500'}>
-              一页了解当前账号所在团队的规模、活跃度与结构分布
+              了解当前账号所在团队的数据统计情况，包括规模、活跃度与结构分布等等。
             </Text>
           </Box>
 
@@ -248,7 +249,8 @@ const StatisticsPage = () => {
               list={[
                 { label: <Box>近7天</Box>, value: 7 },
                 { label: <Box>近30天</Box>, value: 30 },
-                { label: <Box>近90天</Box>, value: 90 }
+                { label: <Box>近90天</Box>, value: 90 },
+                { label: <Box>近一年</Box>, value: 365 }
               ]}
               value={days}
               onChange={setDays}
@@ -257,7 +259,7 @@ const StatisticsPage = () => {
               alignItems={'center'}
               gap={1}
               px={3}
-              py={2}
+              py={1}
               borderRadius={'md'}
               bg={'white'}
               border={theme.borders.base}
@@ -265,8 +267,8 @@ const StatisticsPage = () => {
               _hover={{ bg: 'myGray.05' }}
               onClick={() => refetch()}
             >
-              <MyIcon name={'common/refreshLight'} w={'16px'} color={'myGray.700'} />
-              <Text fontSize={'sm'} color={'myGray.700'}>
+              <MyIcon name={'common/refreshLight'} w={'12px'} color={'myGray.700'} />
+              <Text fontSize={'xs'} color={'myGray.700'}>
                 刷新
               </Text>
             </Flex>
@@ -314,7 +316,7 @@ const StatisticsPage = () => {
                 趋势
               </Text>
               <Text fontSize={'xs'} color={'myGray.500'}>
-                近{days}天
+                {rangeText}
               </Text>
             </Box>
           </Flex>
@@ -329,7 +331,7 @@ const StatisticsPage = () => {
                   会话来源分布
                 </Text>
                 <Text fontSize={'xs'} color={'myGray.500'}>
-                  近{days}天
+                  {rangeText}
                 </Text>
               </Box>
             </Flex>
@@ -354,7 +356,7 @@ const StatisticsPage = () => {
                   用户排行
                 </Text>
                 <Text fontSize={'xs'} color={'myGray.500'}>
-                  已登录 · 按提问数 · 近{days}天
+                  已登录 · 按提问数 · {rangeText}
                 </Text>
               </Box>
             </Flex>
@@ -467,7 +469,7 @@ const StatisticsPage = () => {
                   应用排行
                 </Text>
                 <Text fontSize={'xs'} color={'myGray.500'}>
-                  按提问数 · 近{days}天
+                  按提问数 · {rangeText}
                 </Text>
               </Box>
               <Text
