@@ -306,16 +306,16 @@ const StatisticsPage = () => {
           ))}
         </SimpleGrid>
 
-        <SimpleGrid columns={[1, 2]} spacing={3} mb={4}>
-          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
-            <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                趋势（近{days}天）
-              </Text>
-            </Flex>
-            <EChartsPanel option={trendOption} height={isPc ? 320 : 280} />
-          </MyBox>
+        <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4} mb={4}>
+          <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
+            <Text fontWeight={'bold'} color={'myGray.900'}>
+              趋势（近{days}天）
+            </Text>
+          </Flex>
+          <EChartsPanel option={trendOption} height={isPc ? 380 : 320} />
+        </MyBox>
 
+        <SimpleGrid columns={[1, 2]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -324,9 +324,7 @@ const StatisticsPage = () => {
             </Flex>
             <EChartsPanel option={sourceOption} height={isPc ? 320 : 280} />
           </MyBox>
-        </SimpleGrid>
 
-        <SimpleGrid columns={[1, 4]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -335,64 +333,9 @@ const StatisticsPage = () => {
             </Flex>
             <EChartsPanel option={appTypeOption} height={isPc ? 320 : 280} />
           </MyBox>
+        </SimpleGrid>
 
-          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
-            <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                应用排行（按提问数，近{days}天）
-              </Text>
-              <Text
-                fontSize={'sm'}
-                color={'primary.600'}
-                cursor={'pointer'}
-                onClick={() => router.push('/app/list')}
-              >
-                进入工作台
-              </Text>
-            </Flex>
-
-            <Box>
-              {(data?.topApps ?? []).length === 0 ? (
-                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
-                  暂无数据
-                </Text>
-              ) : (
-                (data?.topApps ?? []).map((item, idx) => (
-                  <Flex
-                    key={item.appId}
-                    alignItems={'center'}
-                    py={2}
-                    px={2}
-                    borderRadius={'md'}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'myGray.05' }}
-                    onClick={() => router.push(`/app/detail/${item.appId}`)}
-                  >
-                    <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
-                      {idx + 1}
-                    </Text>
-                    <Avatar src={item.avatar} alt={item.name} w={'28px'} h={'28px'} mr={2} />
-                    <Box flex={'1 0 0'} minW={0}>
-                      <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
-                        {item.name}
-                      </Text>
-                      <Text fontSize={'xs'} color={'myGray.500'}>
-                        {AppTypeLabel[item.type] ?? item.type}
-                      </Text>
-                    </Box>
-                    <Box textAlign={'right'} minW={'110px'}>
-                      <Text fontSize={'sm'} color={'myGray.900'} fontWeight={'bold'}>
-                        {formatNum(item.questions)} 提问
-                      </Text>
-                      <Text fontSize={'xs'} color={'myGray.500'}>
-                        {formatNum(item.chats)} 会话
-                      </Text>
-                    </Box>
-                  </Flex>
-                ))
-              )}
-            </Box>
-          </MyBox>
+        <SimpleGrid columns={[1, 3]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -488,6 +431,64 @@ const StatisticsPage = () => {
                       </Text>
                       <Text fontSize={'xs'} color={'myGray.500'}>
                         原文 {formatNum(item.rawTextLength)}
+                      </Text>
+                    </Box>
+                  </Flex>
+                ))
+              )}
+            </Box>
+          </MyBox>
+
+          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+            <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
+              <Text fontWeight={'bold'} color={'myGray.900'}>
+                应用排行（按提问数，近{days}天）
+              </Text>
+              <Text
+                fontSize={'sm'}
+                color={'primary.600'}
+                cursor={'pointer'}
+                onClick={() => router.push('/app/list')}
+              >
+                进入工作台
+              </Text>
+            </Flex>
+
+            <Box>
+              {(data?.topApps ?? []).length === 0 ? (
+                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
+                  暂无数据
+                </Text>
+              ) : (
+                (data?.topApps ?? []).map((item, idx) => (
+                  <Flex
+                    key={item.appId}
+                    alignItems={'center'}
+                    py={2}
+                    px={2}
+                    borderRadius={'md'}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myGray.05' }}
+                    onClick={() => router.push(`/app/detail/${item.appId}`)}
+                  >
+                    <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
+                      {idx + 1}
+                    </Text>
+                    <Avatar src={item.avatar} alt={item.name} w={'28px'} h={'28px'} mr={2} />
+                    <Box flex={'1 0 0'} minW={0}>
+                      <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text fontSize={'xs'} color={'myGray.500'}>
+                        {AppTypeLabel[item.type] ?? item.type}
+                      </Text>
+                    </Box>
+                    <Box textAlign={'right'} minW={'110px'}>
+                      <Text fontSize={'sm'} color={'myGray.900'} fontWeight={'bold'}>
+                        {formatNum(item.questions)} 提问
+                      </Text>
+                      <Text fontSize={'xs'} color={'myGray.500'}>
+                        {formatNum(item.chats)} 会话
                       </Text>
                     </Box>
                   </Flex>
