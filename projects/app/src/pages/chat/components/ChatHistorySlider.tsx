@@ -14,7 +14,6 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type HistoryItemType = {
   id: string;
