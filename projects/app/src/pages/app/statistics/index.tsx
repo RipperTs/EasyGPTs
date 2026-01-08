@@ -30,7 +30,8 @@ const AppTypeLabel: Record<string, string> = {
   [AppTypeEnum.plugin]: '插件',
   [AppTypeEnum.httpPlugin]: 'HTTP 插件',
   [AppTypeEnum.toolSet]: '工具集',
-  [AppTypeEnum.folder]: '文件夹'
+  [AppTypeEnum.folder]: '文件夹',
+  mcpTool: 'MCP 工具'
 };
 
 const SourceLabel: Record<string, string> = {
@@ -162,6 +163,12 @@ const StatisticsPage = () => {
         desc: `插件 ${overview.pluginApp} · HTTP ${overview.pluginHttp} · 工具集 ${overview.toolSet}`
       },
       {
+        icon: 'core/app/type/mcpFill' as IconNameType,
+        label: 'MCP 工具',
+        value: overview.mcpToolTotal,
+        desc: '工具集中配置的 MCP 工具数量'
+      },
+      {
         icon: 'core/dataset/datasetFill' as IconNameType,
         label: '知识库',
         value: overview.datasetTotal,
@@ -180,16 +187,12 @@ const StatisticsPage = () => {
         desc: `累计 ${overview.chatTotal}`
       },
       {
-        icon: 'common/questionLight' as IconNameType,
-        label: `近${days}天提问`,
-        value: rangeStats.questionCount,
-        desc: `累计 ${overview.questionTotal}`
-      },
-      {
         icon: 'common/resultLight' as IconNameType,
-        label: `近${days}天回答`,
-        value: rangeStats.answerCount,
-        desc: `累计 ${overview.answerTotal}`
+        label: `近${days}天问答`,
+        value: rangeStats.questionCount + rangeStats.answerCount,
+        desc: `提问 ${formatNum(rangeStats.questionCount)} · 回答 ${formatNum(
+          rangeStats.answerCount
+        )}`
       },
       {
         icon: 'support/user/userFill' as IconNameType,

@@ -5,6 +5,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -30,6 +31,7 @@ export type TeamDashboardRes = {
     pluginApp: number;
     pluginHttp: number;
     toolSet: number;
+    mcpToolTotal: number;
     folder: number;
     datasetTotal: number;
     memberTotal: number;
@@ -117,10 +119,48 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     authToken: true,
     per: ReadPermissionVal
   });
+  const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : null;
+  const teamIdQuery = teamObjectId ? { $in: [teamObjectId, teamId] } : teamId;
 
   const endTime = new Date();
   const startTime = getLocalDayStart(new Date(endTime.getTime() - (rangeDays - 1) * DAY_MS));
   const tz = getTimezoneOffsetString(endTime);
+
+  const mcpToolTotalPromise = (async () => {
+    const toolSets = await MongoApp.find(
+      {
+        teamId: teamIdQuery,
+        type: AppTypeEnum.toolSet,
+        $or: [
+          { 'modules.0.toolConfig.mcpToolSet': { $exists: true, $ne: null } },
+          { 'modules.0.inputs': { $elemMatch: { key: 'mcpToolSetConfig' } } }
+        ]
+      },
+      '_id modules teamId'
+    ).lean();
+
+    if (!toolSets || toolSets.length === 0) return 0;
+
+    const countList = await Promise.all(
+      toolSets.map(async (app) => {
+        const toolSetNode = (app.modules as any[])?.[0];
+        const config =
+          toolSetNode?.toolConfig?.mcpToolSet ||
+          toolSetNode?.inputs?.find((item: any) => item.key === 'mcpToolSetConfig')?.value ||
+          {};
+
+        const toolList = Array.isArray(config?.toolList) ? config.toolList : [];
+        if (toolList.length > 0) return toolList.length;
+
+        return MongoApp.countDocuments({
+          teamId: teamIdQuery,
+          parentId: { $in: [app._id, String(app._id)] }
+        });
+      })
+    );
+
+    return countList.reduce((sum, val) => sum + (val || 0), 0);
+  })();
 
   const [
     appTypeAgg,
@@ -141,28 +181,35 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     topAppQuestionsAgg,
     topAppChatsAgg,
     topMemberQuestionsAgg,
-    topMemberChatsAgg
+    topMemberChatsAgg,
+    mcpToolTotal
   ] = await Promise.all([
     MongoApp.aggregate<{ _id: string; count: number }>([
-      { $match: { teamId } },
+      { $match: { teamId: teamIdQuery } },
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]),
-    MongoDataset.countDocuments({ teamId }),
-    MongoTeamMember.countDocuments({ teamId, status: { $ne: TeamMemberStatusEnum.leave } }),
-    MongoTeamMember.countDocuments({ teamId, status: TeamMemberStatusEnum.active }),
+    MongoDataset.countDocuments({ teamId: teamIdQuery }),
+    MongoTeamMember.countDocuments({
+      teamId: teamIdQuery,
+      status: { $ne: TeamMemberStatusEnum.leave }
+    }),
+    MongoTeamMember.countDocuments({ teamId: teamIdQuery, status: TeamMemberStatusEnum.active }),
 
-    MongoChat.countDocuments({ teamId }),
-    MongoChatItem.countDocuments({ teamId, obj: ChatRoleEnum.Human }),
-    MongoChatItem.countDocuments({ teamId, obj: ChatRoleEnum.AI }),
+    MongoChat.countDocuments({ teamId: teamIdQuery }),
+    MongoChatItem.countDocuments({ teamId: teamIdQuery, obj: ChatRoleEnum.Human }),
+    MongoChatItem.countDocuments({ teamId: teamIdQuery, obj: ChatRoleEnum.AI }),
 
-    MongoChat.countDocuments({ teamId, updateTime: { $gte: startTime, $lte: endTime } }),
+    MongoChat.countDocuments({
+      teamId: teamIdQuery,
+      updateTime: { $gte: startTime, $lte: endTime }
+    }),
     MongoChatItem.countDocuments({
-      teamId,
+      teamId: teamIdQuery,
       obj: ChatRoleEnum.Human,
       time: { $gte: startTime, $lte: endTime }
     }),
     MongoChatItem.countDocuments({
-      teamId,
+      teamId: teamIdQuery,
       obj: ChatRoleEnum.AI,
       time: { $gte: startTime, $lte: endTime }
     }),
@@ -170,7 +217,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     MongoChatItem.aggregate<{ _id: unknown }>([
       {
         $match: {
-          teamId,
+          teamId: teamIdQuery,
           obj: ChatRoleEnum.Human,
           time: { $gte: startTime, $lte: endTime }
         }
@@ -181,7 +228,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     MongoChatItem.aggregate<{ _id: string; count: number }>([
       {
         $match: {
-          teamId,
+          teamId: teamIdQuery,
           obj: ChatRoleEnum.Human,
           time: { $gte: startTime, $lte: endTime }
         }
@@ -194,7 +241,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       }
     ]),
     MongoChat.aggregate<{ _id: string; count: number }>([
-      { $match: { teamId, updateTime: { $gte: startTime, $lte: endTime } } },
+      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
@@ -205,7 +252,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     MongoChatItem.aggregate<{ _id: string; count: number }>([
       {
         $match: {
-          teamId,
+          teamId: teamIdQuery,
           obj: ChatRoleEnum.Human,
           time: { $gte: startTime, $lte: endTime }
         }
@@ -221,14 +268,14 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       { $group: { _id: '$_id.day', count: { $sum: 1 } } }
     ]),
     MongoChat.aggregate<{ _id: string; count: number }>([
-      { $match: { teamId, updateTime: { $gte: startTime, $lte: endTime } } },
+      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       { $group: { _id: '$source', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]),
     MongoChatItem.aggregate<{ _id: unknown; questions: number }>([
       {
         $match: {
-          teamId,
+          teamId: teamIdQuery,
           obj: ChatRoleEnum.Human,
           time: { $gte: startTime, $lte: endTime }
         }
@@ -238,13 +285,13 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       { $limit: 10 }
     ]),
     MongoChat.aggregate<{ _id: unknown; chats: number }>([
-      { $match: { teamId, updateTime: { $gte: startTime, $lte: endTime } } },
+      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       { $group: { _id: '$appId', chats: { $sum: 1 } } }
     ]),
     MongoChatItem.aggregate<{ _id: unknown; questions: number }>([
       {
         $match: {
-          teamId,
+          teamId: teamIdQuery,
           obj: ChatRoleEnum.Human,
           time: { $gte: startTime, $lte: endTime }
         }
@@ -254,9 +301,10 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       { $limit: 10 }
     ]),
     MongoChat.aggregate<{ _id: unknown; chats: number }>([
-      { $match: { teamId, updateTime: { $gte: startTime, $lte: endTime } } },
+      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       { $group: { _id: '$tmbId', chats: { $sum: 1 } } }
-    ])
+    ]),
+    mcpToolTotalPromise
   ]);
 
   const appType = appTypeAgg
@@ -276,6 +324,13 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
 
   const activeMemberCount = activeMemberAgg.length;
 
+  if (mcpToolTotal > 0) {
+    appType.push({
+      type: 'mcpTool',
+      count: mcpToolTotal
+    });
+  }
+
   const questionTrendMap = new Map(questionTrendAgg.map((i) => [i._id, i.count]));
   const chatTrendMap = new Map(chatTrendAgg.map((i) => [i._id, i.count]));
   const activeMembersTrendMap = new Map(activeMembersTrendAgg.map((i) => [i._id, i.count]));
@@ -292,7 +347,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
 
   const topAppIds = topAppQuestionsAgg.map((i) => i._id);
   const topAppsInfo = await MongoApp.find(
-    { _id: { $in: topAppIds }, type: { $nin: AppFolderTypeList } },
+    { teamId: teamIdQuery, _id: { $in: topAppIds }, type: { $nin: AppFolderTypeList } },
     '_id name avatar type'
   ).lean();
   const topAppsInfoMap = new Map(topAppsInfo.map((i) => [String(i._id), i]));
@@ -315,7 +370,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
 
   const topMemberIds = topMemberQuestionsAgg.map((i) => i._id);
   const topMemberInfo = await MongoTeamMember.find(
-    { _id: { $in: topMemberIds } },
+    { teamId: teamIdQuery, _id: { $in: topMemberIds } },
     '_id name'
   ).lean();
   const topMemberInfoMap = new Map(topMemberInfo.map((i) => [String(i._id), i.name]));
@@ -348,6 +403,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       pluginApp,
       pluginHttp,
       toolSet,
+      mcpToolTotal,
       folder,
       datasetTotal,
       memberTotal,
