@@ -32,7 +32,9 @@ const provider = () => {
       setLastChatId('');
       setLastChatAppId('');
 
-      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
+      router.push(
+        loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/statistics'
+      );
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
@@ -92,7 +94,7 @@ const provider = () => {
 
     (async () => {
       await clearToken();
-      router.prefetch('/app/list');
+      router.prefetch('/app/statistics');
 
       if (state !== loginStore?.state) {
         toast({

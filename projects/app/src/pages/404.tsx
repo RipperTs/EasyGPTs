@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 const NonePage = () => {
   const router = useRouter();
   useEffect(() => {
-    router.push('/app/list');
+    router.push('/app/statistics');
   }, [router]);
 
   return <div></div>;

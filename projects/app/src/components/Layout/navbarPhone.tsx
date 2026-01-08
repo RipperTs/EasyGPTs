@@ -21,6 +21,14 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
+        label: '概览',
+        icon: 'common/data',
+        activeIcon: 'common/data',
+        link: `/app/statistics`,
+        activeLink: ['/app/statistics'],
+        unread: 0
+      },
+      {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',

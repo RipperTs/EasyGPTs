@@ -38,7 +38,7 @@ const Login = () => {
       setUserInfo(res.user);
       setToken(res.token);
       setTimeout(() => {
-        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
+        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/statistics');
       }, 300);
     },
     [lastRoute, router, setLastChatId, setLastChatAppId, setUserInfo]
@@ -66,7 +66,7 @@ const Login = () => {
 
   useMount(() => {
     clearToken();
-    router.prefetch('/app/list');
+    router.prefetch('/app/statistics');
   });
 
   return (

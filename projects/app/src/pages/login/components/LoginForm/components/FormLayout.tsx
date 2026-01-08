@@ -21,7 +21,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { setLoginStore, feConfigs } = useSystemStore();
-  const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
+  const { lastRoute = '/app/statistics' } = router.query as { lastRoute: string };
   const state = useRef(nanoid());
   const redirectUri = `${location.origin}/login/provider`;
 

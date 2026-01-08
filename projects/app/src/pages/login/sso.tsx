@@ -29,7 +29,7 @@ const provider = () => {
       // init store
       setLastChatId('');
       setLastChatAppId('');
-      router.push('/app/list');
+      router.push('/app/statistics');
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router]
   );

@@ -25,6 +25,13 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/chat']
       },
       {
+        label: '概览',
+        icon: 'common/data',
+        activeIcon: 'common/data',
+        link: `/app/statistics`,
+        activeLink: ['/app/statistics']
+      },
+      {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
