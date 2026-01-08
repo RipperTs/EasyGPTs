@@ -308,9 +308,14 @@ const StatisticsPage = () => {
 
         <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4} mb={4}>
           <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-            <Text fontWeight={'bold'} color={'myGray.900'}>
-              趋势（近{days}天）
-            </Text>
+            <Box>
+              <Text fontWeight={'bold'} color={'myGray.900'}>
+                趋势
+              </Text>
+              <Text fontSize={'xs'} color={'myGray.500'}>
+                近{days}天
+              </Text>
+            </Box>
           </Flex>
           <EChartsPanel option={trendOption} height={isPc ? 380 : 320} />
         </MyBox>
@@ -318,9 +323,14 @@ const StatisticsPage = () => {
         <SimpleGrid columns={[1, 2]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                会话来源分布（近{days}天）
-              </Text>
+              <Box>
+                <Text fontWeight={'bold'} color={'myGray.900'}>
+                  会话来源分布
+                </Text>
+                <Text fontSize={'xs'} color={'myGray.500'}>
+                  近{days}天
+                </Text>
+              </Box>
             </Flex>
             <EChartsPanel option={sourceOption} height={isPc ? 320 : 280} />
           </MyBox>
@@ -338,9 +348,14 @@ const StatisticsPage = () => {
         <SimpleGrid columns={[1, 3]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                用户排行（已登录，按提问数，近{days}天）
-              </Text>
+              <Box>
+                <Text fontWeight={'bold'} color={'myGray.900'}>
+                  用户排行
+                </Text>
+                <Text fontSize={'xs'} color={'myGray.500'}>
+                  已登录 · 按提问数 · 近{days}天
+                </Text>
+              </Box>
             </Flex>
 
             <Box>
@@ -382,9 +397,14 @@ const StatisticsPage = () => {
 
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                知识库排行（按数据条数）
-              </Text>
+              <Box>
+                <Text fontWeight={'bold'} color={'myGray.900'}>
+                  知识库排行
+                </Text>
+                <Text fontSize={'xs'} color={'myGray.500'}>
+                  按数据条数
+                </Text>
+              </Box>
               <Text
                 fontSize={'sm'}
                 color={'primary.600'}
@@ -441,9 +461,14 @@ const StatisticsPage = () => {
 
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-              <Text fontWeight={'bold'} color={'myGray.900'}>
-                应用排行（按提问数，近{days}天）
-              </Text>
+              <Box>
+                <Text fontWeight={'bold'} color={'myGray.900'}>
+                  应用排行
+                </Text>
+                <Text fontSize={'xs'} color={'myGray.500'}>
+                  按提问数 · 近{days}天
+                </Text>
+              </Box>
               <Text
                 fontSize={'sm'}
                 color={'primary.600'}
