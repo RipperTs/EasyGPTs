@@ -34,6 +34,12 @@ const AppTypeLabel: Record<string, string> = {
   mcpTool: 'MCP 工具'
 };
 
+const DatasetTypeLabel: Record<string, string> = {
+  dataset: '通用知识库',
+  websiteDataset: '网站知识库',
+  externalFile: '外部文件库'
+};
+
 const SourceLabel: Record<string, string> = {
   online: '在线',
   api: 'API',
@@ -320,7 +326,7 @@ const StatisticsPage = () => {
           </MyBox>
         </SimpleGrid>
 
-        <SimpleGrid columns={[1, 3]} spacing={3} mb={4}>
+        <SimpleGrid columns={[1, 4]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -423,6 +429,65 @@ const StatisticsPage = () => {
                     <Box textAlign={'right'} minW={'110px'}>
                       <Text fontSize={'sm'} color={'myGray.900'} fontWeight={'bold'}>
                         {formatNum(item.questions)} 提问
+                      </Text>
+                    </Box>
+                  </Flex>
+                ))
+              )}
+            </Box>
+          </MyBox>
+
+          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+            <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
+              <Text fontWeight={'bold'} color={'myGray.900'}>
+                知识库排行（按数据条数）
+              </Text>
+              <Text
+                fontSize={'sm'}
+                color={'primary.600'}
+                cursor={'pointer'}
+                onClick={() => router.push('/dataset/list')}
+              >
+                进入知识库
+              </Text>
+            </Flex>
+
+            <Box>
+              {(data?.topDatasets ?? []).length === 0 ? (
+                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
+                  暂无数据
+                </Text>
+              ) : (
+                (data?.topDatasets ?? []).map((item, idx) => (
+                  <Flex
+                    key={item.datasetId}
+                    alignItems={'center'}
+                    py={2}
+                    px={2}
+                    borderRadius={'md'}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myGray.05' }}
+                    onClick={() => router.push(`/dataset/detail?datasetId=${item.datasetId}`)}
+                  >
+                    <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
+                      {idx + 1}
+                    </Text>
+                    <Avatar src={item.avatar} alt={item.name} w={'28px'} h={'28px'} mr={2} />
+                    <Box flex={'1 0 0'} minW={0}>
+                      <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text fontSize={'xs'} color={'myGray.500'}>
+                        {DatasetTypeLabel[item.type] ?? item.type} ·{' '}
+                        {formatNum(item.collectionCount)} 集合
+                      </Text>
+                    </Box>
+                    <Box textAlign={'right'} minW={'110px'}>
+                      <Text fontSize={'sm'} color={'myGray.900'} fontWeight={'bold'}>
+                        {formatNum(item.dataCount)} 条
+                      </Text>
+                      <Text fontSize={'xs'} color={'myGray.500'}>
+                        原文 {formatNum(item.rawTextLength)}
                       </Text>
                     </Box>
                   </Flex>

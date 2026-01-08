@@ -9,9 +9,12 @@ import { Types } from '@fastgpt/service/common/mongo';
 
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { DatasetColCollectionName } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName, MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type GetTeamDashboardBody = {
   days?: 7 | 30 | 90;
@@ -76,6 +79,16 @@ export type TeamDashboardRes = {
     name: string;
     questions: number;
     chats: number;
+  }>;
+  topDatasets: Array<{
+    datasetId: string;
+    name: string;
+    avatar: string;
+    type: string;
+    collectionCount: number;
+    dataCount: number;
+    rawTextLength: number;
+    updateTime: string;
   }>;
 };
 
@@ -186,6 +199,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     topAppQuestionsAgg,
     topAppChatsAgg,
     topUserAgg,
+    topDatasetsAgg,
     mcpToolTotal
   ] = await Promise.all([
     MongoApp.aggregate<{ _id: string; count: number }>([
@@ -371,6 +385,82 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       { $sort: { questions: -1, chats: -1 } },
       { $limit: 10 }
     ]),
+    MongoDataset.aggregate<{
+      _id: unknown;
+      name: string;
+      avatar: string;
+      type: string;
+      updateTime: Date;
+      collectionCount: number;
+      dataCount: number;
+      rawTextLength: number;
+    }>([
+      {
+        $match: {
+          teamId: teamIdQuery,
+          type: { $ne: DatasetTypeEnum.folder }
+        }
+      },
+      {
+        $lookup: {
+          from: DatasetColCollectionName,
+          let: { datasetId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                teamId: teamIdQuery,
+                $expr: { $eq: ['$datasetId', '$$datasetId'] }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                rawTextLength: { $sum: { $ifNull: ['$rawTextLength', 0] } }
+              }
+            }
+          ],
+          as: 'colAgg'
+        }
+      },
+      {
+        $lookup: {
+          from: DatasetDataCollectionName,
+          let: { datasetId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                teamId: teamIdQuery,
+                $expr: { $eq: ['$datasetId', '$$datasetId'] }
+              }
+            },
+            { $group: { _id: null, count: { $sum: 1 } } }
+          ],
+          as: 'dataAgg'
+        }
+      },
+      {
+        $addFields: {
+          collectionCount: { $ifNull: [{ $arrayElemAt: ['$colAgg.count', 0] }, 0] },
+          rawTextLength: { $ifNull: [{ $arrayElemAt: ['$colAgg.rawTextLength', 0] }, 0] },
+          dataCount: { $ifNull: [{ $arrayElemAt: ['$dataAgg.count', 0] }, 0] }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          avatar: 1,
+          type: 1,
+          updateTime: 1,
+          collectionCount: 1,
+          rawTextLength: 1,
+          dataCount: 1
+        }
+      },
+      { $sort: { dataCount: -1, rawTextLength: -1, updateTime: -1 } },
+      { $limit: 10 }
+    ]),
     mcpToolTotalPromise
   ]);
 
@@ -454,6 +544,17 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     chats: item.chats
   }));
 
+  const topDatasets = topDatasetsAgg.map((item) => ({
+    datasetId: String(item._id),
+    name: item.name,
+    avatar: item.avatar,
+    type: item.type,
+    collectionCount: item.collectionCount,
+    dataCount: item.dataCount,
+    rawTextLength: item.rawTextLength,
+    updateTime: item.updateTime.toISOString()
+  }));
+
   return {
     range: {
       days: rangeDays,
@@ -489,7 +590,8 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     appType,
     source,
     topApps,
-    topMembers
+    topMembers,
+    topDatasets
   };
 }
 
