@@ -48,6 +48,7 @@ export type TeamDashboardRes = {
     questionCount: number;
     answerCount: number;
     activeMemberCount: number;
+    activeTeamMemberCount: number;
     activeLoginUserCount: number;
     activeAnonymousUserCount: number;
   };
@@ -191,6 +192,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     answerCount,
     activeOutLinkUidAgg,
     activeOutLinkUidSplitAgg,
+    activeTeamMemberAgg,
     questionTrendAgg,
     chatTrendAgg,
     activeOutLinkUidTrendAgg,
@@ -258,6 +260,15 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         }
       },
       { $group: { _id: '$isAnonymous', count: { $sum: 1 } } }
+    ]),
+    MongoChat.aggregate<{ _id: unknown }>([
+      {
+        $match: {
+          teamId: teamIdQuery,
+          updateTime: { $gte: startTime, $lte: endTime }
+        }
+      },
+      { $group: { _id: '$tmbId' } }
     ]),
 
     MongoChatItem.aggregate<{ _id: string; count: number }>([
@@ -480,6 +491,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
   const pluginTotal = pluginApp + pluginHttp + toolSet;
 
   const activeMemberCount = activeOutLinkUidAgg.length;
+  const activeTeamMemberCount = activeTeamMemberAgg.length;
   const activeAnonymousUserCount = activeOutLinkUidSplitAgg.find((i) => i._id === true)?.count ?? 0;
   const activeLoginUserCount = activeOutLinkUidSplitAgg.find((i) => i._id === false)?.count ?? 0;
 
@@ -583,6 +595,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       questionCount,
       answerCount,
       activeMemberCount,
+      activeTeamMemberCount,
       activeLoginUserCount,
       activeAnonymousUserCount
     },

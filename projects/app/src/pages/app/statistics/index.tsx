@@ -196,7 +196,7 @@ const StatisticsPage = () => {
         icon: 'support/team/memberLight' as IconNameType,
         label: '团队成员',
         value: overview.memberTotal,
-        desc: `活跃成员 ${overview.memberActive}`
+        desc: `近${days}天活跃成员 ${formatNum(rangeStats.activeTeamMemberCount)}`
       },
       {
         icon: 'core/chat/chatFill' as IconNameType,
