@@ -320,7 +320,7 @@ const StatisticsPage = () => {
           </MyBox>
         </SimpleGrid>
 
-        <SimpleGrid columns={[1, 2]} spacing={3} mb={4}>
+        <SimpleGrid columns={[1, 3]} spacing={3} mb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -387,31 +387,27 @@ const StatisticsPage = () => {
               )}
             </Box>
           </MyBox>
-        </SimpleGrid>
-
-        <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
-          <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
-            <Text fontWeight={'bold'} color={'myGray.900'}>
-              成员排行（按提问数，近{days}天）
-            </Text>
-          </Flex>
-
-          <Box>
-            {(data?.topMembers ?? []).length === 0 ? (
-              <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
-                暂无数据
+          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+            <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
+              <Text fontWeight={'bold'} color={'myGray.900'}>
+                成员排行（按提问数，近{days}天）
               </Text>
-            ) : (
-              <SimpleGrid columns={[1, 2, 3]} spacing={2}>
-                {(data?.topMembers ?? []).map((item, idx) => (
+            </Flex>
+
+            <Box>
+              {(data?.topMembers ?? []).length === 0 ? (
+                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
+                  暂无数据
+                </Text>
+              ) : (
+                (data?.topMembers ?? []).map((item, idx) => (
                   <Flex
                     key={item.tmbId}
                     alignItems={'center'}
                     py={2}
-                    px={3}
+                    px={2}
                     borderRadius={'md'}
-                    border={theme.borders.base}
-                    bg={'myGray.25'}
+                    _hover={{ bg: 'myGray.05' }}
                   >
                     <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
                       {idx + 1}
@@ -421,15 +417,20 @@ const StatisticsPage = () => {
                         {item.name}
                       </Text>
                       <Text fontSize={'xs'} color={'myGray.500'}>
-                        {formatNum(item.questions)} 提问 · {formatNum(item.chats)} 会话
+                        {formatNum(item.chats)} 会话
+                      </Text>
+                    </Box>
+                    <Box textAlign={'right'} minW={'110px'}>
+                      <Text fontSize={'sm'} color={'myGray.900'} fontWeight={'bold'}>
+                        {formatNum(item.questions)} 提问
                       </Text>
                     </Box>
                   </Flex>
-                ))}
-              </SimpleGrid>
-            )}
-          </Box>
-        </MyBox>
+                ))
+              )}
+            </Box>
+          </MyBox>
+        </SimpleGrid>
       </Box>
     </PageContainer>
   );
