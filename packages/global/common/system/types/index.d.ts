@@ -53,6 +53,7 @@ export type FastGPTFeConfigsType = {
     title?: string;
     url?: string;
   };
+  xgtSsoAuthUrl?: string;
   oauth?: {
     github?: string;
     google?: string;

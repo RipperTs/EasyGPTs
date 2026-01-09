@@ -25,6 +25,8 @@ export const oauthLogin = (params: OauthLoginProps) =>
 export const postFastLogin = (params: FastLoginProps) =>
   POST<ResLogin>('/proApi/support/user/account/login/fastLogin', params);
 export const ssoLogin = (params: any) => GET<ResLogin>('/proApi/support/user/account/sso', params);
+export const postXgtSsoLogin = (data: { token: string; username?: string; card?: string }) =>
+  POST<ResLogin>('/support/user/account/loginByXgtSso', data);
 
 export const postRegister = ({
   username,

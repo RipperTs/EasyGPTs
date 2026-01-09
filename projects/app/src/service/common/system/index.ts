@@ -78,6 +78,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 };
 
 export async function initSystemConfig() {
+  const xgtSsoAuthUrl = process.env.XGT_SSO_AUTH_URL?.trim();
+
   // load config - 仅加载非模型相关的配置
   const [dbModelConfig, fileConfig] = await Promise.all([
     // 从数据库获取所有模型配置
@@ -91,7 +93,8 @@ export async function initSystemConfig() {
     feConfigs: {
       ...defaultFeConfigs,
       ...fileRes?.feConfigs, // 仅保留前端配置使用文件
-      isPlus: !!FastGPTProUrl
+      isPlus: !!FastGPTProUrl,
+      ...(xgtSsoAuthUrl ? { xgtSsoAuthUrl } : {})
     },
     systemEnv: {
       ...fileRes.systemEnv // 系统环境变量仍使用文件

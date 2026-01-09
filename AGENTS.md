@@ -69,6 +69,10 @@
 - **忘记注册前端 `nodeTypes`**
   - 现象：画布中节点显示为"小空白框"，控制台报错：`[React Flow]: Node type "xxx" not found. Using fallback type "default"`。
   - 修复：在 `projects/app/src/pages/app/detail/components/WorkflowComponents/Flow/index.tsx` 的 `nodeTypes` 补上对应类型映射。
+- **Chakra 按钮宽度设置不生效**
+  - 现象：给 `Button` 设置了 `maxW`，但视觉上宽度没有变化（常见于同时写了 `w="100%"`）。
+  - 原因：`maxW` 只限制最大宽度，不会主动改变布局；`w` 才是实际宽度。
+  - 修复：需要固定宽度用 `w`（可用响应式数组如 `w={['100%', '360px']}`）；需要居中时用 `Flex justify="center"` 或配合 `mx="auto"`。
 
 ---
 
