@@ -21,7 +21,8 @@ import {
   getOpenApiKeys,
   createAOpenApiKey,
   delOpenApiById,
-  putOpenApiKey
+  putOpenApiKey,
+  getOpenApiKeyDetail
 } from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -50,6 +51,12 @@ const defaultEditData: EditProps = {
   }
 };
 
+const getApiKeyPreview = (key: string) => {
+  if (!key) return '';
+  if (key.length <= 16) return key;
+  return `${key.slice(0, 6)}...${key.slice(-4)}`;
+};
+
 const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -57,7 +64,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const { feConfigs } = useSystemStore();
   const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
   const [editData, setEditData] = useState<EditProps>();
-  const [apiKey, setApiKey] = useState('');
+  const [newApiKey, setNewApiKey] = useState('');
+  const [viewApiKey, setViewApiKey] = useState('');
+  const [viewingId, setViewingId] = useState<string>();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -71,6 +80,21 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
     onSuccess() {
       refetch();
     }
+  });
+
+  const { mutate: onclickViewApiKey, isLoading: isFetchingApiKey } = useRequest({
+    mutationFn: async (id: string) => {
+      const res = await getOpenApiKeyDetail(id);
+      return res.apiKey;
+    },
+    errorToast: 'Error',
+    onSuccess: (res) => {
+      if (typeof res === 'string') {
+        setViewApiKey(res);
+      }
+      setViewingId(undefined);
+    },
+    onError: () => setViewingId(undefined)
   });
 
   const {
@@ -140,13 +164,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
-              <Th>Api Key</Th>
-              {feConfigs?.isPlus && (
-                <>
-                  <Th>{t('common:common.Expired Time')}</Th>
-                </>
-              )}
-
+              <Th>API KEY</Th>
               <Th>{t('common:common.Create Time')}</Th>
               <Th>{t('common:common.Last use time')}</Th>
               <Th />
@@ -156,17 +174,25 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             {apiKeys.map(({ _id, name, usagePoints, limit, apiKey, createTime, lastUsedTime }) => (
               <Tr key={_id}>
                 <Td>{name}</Td>
-                <Td>{apiKey}</Td>
-
-                {feConfigs?.isPlus && (
-                  <>
-                    <Td whiteSpace={'pre-wrap'}>
-                      {limit?.expiredTime
-                        ? dayjs(limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                        : '-'}
-                    </Td>
-                  </>
-                )}
+                <Td>
+                  <Flex alignItems={'center'}>
+                    <Box flex={'1 0 0'} minW={0}>
+                      {getApiKeyPreview(apiKey)}
+                      <IconButton
+                        ml={2}
+                        size={'xs'}
+                        variant={'whitePrimary'}
+                        icon={<MyIcon name={'visible'} w={'14px'} />}
+                        aria-label={'查看完整 API Key'}
+                        isLoading={isFetchingApiKey && viewingId === _id}
+                        onClick={() => {
+                          setViewingId(_id);
+                          onclickViewApiKey(_id);
+                        }}
+                      />
+                    </Box>
+                  </Flex>
+                </Td>
                 <Td whiteSpace={'pre-wrap'}>{dayjs(createTime).format('YYYY/MM/DD\nHH:mm:ss')}</Td>
                 <Td whiteSpace={'pre-wrap'}>
                   {lastUsedTime
@@ -221,7 +247,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           defaultData={editData}
           onClose={() => setEditData(undefined)}
           onCreate={(id) => {
-            setApiKey(id);
+            setNewApiKey(id);
             refetch();
             setEditData(undefined);
           }}
@@ -233,7 +259,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
       )}
       <ConfirmModal />
       <MyModal
-        isOpen={!!apiKey}
+        isOpen={!!newApiKey}
         w={['400px', '600px']}
         iconSrc="/imgs/modal/key.svg"
         title={
@@ -244,7 +270,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Box>
           </Box>
         }
-        onClose={() => setApiKey('')}
+        onClose={() => setNewApiKey('')}
       >
         <ModalBody pt={5}>
           <Flex
@@ -256,15 +282,45 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             cursor={'pointer'}
             borderRadius={'md'}
             userSelect={'all'}
-            onClick={() => copyData(apiKey)}
+            onClick={() => copyData(newApiKey)}
           >
-            <Box flex={1}>{apiKey}</Box>
+            <Box flex={1}>{newApiKey}</Box>
             <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
           </Flex>
         </ModalBody>
         <ModalFooter>
-          <Button variant="whiteBase" onClick={() => setApiKey('')}>
+          <Button variant="whiteBase" onClick={() => setNewApiKey('')}>
             {t('common:common.OK')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
+
+      <MyModal
+        isOpen={!!viewApiKey}
+        w={['400px', '600px']}
+        iconSrc="/imgs/modal/key.svg"
+        title={<Box fontWeight={'bold'}>完整 API Key</Box>}
+        onClose={() => setViewApiKey('')}
+      >
+        <ModalBody pt={5}>
+          <Flex
+            bg={'myGray.100'}
+            px={3}
+            py={2}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-all'}
+            cursor={'pointer'}
+            borderRadius={'md'}
+            userSelect={'all'}
+            onClick={() => copyData(viewApiKey, '复制成功')}
+          >
+            <Box flex={1}>{viewApiKey}</Box>
+            <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
+          </Flex>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="whiteBase" onClick={() => setViewApiKey('')}>
+            {t('common:common.Close')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -289,7 +345,6 @@ function EditKeyModal({
   const { t } = useTranslation();
   const { publishT } = useI18n();
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
-  const { feConfigs } = useSystemStore();
 
   const {
     register,
@@ -330,41 +385,6 @@ function EditKeyModal({
             })}
           />
         </Flex>
-        {feConfigs?.isPlus && (
-          <>
-            <Flex alignItems={'center'} mt={4}>
-              <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
-                {t('common:support.outlink.Max usage points')}
-                <QuestionTip
-                  ml={1}
-                  label={t('common:support.outlink.Max usage points tip')}
-                ></QuestionTip>
-              </FormLabel>
-              <Input
-                {...register('limit.maxUsagePoints', {
-                  min: -1,
-                  max: 10000000,
-                  valueAsNumber: true,
-                  required: true
-                })}
-              />
-            </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <FormLabel flex={'0 0 90px'}>{t('common:common.Expired Time')}</FormLabel>
-              <Input
-                type="datetime-local"
-                defaultValue={
-                  defaultData.limit?.expiredTime
-                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                    : ''
-                }
-                onChange={(e) => {
-                  setValue('limit.expiredTime', new Date(e.target.value));
-                }}
-              />
-            </Flex>
-          </>
-        )}
       </ModalBody>
 
       <ModalFooter>

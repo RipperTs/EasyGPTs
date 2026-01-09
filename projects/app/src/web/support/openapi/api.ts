@@ -20,6 +20,9 @@ export const putOpenApiKey = (data: EditApiKeyProps & { _id: string }) =>
 export const getOpenApiKeys = (params?: GetApiKeyProps) =>
   GET<OpenApiSchema[]>('/support/openapi/list', params);
 
+export const getOpenApiKeyDetail = (id: string) =>
+  GET<{ apiKey: string }>('/support/openapi/detail', { id });
+
 /**
  * delete api by id
  */
