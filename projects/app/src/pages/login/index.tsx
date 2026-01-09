@@ -19,6 +19,8 @@ const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
 
+let isXgtSsoLogging = false;
+
 function getErrMsg(err: unknown) {
   if (!err || typeof err !== 'object') return '';
   if (!('message' in err)) return '';
@@ -89,7 +91,14 @@ const Login = () => {
 
     router.replace({ pathname: router.pathname, query: nextQuery }, undefined, { shallow: true });
 
+    // Avoid duplicate request in React StrictMode remount (dev)
+    if (isXgtSsoLogging) return;
+    isXgtSsoLogging = true;
+
+    let canceled = false;
+
     (async () => {
+      if (canceled) return;
       setSsoRequesting(true);
       try {
         const res = await postXgtSsoLogin({ token });
@@ -98,9 +107,17 @@ const Login = () => {
       } catch (error) {
         toast({ title: getErrMsg(error) || 'SSO 登录失败', status: 'error' });
       } finally {
-        setSsoRequesting(false);
+        if (!canceled) {
+          setSsoRequesting(false);
+        }
+        isXgtSsoLogging = false;
       }
     })();
+
+    return () => {
+      canceled = true;
+      isXgtSsoLogging = false;
+    };
   }, [loginSuccess, router, toast]);
 
   useMount(() => {

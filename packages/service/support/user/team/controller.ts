@@ -81,7 +81,7 @@ export async function createDefaultTeam({
   const tmb = await MongoTeamMember.findOne({
     userId: new Types.ObjectId(userId),
     defaultTeam: true
-  });
+  }).session(session);
 
   if (!tmb) {
     // create
@@ -114,11 +114,15 @@ export async function createDefaultTeam({
     console.log('create default team', userId);
   } else {
     console.log('default team exist', userId);
-    await MongoTeam.findByIdAndUpdate(tmb.teamId, {
-      $set: {
-        ...(balance !== undefined && { balance })
-      }
-    });
+    await MongoTeam.findByIdAndUpdate(
+      tmb.teamId,
+      {
+        $set: {
+          ...(balance !== undefined && { balance })
+        }
+      },
+      { session }
+    );
   }
 }
 

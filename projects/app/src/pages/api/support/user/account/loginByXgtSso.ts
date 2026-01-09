@@ -9,6 +9,12 @@ import { createJWT, setCookie } from '@fastgpt/service/support/permission/contro
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { randomUUID } from 'crypto';
 
+function isMongoDuplicateKeyError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: unknown }).code;
+  return code === 11000;
+}
+
 type XgtGetUserInfoData = {
   empNo?: string;
   chn?: string;
@@ -92,22 +98,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const existUser = await MongoUser.findOne({ username: loginUsername }).session(session);
       if (existUser) return;
 
-      const [{ _id }] = await MongoUser.create(
-        [
-          {
-            username: loginUsername,
-            password: randomUUID()
-          }
-        ],
-        { session }
-      );
+      try {
+        const [{ _id }] = await MongoUser.create(
+          [
+            {
+              username: loginUsername,
+              password: randomUUID()
+            }
+          ],
+          { session }
+        );
 
-      await createDefaultTeam({
-        userId: String(_id),
-        teamName: `${chn || loginUsername}的团队`,
-        balance: 0,
-        session
-      });
+        await createDefaultTeam({
+          userId: String(_id),
+          teamName: `${chn || loginUsername}的团队`,
+          balance: 0,
+          session
+        });
+      } catch (error) {
+        // 并发首次登录时，可能出现重复创建（以唯一索引为准），直接忽略并继续走后续登录流程
+        if (isMongoDuplicateKeyError(error)) return;
+        throw error;
+      }
     });
 
     const user = await MongoUser.findOne({ username: loginUsername }, 'status').lean();
