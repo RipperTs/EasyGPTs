@@ -18,13 +18,6 @@ const Navbar = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(() => {
     const list = [
       {
-        label: t('common:navbar.Chat'),
-        icon: 'core/chat/chatLight',
-        activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
-        activeLink: ['/chat']
-      },
-      {
         label: '概览',
         icon: 'common/data',
         activeIcon: 'common/data',
@@ -32,14 +25,21 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/app/statistics']
       },
       {
-        label: t('common:navbar.Studio'),
+        label: 'AI对话',
+        icon: 'core/chat/chatLight',
+        activeIcon: 'core/chat/chatFill',
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        activeLink: ['/chat']
+      },
+      {
+        label: '工作台',
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },
       {
-        label: t('common:navbar.Datasets'),
+        label: '知识库',
         icon: 'core/dataset/datasetLight',
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,

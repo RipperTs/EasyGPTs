@@ -13,14 +13,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
-        label: t('common:navbar.Chat'),
-        icon: 'core/chat/chatLight',
-        activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
-        activeLink: ['/chat'],
-        unread: 0
-      },
-      {
         label: '概览',
         icon: 'common/data',
         activeIcon: 'common/data',
@@ -29,7 +21,15 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:navbar.Studio'),
+        label: 'AI对话',
+        icon: 'core/chat/chatLight',
+        activeIcon: 'core/chat/chatFill',
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        activeLink: ['/chat'],
+        unread: 0
+      },
+      {
+        label: '工作台',
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
@@ -37,12 +37,19 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:navbar.Tools'),
+        label: '工具箱',
         icon: 'phoneTabbar/tool',
         activeIcon: 'phoneTabbar/toolFill',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
+      },
+      {
+        label: '模型',
+        icon: 'core/app/modelsConfig',
+        activeIcon: 'core/app/modelsConfigFill',
+        link: `/model-config`,
+        activeLink: ['/model-config']
       },
       {
         label: t('common:navbar.Account'),
