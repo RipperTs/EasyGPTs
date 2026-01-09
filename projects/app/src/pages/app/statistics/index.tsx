@@ -348,7 +348,7 @@ const StatisticsPage = () => {
           </MyBox>
         </SimpleGrid>
 
-        <SimpleGrid columns={[1, 3]} spacing={3} mb={4}>
+        <SimpleGrid columns={[1, 3]} spacing={3} mb={4} pb={4}>
           <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Box>
