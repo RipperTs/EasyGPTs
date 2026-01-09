@@ -5,6 +5,17 @@ import { NextAPI } from '@/service/middleware/entry';
 type Query = { id: string };
 type Response = { apiKey: string };
 
+type DocGetOptions = { getters?: boolean };
+type DocWithGet = {
+  get: (path: string, type?: unknown, options?: DocGetOptions) => unknown;
+};
+
+function isDocWithGet(value: unknown): value is DocWithGet {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.get === 'function';
+}
+
 async function handler(req: ApiRequestProps<unknown, Query>): Promise<Response> {
   const { id } = req.query;
 
@@ -14,7 +25,10 @@ async function handler(req: ApiRequestProps<unknown, Query>): Promise<Response> 
     id
   });
 
-  const rawApiKey = openapi.get('apiKey', null, { getters: false });
+  const openapiValue: unknown = openapi;
+  const rawApiKey = isDocWithGet(openapiValue)
+    ? openapiValue.get('apiKey', null, { getters: false })
+    : openapi.apiKey;
   if (typeof rawApiKey !== 'string' || !rawApiKey) {
     return Promise.reject('Error');
   }
