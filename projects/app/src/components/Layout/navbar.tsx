@@ -16,6 +16,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { userInfo } = useUserStore();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(() => {
+    const isRoot = userInfo?.username === 'root';
     const list = [
       {
         label: '概览',
@@ -53,22 +54,38 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/toolkit', '/toolkit/mcp']
       },
       {
-        label: '模型',
-        icon: 'core/app/modelsConfig',
-        activeIcon: 'core/app/modelsConfigFill',
-        link: `/model-config`,
-        activeLink: ['/model-config']
-      },
-      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',
         activeLink: ['/account']
-      }
+      },
+      ...(isRoot
+        ? [
+            {
+              label: '用户',
+              icon: 'support/team/memberLight',
+              activeIcon: 'support/team/memberLight',
+              link: '/account/users',
+              activeLink: ['/account/users']
+            }
+          ]
+        : [])
     ];
     // 仅 root 用户可见“模型”菜单
-    return userInfo?.username === 'root' ? list : list.filter((i) => i.link !== '/model-config');
+    return isRoot
+      ? [
+          ...list.slice(0, 5),
+          {
+            label: '模型',
+            icon: 'core/app/modelsConfig',
+            activeIcon: 'core/app/modelsConfigFill',
+            link: `/model-config`,
+            activeLink: ['/model-config']
+          },
+          ...list.slice(5)
+        ]
+      : list;
   }, [lastChatAppId, lastChatId, t, userInfo?.username]);
 
   const itemStyles: BoxProps & LinkProps = {
