@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import type { IconProps } from '@chakra-ui/react';
+import type { ChakraProps } from '@chakra-ui/react';
 import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
 import type { IconNameType } from './type.d';
 
-const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType } & IconProps) => {
+type MyIconProps = { name: IconNameType } & ChakraProps &
+  Omit<React.HTMLAttributes<Element>, keyof ChakraProps> & {
+    alt?: string;
+  };
+
+const MyIcon = ({ name, w = 'auto', h = 'auto', alt, ...props }: MyIconProps) => {
   const [iconState, setIconState] = useState<
     | null
     | {
@@ -54,6 +59,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
       <Box
         as="img"
         src={iconState.src}
+        alt={alt}
         w={w}
         h={h}
         boxSizing={'content-box'}
