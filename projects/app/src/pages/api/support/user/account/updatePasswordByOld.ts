@@ -39,11 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       password: newPsw
     });
 
-    // 异步调用第三方接口，不等待结果
-    updateXGTPasswordWithTimeout(user.username, oldPassword, newPassword).catch((error) => {
-      console.error('Failed to sync password with XGT:', error);
-    });
-
     jsonRes(res, {
       data: {
         user
@@ -55,45 +50,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
-
-/**
- * 修改新钢11平台密码, 用于同步
- * @param username
- * @param oldPsw
- * @param newPsw
- */
-async function updateXGTPassword(username: string, oldPsw: string, newPsw: string) {
-  const baseUrl = process.env.XGT_UPDATE_PSW_URL || '';
-  if (!baseUrl.trim()) {
-    throw new Error('XGT_UPDATE_PSW_URL is empty');
-  }
-  const res = await fetch(baseUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      newPwd: newPsw,
-      userName: username,
-      password: oldPsw
-    })
-  });
-  return await res.json();
-}
-
-/**
- * 带超时控制的XGT密码更新
- */
-function updateXGTPasswordWithTimeout(
-  username: string,
-  oldPsw: string,
-  newPsw: string,
-  timeout = 5000
-): Promise<any> {
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('XGT password sync timeout')), timeout);
-  });
-
-  return Promise.race([updateXGTPassword(username, oldPsw, newPsw), timeoutPromise]);
 }

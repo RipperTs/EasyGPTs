@@ -58,7 +58,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     [loginSuccess, t, toast]
   );
 
-  const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);
   const onClickXgtSsoLogin = useCallback(() => {
     if (!xgtSsoAuthUrl || typeof window === 'undefined') return;
 

@@ -9,98 +9,73 @@ import { createJWT, setCookie } from '@fastgpt/service/support/permission/contro
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { randomUUID } from 'crypto';
 
-type XgtPermissionItem = {
+type XgtGetUserInfoData = {
   empNo?: string;
   chn?: string;
 };
 
-type XgtPermissionResponse = {
-  authenticated?: boolean;
+type XgtGetUserInfoResponse = {
   code?: number;
-  username?: string;
-  token?: string;
-  post?: XgtPermissionItem[];
+  msg?: string;
+  data?: XgtGetUserInfoData;
 };
 
-function getReqOrigin(req: NextApiRequest) {
-  const protoHeader = req.headers['x-forwarded-proto'];
-  const proto = (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader || 'http')
-    .split(',')[0]
-    .trim();
-
-  const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
-  const host = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || '').split(',')[0].trim();
-
-  if (!host) return '';
-  return `${proto}://${host}`;
-}
-
-function parseXgtPermissionResponse(data: unknown): XgtPermissionResponse | null {
+function parseXgtGetUserInfoResponse(data: unknown): XgtGetUserInfoResponse | null {
   if (!data || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
 
   const code = typeof obj.code === 'number' ? obj.code : undefined;
-  const authenticated = typeof obj.authenticated === 'boolean' ? obj.authenticated : undefined;
-  const username = typeof obj.username === 'string' ? obj.username : undefined;
-  const token = typeof obj.token === 'string' ? obj.token : undefined;
-  const post = Array.isArray(obj.post)
-    ? obj.post
-        .filter((item) => item && typeof item === 'object')
-        .map((item) => {
-          const it = item as Record<string, unknown>;
-          return {
-            empNo: typeof it.empNo === 'string' ? it.empNo : undefined,
-            chn: typeof it.chn === 'string' ? it.chn : undefined
-          };
-        })
+  const msg = typeof obj.msg === 'string' ? obj.msg : undefined;
+  const payload = obj.data;
+
+  const payloadObj =
+    payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+  const parsedData = payloadObj
+    ? {
+        empNo: typeof payloadObj.empNo === 'string' ? payloadObj.empNo : undefined,
+        chn: typeof payloadObj.chn === 'string' ? payloadObj.chn : undefined
+      }
     : undefined;
 
-  return { code, authenticated, username, token, post };
+  return { code, msg, data: parsedData };
 }
 
-async function getXgtLoginUserInfo({
-  origin,
-  token,
-  username
-}: {
-  origin: string;
-  token: string;
-  username: string;
-}) {
-  if (!origin) throw new Error('origin is empty');
+async function getEmpNoByXgtRemoteToken(remoteToken: string) {
+  const url =
+    process.env.XGT_SSO_GET_USER_INFO_URL?.trim() || 'http://10.6.77.168/login/getUserInfo';
 
-  const baseOrigin = process.env.FE_DOMAIN?.trim() || origin;
-  if (!baseOrigin) throw new Error('permission base origin is empty');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
-  const permissionUrl = new URL('/per_api/permission.php', baseOrigin);
-  permissionUrl.searchParams.set('permission', 'login');
-  permissionUrl.searchParams.set('token', token);
-  permissionUrl.searchParams.set('username', username);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ remoteToken }),
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeoutId));
 
-  const response = await fetch(permissionUrl.toString(), { method: 'GET' });
   const rawText = await response.text();
   if (!response.ok) {
-    throw new Error(`鉴权接口请求失败(${response.status})`);
+    throw new Error(`getUserInfo 接口请求失败(${response.status})`);
   }
 
   let json: unknown;
   try {
     json = JSON.parse(rawText);
   } catch {
-    throw new Error(`鉴权接口返回非 JSON: ${rawText.slice(0, 200)}`);
+    throw new Error(`getUserInfo 接口返回非 JSON: ${rawText.slice(0, 200)}`);
   }
 
-  const result = parseXgtPermissionResponse(json);
+  const result = parseXgtGetUserInfoResponse(json);
+  if (!result) throw new Error('getUserInfo 响应格式错误');
+  if (result.code !== 200) throw new Error(result.msg || 'getUserInfo 响应 code 非 200');
 
-  if (!result) throw new Error('鉴权响应格式错误');
-  if (result.code !== 200 || !result.authenticated) throw new Error('鉴权失败');
-  if (!result.username) throw new Error('鉴权返回缺少 username');
-
-  const displayName = result.post?.[0]?.chn;
+  const empNo = result.data?.empNo?.trim();
+  if (!empNo) throw new Error('getUserInfo 返回缺少 empNo');
 
   return {
-    username: result.username,
-    displayName
+    empNo,
+    chn: result.data?.chn?.trim()
   };
 }
 
@@ -108,20 +83,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
 
-    const { token, username, card } = req.body as {
-      token?: string;
-      username?: string;
-      card?: string;
-    };
-    const loginName = username || card;
-    if (!token || !loginName) throw new Error('缺少参数');
-
-    const origin = getReqOrigin(req);
-    const { username: loginUsername, displayName } = await getXgtLoginUserInfo({
-      origin,
-      token,
-      username: loginName
-    });
+    const { token } = req.body as { token?: string };
+    if (!token) throw new Error('缺少参数');
+    const { empNo, chn } = await getEmpNoByXgtRemoteToken(token);
+    const loginUsername = empNo;
 
     await mongoSessionRun(async (session) => {
       const existUser = await MongoUser.findOne({ username: loginUsername }).session(session);
@@ -139,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       await createDefaultTeam({
         userId: String(_id),
-        teamName: `${displayName || loginUsername}的团队`,
+        teamName: `${chn || loginUsername}的团队`,
         balance: 0,
         session
       });

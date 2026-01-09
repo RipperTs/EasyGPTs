@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Center, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -30,7 +30,6 @@ const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { feConfigs } = useSystemStore();
-  const xgtSsoAuthUrl = useMemo(() => feConfigs?.xgtSsoAuthUrl?.trim(), [feConfigs?.xgtSsoAuthUrl]);
   const { toast } = useToast();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const [ssoRequesting, setSsoRequesting] = useState(false);
@@ -79,11 +78,7 @@ const Login = () => {
     if (ssoHandledRef.current) return;
 
     const token = router.query.token;
-    const username = router.query.username;
-    const card = router.query.card;
-    const loginName =
-      typeof username === 'string' ? username : typeof card === 'string' ? card : '';
-    if (typeof token !== 'string' || !loginName) return;
+    if (typeof token !== 'string') return;
 
     ssoHandledRef.current = true;
 
@@ -97,7 +92,7 @@ const Login = () => {
     (async () => {
       setSsoRequesting(true);
       try {
-        const res = await postXgtSsoLogin({ token, username: loginName });
+        const res = await postXgtSsoLogin({ token });
         loginSuccess(res);
         toast({ title: 'SSO 登录成功', status: 'success' });
       } catch (error) {
