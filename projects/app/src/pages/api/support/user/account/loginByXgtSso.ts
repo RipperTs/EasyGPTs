@@ -122,11 +122,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
-    const user = await MongoUser.findOne({ username: loginUsername }, 'status').lean();
+    const user = await MongoUser.findOne(
+      { username: loginUsername },
+      'status lastLoginTmbId'
+    ).lean();
     if (!user) throw new Error('用户创建失败');
     if (user.status === UserStatusEnum.forbidden) throw new Error('账号已停用，无法登录');
 
     const userDetail = await getUserDetail({
+      tmbId: user.lastLoginTmbId,
       userId: String(user._id)
     });
 
