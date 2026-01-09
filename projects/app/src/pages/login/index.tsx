@@ -14,6 +14,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useMount } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { postXgtSsoLogin } from '@/web/support/user/api';
+import { omitUrlQueryParams } from './utils/xgtSso';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
@@ -84,12 +85,13 @@ const Login = () => {
 
     ssoHandledRef.current = true;
 
-    const nextQuery = { ...router.query };
-    delete nextQuery.token;
-    delete nextQuery.username;
-    delete nextQuery.card;
-
-    router.replace({ pathname: router.pathname, query: nextQuery }, undefined, { shallow: true });
+    // 清掉 URL 上的 token，避免刷新/二次渲染重复触发；使用 history，避免触发 router 变化导致 effect 被打断
+    if (typeof window !== 'undefined') {
+      const nextUrl = omitUrlQueryParams(window.location.href, ['token', 'username', 'card']);
+      if (nextUrl !== window.location.href) {
+        window.history.replaceState(null, '', nextUrl);
+      }
+    }
 
     // Avoid duplicate request in React StrictMode remount (dev)
     if (isXgtSsoLogging) return;
@@ -107,18 +109,17 @@ const Login = () => {
       } catch (error) {
         toast({ title: getErrMsg(error) || 'SSO 登录失败', status: 'error' });
       } finally {
-        if (!canceled) {
-          setSsoRequesting(false);
-        }
+        if (!canceled) setSsoRequesting(false);
         isXgtSsoLogging = false;
       }
     })();
 
     return () => {
       canceled = true;
+      setSsoRequesting(false);
       isXgtSsoLogging = false;
     };
-  }, [loginSuccess, router, toast]);
+  }, [loginSuccess, router.isReady, router.query.token, toast]);
 
   useMount(() => {
     clearToken();

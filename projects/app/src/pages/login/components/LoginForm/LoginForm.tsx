@@ -47,13 +47,19 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           title: t('login:login_success'),
           status: 'success'
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errMsgRaw =
+          error && typeof error === 'object' && 'message' in error
+            ? (error as { message?: unknown }).message
+            : undefined;
+        const errMsg = typeof errMsgRaw === 'string' ? errMsgRaw : '';
         toast({
-          title: error.message || t('login:login_failed'),
+          title: errMsg || t('login:login_failed'),
           status: 'error'
         });
+      } finally {
+        setRequesting(false);
       }
-      setRequesting(false);
     },
     [loginSuccess, t, toast]
   );
