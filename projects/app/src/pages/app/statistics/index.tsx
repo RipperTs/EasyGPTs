@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, SimpleGrid, Text, useTheme } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps, SimpleGrid, Text, useTheme } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
@@ -23,6 +23,49 @@ const EChartsPanel = dynamic(() => import('./components/EChartsPanel'), { ssr: f
 type RangeDays = 7 | 30 | 90 | 365;
 
 const formatNum = (num: number) => new Intl.NumberFormat('zh-CN').format(num);
+
+const RankEmpty = ({
+  title = '暂无数据',
+  tip = '试试切换时间范围或稍后再试',
+  ...flexProps
+}: {
+  title?: React.ReactNode;
+  tip?: React.ReactNode;
+} & FlexProps) => {
+  return (
+    <Flex
+      w={'full'}
+      p={4}
+      flexDirection={'column'}
+      alignItems={'center'}
+      justifyContent={'center'}
+      borderRadius={'md'}
+      bg={'myGray.25'}
+      border={'1px dashed'}
+      borderColor={'myGray.200'}
+      {...flexProps}
+    >
+      <Flex
+        w={'56px'}
+        h={'56px'}
+        borderRadius={'16px'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        bg={'white'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <MyIcon name={'empty'} w={'44px'} h={'44px'} color={'transparent'} />
+      </Flex>
+      <Text mt={3} fontSize={'sm'} color={'myGray.600'} fontWeight={'medium'}>
+        {title}
+      </Text>
+      <Text mt={1} fontSize={'xs'} color={'myGray.500'}>
+        {tip}
+      </Text>
+    </Flex>
+  );
+};
 
 const AppTypeLabel: Record<string, string> = {
   [AppTypeEnum.workflow]: '工作流应用',
@@ -349,7 +392,14 @@ const StatisticsPage = () => {
         </SimpleGrid>
 
         <SimpleGrid columns={[1, 3]} spacing={3} mb={4} pb={4}>
-          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+          <MyBox
+            bg={'white'}
+            borderRadius={'12px'}
+            border={theme.borders.base}
+            p={4}
+            display={'flex'}
+            flexDirection={'column'}
+          >
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Box>
                 <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -361,13 +411,16 @@ const StatisticsPage = () => {
               </Box>
             </Flex>
 
-            <Box>
-              {(data?.topMembers ?? []).length === 0 ? (
-                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
-                  暂无数据
-                </Text>
-              ) : (
-                (data?.topMembers ?? []).map((item, idx) => (
+            {(data?.topMembers ?? []).length === 0 ? (
+              <RankEmpty
+                flex={'1 0 0'}
+                minH={isPc ? 240 : 200}
+                title="暂无数据"
+                tip={`${rangeText}暂无提问记录`}
+              />
+            ) : (
+              <Box flex={'1 0 0'}>
+                {(data?.topMembers ?? []).map((item, idx) => (
                   <Flex
                     key={item.uid}
                     alignItems={'center'}
@@ -393,12 +446,19 @@ const StatisticsPage = () => {
                       </Text>
                     </Box>
                   </Flex>
-                ))
-              )}
-            </Box>
+                ))}
+              </Box>
+            )}
           </MyBox>
 
-          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+          <MyBox
+            bg={'white'}
+            borderRadius={'12px'}
+            border={theme.borders.base}
+            p={4}
+            display={'flex'}
+            flexDirection={'column'}
+          >
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Box>
                 <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -418,13 +478,16 @@ const StatisticsPage = () => {
               </Text>
             </Flex>
 
-            <Box>
-              {(data?.topDatasets ?? []).length === 0 ? (
-                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
-                  暂无数据
-                </Text>
-              ) : (
-                (data?.topDatasets ?? []).map((item, idx) => (
+            {(data?.topDatasets ?? []).length === 0 ? (
+              <RankEmpty
+                flex={'1 0 0'}
+                minH={isPc ? 240 : 200}
+                title="暂无数据"
+                tip="还没有知识库或暂无数据条目"
+              />
+            ) : (
+              <Box flex={'1 0 0'}>
+                {(data?.topDatasets ?? []).map((item, idx) => (
                   <Flex
                     key={item.datasetId}
                     alignItems={'center'}
@@ -457,12 +520,19 @@ const StatisticsPage = () => {
                       </Text>
                     </Box>
                   </Flex>
-                ))
-              )}
-            </Box>
+                ))}
+              </Box>
+            )}
           </MyBox>
 
-          <MyBox bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={4}>
+          <MyBox
+            bg={'white'}
+            borderRadius={'12px'}
+            border={theme.borders.base}
+            p={4}
+            display={'flex'}
+            flexDirection={'column'}
+          >
             <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
               <Box>
                 <Text fontWeight={'bold'} color={'myGray.900'}>
@@ -482,13 +552,16 @@ const StatisticsPage = () => {
               </Text>
             </Flex>
 
-            <Box>
-              {(data?.topApps ?? []).length === 0 ? (
-                <Text fontSize={'sm'} color={'myGray.500'} py={6} textAlign={'center'}>
-                  暂无数据
-                </Text>
-              ) : (
-                (data?.topApps ?? []).map((item, idx) => (
+            {(data?.topApps ?? []).length === 0 ? (
+              <RankEmpty
+                flex={'1 0 0'}
+                minH={isPc ? 240 : 200}
+                title="暂无数据"
+                tip={`${rangeText}暂无提问记录`}
+              />
+            ) : (
+              <Box flex={'1 0 0'}>
+                {(data?.topApps ?? []).map((item, idx) => (
                   <Flex
                     key={item.appId}
                     alignItems={'center'}
@@ -520,9 +593,9 @@ const StatisticsPage = () => {
                       </Text>
                     </Box>
                   </Flex>
-                ))
-              )}
-            </Box>
+                ))}
+              </Box>
+            )}
           </MyBox>
         </SimpleGrid>
       </Box>
