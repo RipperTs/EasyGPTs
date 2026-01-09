@@ -17,7 +17,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(() => {
     const isRoot = userInfo?.username === 'root';
-    const list = [
+    return [
       {
         label: '概览',
         icon: 'common/data',
@@ -53,6 +53,17 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: `/toolkit`,
         activeLink: ['/toolkit', '/toolkit/mcp']
       },
+      ...(isRoot
+        ? [
+            {
+              label: '模型',
+              icon: 'core/app/modelsConfig',
+              activeIcon: 'core/app/modelsConfigFill',
+              link: `/model-config`,
+              activeLink: ['/model-config']
+            }
+          ]
+        : []),
       {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
@@ -72,20 +83,6 @@ const Navbar = ({ unread }: { unread: number }) => {
           ]
         : [])
     ];
-    // 仅 root 用户可见“模型”菜单
-    return isRoot
-      ? [
-          ...list.slice(0, 5),
-          {
-            label: '模型',
-            icon: 'core/app/modelsConfig',
-            activeIcon: 'core/app/modelsConfigFill',
-            link: `/model-config`,
-            activeLink: ['/model-config']
-          },
-          ...list.slice(5)
-        ]
-      : list;
   }, [lastChatAppId, lastChatId, t, userInfo?.username]);
 
   const itemStyles: BoxProps & LinkProps = {
