@@ -11,8 +11,8 @@ export type AdminUserListItem = {
   username: string;
   avatar: string;
   status: `${UserStatusEnum}`;
-  createTime: Date;
-  lastLoginTime?: Date;
+  createTime: string;
+  lastLoginTime?: string;
   timezone: string;
   promotionRate: number;
   lastLoginTmbId?: string;
@@ -113,8 +113,8 @@ async function handler(
       username: item.username,
       avatar: item.avatar,
       status: item.status,
-      createTime: item.createTime,
-      lastLoginTime: item.lastLoginTime,
+      createTime: new Date(item.createTime).toISOString(),
+      lastLoginTime: item.lastLoginTime ? new Date(item.lastLoginTime).toISOString() : undefined,
       timezone: item.timezone,
       promotionRate: item.promotionRate,
       lastLoginTmbId: item.lastLoginTmbId ? String(item.lastLoginTmbId) : undefined,

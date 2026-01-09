@@ -14,7 +14,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useMount } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { postXgtSsoLogin } from '@/web/support/user/api';
-import { omitUrlQueryParams } from './utils/xgtSso';
+import { omitUrlQueryParams } from '@/web/support/user/xgtSso';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));

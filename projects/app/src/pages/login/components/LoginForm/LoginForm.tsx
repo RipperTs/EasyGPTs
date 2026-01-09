@@ -8,7 +8,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './components/FormLayout';
-import { buildXgtSsoAuthUrl, omitUrlQueryParams } from '../../utils/xgtSso';
+import { buildXgtSsoAuthUrl, omitUrlQueryParams } from '@/web/support/user/xgtSso';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
