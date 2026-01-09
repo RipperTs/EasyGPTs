@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Center, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Center, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
@@ -10,15 +10,12 @@ import LoginForm from './components/LoginForm/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
-import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useMount } from 'ahooks';
-import { t } from 'i18next';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
-const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Login = () => {
   const router = useRouter();
@@ -27,7 +24,6 @@ const Login = () => {
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
-  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -71,11 +67,6 @@ const Login = () => {
 
   return (
     <>
-      {feConfigs.googleClientVerKey && (
-        <Script
-          src={`https://www.recaptcha.net/recaptcha/api.js?render=${feConfigs.googleClientVerKey}`}
-        ></Script>
-      )}
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
