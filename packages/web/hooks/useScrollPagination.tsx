@@ -39,7 +39,8 @@ export function useScrollPagination<
     overscan = 10,
 
     pageSize = 10,
-    defaultParams = {}
+    defaultParams = {},
+    enabled = true
   }: {
     refreshDeps?: any[];
 
@@ -48,6 +49,7 @@ export function useScrollPagination<
 
     pageSize?: number;
     defaultParams?: Record<string, any>;
+    enabled?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -70,6 +72,7 @@ export function useScrollPagination<
   });
 
   const loadData = useLockFn(async (num: number = current) => {
+    if (!enabled) return;
     if (noMore.current && num !== 1) return;
 
     setTrue();
@@ -141,11 +144,19 @@ export function useScrollPagination<
   // Reload data
   useRequest(
     async () => {
+      if (!enabled) {
+        noMore.current = true;
+        setData([]);
+        setTotal(0);
+        setCurrent(1);
+        return;
+      }
+      noMore.current = false;
       loadData(1);
     },
     {
       manual: false,
-      refreshDeps
+      refreshDeps: [enabled, ...(refreshDeps || [])]
     }
   );
 
@@ -153,6 +164,7 @@ export function useScrollPagination<
   const scroll = useScroll(containerRef);
   useThrottleEffect(
     () => {
+      if (!enabled) return;
       if (!containerRef.current || list.length === 0) return;
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
       if (scrollTop + clientHeight >= scrollHeight - 100) {

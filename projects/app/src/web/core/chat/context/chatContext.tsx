@@ -104,6 +104,19 @@ const ChatContextProvider = ({
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
+  const historyEnabled = (() => {
+    const appId = String(params?.appId || '').trim();
+    const shareId = String(params?.shareId || '').trim();
+    const outLinkUid = String(params?.outLinkUid || '').trim();
+    const teamId = String(params?.teamId || '').trim();
+    const teamToken = String(params?.teamToken || '').trim();
+
+    if (shareId && outLinkUid) return true;
+    if (appId && teamId && teamToken) return true;
+    if (appId) return true;
+    return false;
+  })();
+
   const {
     scrollDataList: historyList,
     ScrollList,
@@ -116,6 +129,7 @@ const ChatContextProvider = ({
     pageSize: 30,
     itemHeight: 52,
     defaultParams: params,
+    enabled: historyEnabled,
     refreshDeps: [params]
   });
 
