@@ -64,8 +64,8 @@ const Navbar = ({ unread }: { unread: number }) => {
         ? [
             {
               label: '用户',
-              icon: 'support/team/memberLight',
-              activeIcon: 'support/team/memberLight',
+              icon: 'support/user/userAdmin',
+              activeIcon: 'support/user/userAdminFill',
               link: '/account/users',
               activeLink: ['/account/users']
             }
