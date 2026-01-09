@@ -45,13 +45,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: '模型',
-        icon: 'core/app/modelsConfig',
-        activeIcon: 'core/app/modelsConfigFill',
-        link: `/model-config`,
-        activeLink: ['/model-config']
-      },
-      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
