@@ -501,7 +501,14 @@ const StatisticsPage = () => {
                     <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
                       {idx + 1}
                     </Text>
-                    <Avatar src={item.avatar} alt={item.name} w={'28px'} h={'28px'} mr={2} />
+                    <Avatar
+                      src={item.avatar}
+                      alt={item.name}
+                      borderRadius={8}
+                      w={'28px'}
+                      h={'28px'}
+                      mr={2}
+                    />
                     <Box flex={'1 0 0'} minW={0}>
                       <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
                         {item.name}
@@ -575,7 +582,14 @@ const StatisticsPage = () => {
                     <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
                       {idx + 1}
                     </Text>
-                    <Avatar src={item.avatar} alt={item.name} w={'28px'} h={'28px'} mr={2} />
+                    <Avatar
+                      src={item.avatar}
+                      alt={item.name}
+                      w={'28px'}
+                      h={'28px'}
+                      mr={2}
+                      borderRadius={8}
+                    />
                     <Box flex={'1 0 0'} minW={0}>
                       <Text fontSize={'sm'} color={'myGray.900'} noOfLines={1}>
                         {item.name}
