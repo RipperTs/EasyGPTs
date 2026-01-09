@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
+import { ModalBody, Box, Flex, Input, ModalFooter, Button, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -44,6 +44,9 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       title={t('common:user.Update Password')}
     >
       <ModalBody>
+        <Text fontSize="sm" color="myGray.500" mb={4}>
+          温馨提示：如果您是使用 SSO 方式登录的，暂不支持修改密码。
+        </Text>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 70px'}>{t('common:user.old_password') + ':'}</Box>
           <Input flex={1} type={'password'} {...register('oldPsw', { required: true })}></Input>
