@@ -70,6 +70,9 @@ const UserSchema = new Schema({
   },
   lastLoginTmbId: {
     type: Schema.Types.ObjectId
+  },
+  lastLoginTime: {
+    type: Date
   }
 });
 

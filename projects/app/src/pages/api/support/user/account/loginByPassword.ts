@@ -45,8 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId: user._id
     });
 
-    MongoUser.findByIdAndUpdate(user._id, {
-      lastLoginTmbId: userDetail.team.tmbId
+    await MongoUser.findByIdAndUpdate(user._id, {
+      lastLoginTmbId: userDetail.team.tmbId,
+      lastLoginTime: new Date()
     });
 
     const token = createJWT({

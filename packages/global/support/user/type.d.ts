@@ -14,6 +14,7 @@ export type UserModelSchema = {
   timezone: string;
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
+  lastLoginTime?: number;
   openaiAccount?: {
     key: string;
     baseUrl: string;

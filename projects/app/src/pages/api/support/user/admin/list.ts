@@ -12,6 +12,7 @@ export type AdminUserListItem = {
   avatar: string;
   status: `${UserStatusEnum}`;
   createTime: Date;
+  lastLoginTime?: Date;
   timezone: string;
   promotionRate: number;
   lastLoginTmbId?: string;
@@ -64,7 +65,7 @@ async function handler(
     MongoUser.countDocuments(filter),
     MongoUser.find(
       filter,
-      '_id username avatar status createTime timezone promotionRate lastLoginTmbId'
+      '_id username avatar status createTime lastLoginTime timezone promotionRate lastLoginTmbId'
     )
       .sort({ createTime: -1 })
       .skip((pageNum - 1) * pageSize)
@@ -113,6 +114,7 @@ async function handler(
       avatar: item.avatar,
       status: item.status,
       createTime: item.createTime,
+      lastLoginTime: item.lastLoginTime,
       timezone: item.timezone,
       promotionRate: item.promotionRate,
       lastLoginTmbId: item.lastLoginTmbId ? String(item.lastLoginTmbId) : undefined,

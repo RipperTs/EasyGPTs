@@ -143,7 +143,8 @@ const UsersManage = () => {
                   <Th>用户名</Th>
                   <Th>当前团队</Th>
                   <Th>状态</Th>
-                  <Th>创建时间</Th>
+                  <Th>最后登录</Th>
+                  <Th>更新时间</Th>
                   <Th textAlign={'right'}>操作</Th>
                 </Tr>
               </Thead>
@@ -162,6 +163,11 @@ const UsersManage = () => {
                       <Td>{item.currentTeam?.teamName || '-'}</Td>
                       <Td>
                         <Tag colorScheme={statusInfo?.colorScheme}>{statusInfo?.label}</Tag>
+                      </Td>
+                      <Td>
+                        {item.lastLoginTime
+                          ? dayjs(item.lastLoginTime).format('YYYY/MM/DD HH:mm')
+                          : '-'}
                       </Td>
                       <Td>
                         {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm') : '-'}

@@ -7,6 +7,7 @@ export type AdminUserListItem = {
   avatar: string;
   status: `${UserStatusEnum}`;
   createTime: string;
+  lastLoginTime?: string;
   timezone: string;
   promotionRate: number;
   lastLoginTmbId?: string;
