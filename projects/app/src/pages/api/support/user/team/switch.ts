@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取当前用户信息
-    const { userId } = await parseHeaderCert({
+    const { userId, isRoot: isRootFromToken } = await parseHeaderCert({
       req,
       authToken: true
     });
@@ -44,13 +44,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 更新用户最后登录的团队ID
     await MongoUser.updateOne({ _id: userId }, { $set: { lastLoginTmbId: teamMember._id } });
 
+    const isRoot = await (async () => {
+      if (isRootFromToken) return true;
+      const user = await MongoUser.findById(userId, 'username').lean();
+      return user?.username === 'root';
+    })();
+
     // 生成新的JWT token
     const token = createJWT({
       _id: userId,
       team: {
         teamId,
         tmbId: String(teamMember._id)
-      }
+      },
+      isRoot
     });
 
     // 设置cookie
