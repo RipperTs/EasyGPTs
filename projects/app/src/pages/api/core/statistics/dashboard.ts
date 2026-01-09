@@ -9,7 +9,10 @@ import { Types } from '@fastgpt/service/common/mongo';
 
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetColCollectionName } from '@fastgpt/service/core/dataset/collection/schema';
+import {
+  DatasetColCollectionName,
+  MongoDatasetCollection
+} from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName, MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -56,6 +59,7 @@ export type TeamDashboardRes = {
     date: string;
     chats: number;
     questions: number;
+    datasetUpdates: number;
     activeLoginUsers: number;
     activeAnonymousUsers: number;
   }>;
@@ -195,6 +199,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     activeTeamMemberAgg,
     questionTrendAgg,
     chatTrendAgg,
+    datasetUpdateTrendAgg,
     activeOutLinkUidTrendAgg,
     activeOutLinkUidTrendSplitAgg,
     sourceAgg,
@@ -287,6 +292,15 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
       }
     ]),
     MongoChat.aggregate<{ _id: string; count: number }>([
+      { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
+          count: { $sum: 1 }
+        }
+      }
+    ]),
+    MongoDatasetCollection.aggregate<{ _id: string; count: number }>([
       { $match: { teamId: teamIdQuery, updateTime: { $gte: startTime, $lte: endTime } } },
       {
         $group: {
@@ -504,6 +518,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
 
   const questionTrendMap = new Map(questionTrendAgg.map((i) => [i._id, i.count]));
   const chatTrendMap = new Map(chatTrendAgg.map((i) => [i._id, i.count]));
+  const datasetUpdateTrendMap = new Map(datasetUpdateTrendAgg.map((i) => [i._id, i.count]));
   const activeLoginUsersTrendMap = new Map(
     activeOutLinkUidTrendSplitAgg
       .filter((i) => i._id.isAnonymous === false)
@@ -520,6 +535,7 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
     date,
     chats: chatTrendMap.get(date) ?? 0,
     questions: questionTrendMap.get(date) ?? 0,
+    datasetUpdates: datasetUpdateTrendMap.get(date) ?? 0,
     activeLoginUsers: activeLoginUsersTrendMap.get(date) ?? 0,
     activeAnonymousUsers: activeAnonymousUsersTrendMap.get(date) ?? 0
   }));

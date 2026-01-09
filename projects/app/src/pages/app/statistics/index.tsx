@@ -114,13 +114,18 @@ const StatisticsPage = () => {
   const dateList = data?.trend?.map((i) => i.date) ?? [];
   const questionsList = data?.trend?.map((i) => i.questions) ?? [];
   const chatsList = data?.trend?.map((i) => i.chats) ?? [];
+  const datasetUpdatesList = data?.trend?.map((i) => i.datasetUpdates) ?? [];
   const activeLoginUsersList = data?.trend?.map((i) => i.activeLoginUsers) ?? [];
   const activeAnonymousUsersList = data?.trend?.map((i) => i.activeAnonymousUsers) ?? [];
 
   const trendOption: EChartsOption = useMemo(
     () => ({
       tooltip: { trigger: 'axis' },
-      legend: { top: 0, type: 'scroll', data: ['提问', '会话', '登录用户', '匿名用户'] },
+      legend: {
+        top: 0,
+        type: 'scroll',
+        data: ['提问', '会话', '知识库更新', '登录用户', '匿名用户']
+      },
       grid: { left: 16, right: 16, top: 50, bottom: 30, containLabel: true },
       xAxis: {
         type: 'category',
@@ -144,6 +149,13 @@ const StatisticsPage = () => {
           data: chatsList
         },
         {
+          name: '知识库更新',
+          type: 'line',
+          smooth: true,
+          showSymbol: false,
+          data: datasetUpdatesList
+        },
+        {
           name: '登录用户',
           type: 'bar',
           yAxisIndex: 1,
@@ -163,7 +175,14 @@ const StatisticsPage = () => {
         }
       ]
     }),
-    [activeAnonymousUsersList, activeLoginUsersList, chatsList, dateList, questionsList]
+    [
+      activeAnonymousUsersList,
+      activeLoginUsersList,
+      chatsList,
+      datasetUpdatesList,
+      dateList,
+      questionsList
+    ]
   );
 
   const sourceOption: EChartsOption = useMemo(() => {
