@@ -81,7 +81,7 @@ const Logs = () => {
     total
   } = usePagination({
     api: getAppChatLogs,
-    pageSize: 20,
+    pageSize: 30,
     params: {
       appId,
       dateStart: dateRange.from || new Date(),
@@ -333,6 +333,9 @@ const Logs = () => {
         </TableContainer>
 
         <HStack w={'100%'} mt={3} justifyContent={'flex-end'}>
+          <Box fontSize={'sm'} color={'myGray.600'}>
+            共 {total} 条
+          </Box>
           <DateRangePicker
             defaultDate={dateRange}
             position="top"

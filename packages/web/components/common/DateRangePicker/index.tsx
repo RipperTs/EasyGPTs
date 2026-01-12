@@ -79,7 +79,7 @@ const DateRangePicker = ({
             defaultMonth={defaultDate.to}
             selected={range}
             disabled={[
-              { from: new Date(2022, 3, 1), to: addDays(new Date(), -90) },
+              { from: new Date(2022, 3, 1), to: addDays(new Date(), -720) },
               { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
             ]}
             onSelect={(date) => {
