@@ -69,10 +69,17 @@ pnpm i
 make dev name=app
 ```
 
-## 配置入口
+## 配置及依赖
 
+### 配置
 - 环境变量模板：`projects/app/.env.template`
 - 运行期配置（模型/向量/重排/前端配置等）：`projects/app/data/config.json`（部署时通过 `./config.json` 挂载到容器 `/app/data/config.json`）
+
+### 其他项目依赖
+- [New-API](https://github.com/RipperTs/new-api)：用于对接多种大模型服务的统一接口层（可选）
+- [FastGPT-Sandbox](https://github.com/RipperTs/fastgpt-sandbox)：代码沙箱服务（必须）
+- [Python-Code-Interpreter](https://github.com/RipperTs/python-code-Interpreter) ：Python 代码执行环境（必须）
+- [MinerU](https://github.com/opendatalab/MinerU) ：PDF数据处理工具（可选）
 
 ## 鸣谢
 
