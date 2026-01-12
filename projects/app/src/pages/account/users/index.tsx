@@ -54,7 +54,7 @@ const UsersManage = () => {
   const { data, total, pageSize, isLoading, Pagination, getData } =
     usePagination<AdminUserListItem>({
       api: getAdminUserList,
-      pageSize: 20,
+      pageSize: 30,
       params: {
         keyword,
         status
@@ -135,7 +135,7 @@ const UsersManage = () => {
           </HStack>
         </Flex>
 
-        <Box mt={4}>
+        <Box mt={4} pb={6}>
           <TableContainer bg={'white'} borderRadius={'md'} overflow={'hidden'}>
             <Table>
               <Thead>
