@@ -56,7 +56,7 @@ const Logs = () => {
   const { teamMembers } = useUserStore();
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
-    from: addDays(new Date(), -7),
+    from: addDays(new Date(), -30),
     to: new Date()
   });
   const [stats, setStats] = useState<AppChatLogsStatsRes>({
