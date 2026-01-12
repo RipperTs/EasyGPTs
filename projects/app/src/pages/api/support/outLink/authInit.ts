@@ -10,8 +10,7 @@ async function handler(
   req: ApiRequestProps<AuthOutLinkInitProps>,
   res: NextApiResponse<any>
 ): Promise<AuthOutLinkResponse> {
-  const { outLinkUid, tokenUrl } = req.body;
-  console.log(outLinkUid, tokenUrl);
+  const { outLinkUid } = req.body;
   return Promise.resolve({ uid: outLinkUid });
 }
 

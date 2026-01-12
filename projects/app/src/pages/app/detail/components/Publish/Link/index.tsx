@@ -14,7 +14,6 @@ import {
   ModalBody,
   Input,
   Switch,
-  Link,
   IconButton,
   HStack
 } from '@chakra-ui/react';
@@ -36,10 +35,8 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
-import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -53,8 +50,7 @@ const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
 const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   const { t } = useTranslation();
-  const { Loading, setIsLoading } = useLoading();
-  const { feConfigs } = useSystemStore();
+  const { setIsLoading } = useLoading();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
   const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
@@ -104,7 +100,6 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
               <Th>有效期</Th>
               <Th>返回引用</Th>
               <Th>是否登录</Th>
-              <Th>配置SSO地址</Th>
               <Th>备选模型</Th>
               <Th>最后使用时间</Th>
               <Th></Th>
@@ -121,7 +116,6 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                 </Td>
                 <Td>{item.responseDetail ? '✔' : '✖'}</Td>
                 <Td>{item.isLogin ? '✔' : '✖'}</Td>
-                <Td>{item?.limit?.hookUrl ? '✔' : '✖'}</Td>
                 <Td>{item.alternativeModel ? '✔' : '✖'}</Td>
                 <Td>
                   {item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common:common.Un used')}
@@ -240,7 +234,6 @@ function EditLinkModal({
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
-  const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { publishT } = useI18n();
   const {
@@ -289,16 +282,6 @@ function EditLinkModal({
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            <FormLabel>登录地址</FormLabel>
-            <QuestionTip ml={1} label="此功能仅做身份识别, 无法严格校验用户权限"></QuestionTip>
-          </Flex>
-          <Input placeholder="SSO登录地址" fontSize={'sm'} {...register('limit.hookUrl')} />
-        </Flex>
-        <Flex fontSize={'xs'} mt={1} color={'myGray.500'}>
-          示例: http://10.6.1.129/login/index.html?url=
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
           <FormLabel flex={'0 0 90px'} alignItems={'center'}>
             {t('common:common.Expired Time')}
           </FormLabel>
@@ -337,7 +320,6 @@ function EditLinkModal({
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             <FormLabel>是否登录</FormLabel>
-            <QuestionTip ml={1} label="开启后请务必填写登录地址"></QuestionTip>
           </Flex>
           <Switch {...register('isLogin')} />
         </Flex>

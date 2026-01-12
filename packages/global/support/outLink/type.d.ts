@@ -65,8 +65,6 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
     // Questions per minute
     QPM: number;
     maxUsagePoints: number;
-    // Verification message hook url
-    hookUrl?: string;
   };
 
   app: T;

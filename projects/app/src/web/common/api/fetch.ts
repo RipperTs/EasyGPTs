@@ -11,6 +11,7 @@ import {
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
+import { getToken } from '@/web/support/user/auth';
 
 type StreamFetchProps = {
   url?: string;
@@ -110,11 +111,13 @@ export const streamFetch = ({
       // auto complete variables
       const variables = data?.variables || {};
       variables.cTime = formatTime2YMDHMW();
+      const token = getToken();
 
       const requestData = {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { token } : {})
         },
         signal: abortCtrl.signal,
         body: JSON.stringify({

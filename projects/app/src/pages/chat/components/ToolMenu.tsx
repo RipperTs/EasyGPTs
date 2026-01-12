@@ -6,8 +6,6 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-// @ts-ignore
-import Cookies from 'js-cookie';
 
 const ToolMenu = ({
   history,
@@ -20,7 +18,6 @@ const ToolMenu = ({
   const { onExportChat } = useChatBox();
   const router = useRouter();
   const { shareId = '', chatId = '' } = router.query;
-  const cardNo = Cookies.get('card_no') || '';
 
   return history.length > 0 ? (
     <MyMenu

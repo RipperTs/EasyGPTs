@@ -23,11 +23,11 @@ async function handler(
     const { appId, shareId, outLinkUid, teamId, teamToken, current, pageSize } =
       req.body as getHistoriesBody;
 
-    const limit = shareId && outLinkUid ? 100 : 30;
+    const limit = shareId ? 100 : 30;
 
     const match = await (async () => {
-      if (shareId && outLinkUid) {
-        const { uid } = await authOutLink({ shareId, outLinkUid });
+      if (shareId) {
+        const { uid } = await authOutLink({ req, shareId, outLinkUid });
 
         return {
           shareId,

@@ -2,9 +2,10 @@ import axios, {
   Method,
   InternalAxiosRequestConfig,
   AxiosResponse,
-  AxiosProgressEvent
+  AxiosProgressEvent,
+  AxiosRequestHeaders
 } from 'axios';
-import { clearToken } from '@/web/support/user/auth';
+import { clearToken, getToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
@@ -69,8 +70,26 @@ function requestFinish({ url }: { url: string }) {
  * 请求开始
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  if (config.headers) {
+  const token = getToken();
+  if (!token) return config;
+
+  if (!config.headers) {
+    config.headers = {} as AxiosRequestHeaders;
   }
+
+  const headers = config.headers as unknown;
+  const axiosHeaders = headers as {
+    set?: (key: string, value: string) => void;
+  };
+
+  // axios v1: AxiosHeaders has .set, which relies on `this`
+  if (typeof axiosHeaders.set === 'function') {
+    axiosHeaders.set('token', token);
+    return config;
+  }
+
+  const recordHeaders = config.headers as Record<string, string>;
+  if (!recordHeaders.token) recordHeaders.token = token;
 
   return config;
 }

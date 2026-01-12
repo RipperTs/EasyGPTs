@@ -26,7 +26,7 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
-import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
+import { addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -151,6 +151,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         // share chat
         if (shareId && outLinkUid) {
           return authShareChat({
+            req,
             shareId,
             outLinkUid,
             chatId,
@@ -408,7 +409,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
       addOutLinkUsage({
         shareId,
         totalPoints
@@ -435,14 +435,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 export default NextAPI(handler);
 
 const authShareChat = async ({
+  req,
   chatId,
   ...data
 }: AuthOutLinkChatProps & {
+  req: NextApiRequest;
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
-    await authOutLinkChatStart(data);
+  const { teamId, tmbId, user, appId, authType, responseDetail, uid } = await authOutLinkChatStart({
+    req,
+    ...data
+  });
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {

@@ -1,7 +1,7 @@
 import { ChatSchema } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { authOutLink, authOutLinkInit } from './outLink';
+import { authOutLink, authOutLinkInit, getOutLinkUidByShareChat } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -52,7 +52,7 @@ export async function authChatCrud({
   const { uid } = await (async () => {
     // outLink Auth
     if (shareId && outLinkUid) {
-      const { uid } = await authOutLink({ shareId, outLinkUid });
+      const { uid } = await authOutLink({ req: props.req, shareId, outLinkUid });
       if (!chat || (chat.shareId === shareId && chat.outLinkUid === uid)) {
         return { uid };
       }
@@ -114,11 +114,16 @@ export async function authChatCert(props: AuthModeType): Promise<{
 }> {
   const { teamId, teamToken, shareId, outLinkUid } = props.req.body as OutLinkChatAuthProps;
 
-  if (shareId && outLinkUid) {
+  if (shareId) {
     const { shareChat } = await authOutLinkValid({ shareId });
-    const { uid } = await authOutLinkInit({
-      outLinkUid,
-      tokenUrl: shareChat.limit?.hookUrl
+    const realOutLinkUid = await getOutLinkUidByShareChat({
+      req: props.req,
+      shareChat,
+      outLinkUid
+    });
+
+    await authOutLinkInit({
+      outLinkUid: realOutLinkUid
     });
 
     return {
@@ -128,7 +133,7 @@ export async function authChatCert(props: AuthModeType): Promise<{
       apikey: '',
       isOwner: false,
       canWrite: false,
-      outLinkUid: uid
+      outLinkUid: realOutLinkUid
     };
   }
   if (teamId && teamToken) {

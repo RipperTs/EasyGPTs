@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
   // auth link permission
-  const { shareChat, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { shareChat, uid, appId } = await authOutLink({ req, shareId, outLinkUid });
 
   // auth app permission
   const [tmb, chat, app] = await Promise.all([

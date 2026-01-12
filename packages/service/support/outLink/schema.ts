@@ -65,9 +65,6 @@ const OutLinkSchema = new Schema({
     QPM: {
       type: Number,
       default: 1000
-    },
-    hookUrl: {
-      type: String
     }
   },
   app: {

@@ -35,10 +35,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import Permission from '@fastgpt/service/core/chat/Permission';
-// @ts-ignore
-import Cookies from 'js-cookie';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -50,21 +48,21 @@ type Props = {
   appIntro: string;
   appAvatar: string;
   shareId: string;
-  authToken: string;
   isLogin: boolean;
-  hookUrl: string;
-  cardNo?: string | null;
   alternativeModelList?: alternativeModel[];
+};
+
+type OutLinkProps = Props & {
+  outLinkUid: string;
 };
 
 const OutLink = ({
   appName,
   appIntro,
   appAvatar,
-  cardNo,
-  isLogin,
-  alternativeModelList
-}: Props) => {
+  alternativeModelList,
+  outLinkUid
+}: OutLinkProps) => {
   const { t } = useTranslation();
   const router = useRouter();
   const {
@@ -72,14 +70,12 @@ const OutLink = ({
     chatId = '',
     showHistory = '1',
     showHead = '1',
-    authToken,
     ...customVariables
   } = router.query as {
     shareId: string;
     chatId: string;
     showHistory: '0' | '1';
     showHead: '0' | '1';
-    authToken: string;
     [key: string]: string;
   };
   const { isPc } = useSystem();
@@ -88,9 +84,6 @@ const OutLink = ({
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const appId = chatData.appId;
-
-  const { localUId } = useShareChatStore();
-  const outLinkUid: string = authToken || cardNo || localUId;
 
   const {
     onUpdateHistoryTitle,
@@ -370,55 +363,69 @@ const OutLink = ({
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken, isLogin, hookUrl } = props;
-  const [hasPermission, setHasPermission] = useState(true);
+  const { shareId, isLogin } = props;
+  const router = useRouter();
+  const { userInfo, initUserInfo } = useUserStore();
+  const { localUId } = useShareChatStore();
+  const [checkedLogin, setCheckedLogin] = useState(!isLogin);
+  const checkingLoginRef = useRef(false);
 
-  // 获取cookie的值
-  let cardNo = Cookies.get('card_no') || '';
-  // 判断是否登录并初始化登录权限
-  const initPermissions = async () => {
-    if (!isLogin || cardNo) {
-      setHasPermission(true);
-      return;
-    }
-    if (!authToken && isLogin) {
-      const result = await Permission.initPermissions(
-        window.location.href,
-        hookUrl,
-        'know:answerjin:view'
-      );
-      if (result.code !== 200) {
-        setHasPermission(false);
-        window.location.href = result.redirectUrl + '';
-        return;
-      }
-      Cookies.set('card_no', result?.username ?? '', { expires: 30 });
-      cardNo = result?.username ?? '';
-      setHasPermission(true);
-    }
-  };
+  const authToken = useMemo(() => {
+    const value = router.query.authToken;
+    return typeof value === 'string' ? value : '';
+  }, [router.query.authToken]);
+
+  const outLinkUid = useMemo(() => {
+    if (isLogin) return userInfo?.username || '';
+    return authToken || localUId;
+  }, [authToken, isLogin, localUId, userInfo?.username]);
 
   useEffect(() => {
-    initPermissions();
-  }, []);
+    if (!isLogin) return;
+    if (userInfo) {
+      setCheckedLogin(true);
+      return;
+    }
+    if (checkingLoginRef.current) return;
+    checkingLoginRef.current = true;
 
-  if (!isLogin) {
-    cardNo = '';
-  }
+    let canceled = false;
 
-  const { localUId } = useShareChatStore();
-  const outLinkUid: string = authToken || cardNo || localUId;
+    initUserInfo()
+      .then(() => {
+        if (canceled) return;
+        setCheckedLogin(true);
+      })
+      .catch((err) => {
+        if (canceled) return;
+        // In dev (React StrictMode) or when maxQuantity aborts old requests, ignore cancellation.
+        if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
+        window.location.replace(
+          `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+        );
+      })
+      .finally(() => {
+        if (canceled) return;
+        checkingLoginRef.current = false;
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [initUserInfo, isLogin, userInfo]);
 
   const contextParams = useMemo(() => {
     return { shareId, outLinkUid };
   }, [shareId, outLinkUid]);
 
-  return hasPermission ? (
+  if (!checkedLogin || !outLinkUid) {
+    return null;
+  }
+
+  return (
     <ChatContextProvider params={contextParams}>
-      <OutLink {...props} cardNo={cardNo} />;
+      <OutLink {...props} outLinkUid={outLinkUid} />
     </ChatContextProvider>
-  ) : (
-    <></>
   );
 };
 
@@ -426,7 +433,6 @@ export default Render;
 
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
-  const authToken = context?.query?.authToken || '';
 
   // 查询当前分享的app信息及分享链接配置信息
   const app = await (async () => {
@@ -448,6 +454,7 @@ export async function getServerSideProps(context: any) {
   })();
 
   const isLogin = app?.isLogin ?? false;
+
   const appId = app?.appId._id;
   // 是否加入了备选模型列表
   const alternativeModel = app?.alternativeModel ?? false;
@@ -550,9 +557,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'intro',
       shareId: shareId ?? '',
-      authToken: authToken ?? '',
       isLogin: isLogin,
-      hookUrl: app?.limit?.hookUrl ?? '',
       alternativeModelList,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }

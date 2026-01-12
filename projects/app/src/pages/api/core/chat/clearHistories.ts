@@ -18,8 +18,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let chatAppId = appId!;
 
   const match = await (async () => {
-    if (shareId && outLinkUid) {
-      const { appId, uid } = await authOutLink({ shareId, outLinkUid });
+    if (shareId) {
+      const { appId, uid } = await authOutLink({ req, shareId, outLinkUid });
 
       chatAppId = appId;
       return {
