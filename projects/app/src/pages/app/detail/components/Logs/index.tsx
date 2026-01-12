@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Flex,
   Box,
+  Text,
+  SimpleGrid,
   TableContainer,
   Table,
   Thead,
@@ -11,12 +13,14 @@ import {
   Tbody,
   useDisclosure,
   ModalBody,
-  HStack
+  HStack,
+  Skeleton,
+  useTheme
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { getAppChatLogs } from '@/web/core/app/api';
+import { getAppChatLogs, getAppChatLogsStats } from '@/web/core/app/api';
 import dayjs from 'dayjs';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -33,12 +37,20 @@ import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Tag from '@fastgpt/web/components/common/Tag';
+import type { AppChatLogsStatsRes } from '@/pages/api/core/app/getChatLogsStats';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useMemoizedFn } from 'ahooks';
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
+
+const formatNum = (num: number) => new Intl.NumberFormat('zh-CN').format(num);
 
 const Logs = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const { isPc } = useSystem();
+  const { toast } = useToast();
+  const theme = useTheme();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const { teamMembers } = useUserStore();
@@ -47,19 +59,26 @@ const Logs = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
+  const [stats, setStats] = useState<AppChatLogsStatsRes>({
+    sessionCount: 0,
+    qaCount: 0,
+    questionCount: 0,
+    answerCount: 0,
+    activeUserCount: 0,
+    activeUserLoggedInCount: 0,
+    activeUserAnonymousCount: 0
+  });
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
 
-  const {
-    isOpen: isOpenMarkDesc,
-    onOpen: onOpenMarkDesc,
-    onClose: onCloseMarkDesc
-  } = useDisclosure();
+  const { isOpen: isOpenMarkDesc, onClose: onCloseMarkDesc } = useDisclosure();
 
   const {
     data: logs,
     isLoading,
     Pagination,
     getData,
-    pageNum
+    pageNum,
+    total
   } = usePagination({
     api: getAppChatLogs,
     pageSize: 20,
@@ -72,20 +91,134 @@ const Logs = () => {
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
 
+  const loadStats = useMemoizedFn(async () => {
+    if (!appId) return;
+    setIsStatsLoading(true);
+    try {
+      const res = await getAppChatLogsStats({
+        appId,
+        dateStart: dateRange.from || new Date(),
+        dateEnd: addDays(dateRange.to || new Date(), 1)
+      });
+      setStats(res);
+    } catch (error) {
+      toast({
+        title: getErrText(error, t('common:core.chat.error.data_error')),
+        status: 'error'
+      });
+    }
+    setIsStatsLoading(false);
+  });
+
+  useEffect(() => {
+    loadStats();
+  }, [appId, loadStats]);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       {isPc && (
-        <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
-          <Box fontWeight={'bold'} fontSize={['md', 'lg']} mb={2}>
-            {appT('chat_logs')}
-          </Box>
-          <Box color={'myGray.500'} fontSize={'sm'}>
-            <Box>{`日志会记录该应对的所有对话记录, 无论是通过分享或API形式的对话记录.`}</Box>
-            <Box as={'span'} mr={2}>
-              API 需要传递 chatId 参数来区分对话窗口 (聊天历史记录关联), 传递 outLinkUid
-              参数来区分不同的使用者.
+        <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[3, 4]}>
+          <SimpleGrid columns={[1, 3]} spacing={6}>
+            <Box bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={3}>
+              <Flex alignItems={'center'} justifyContent={'space-between'} mb={1}>
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  w={'34px'}
+                  h={'34px'}
+                  borderRadius={'9px'}
+                  bg={'myGray.05'}
+                >
+                  <MyIcon name={'core/chat/chatFill'} w={'18px'} color={'primary.600'} />
+                </Flex>
+              </Flex>
+              <Text fontSize={'xs'} color={'myGray.600'} mb={0.5}>
+                会话数量
+              </Text>
+              <Skeleton isLoaded={!isStatsLoading}>
+                <Text
+                  fontSize={['lg', 'xl']}
+                  lineHeight={1.1}
+                  fontWeight={'bold'}
+                  color={'myGray.900'}
+                  mb={0.5}
+                  mt={2}
+                >
+                  {formatNum(stats.sessionCount)}
+                </Text>
+              </Skeleton>
+              <Text fontSize={'xs'} color={'myGray.500'} noOfLines={1}>
+                按会话更新时间统计
+              </Text>
             </Box>
-          </Box>
+
+            <Box bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={3}>
+              <Flex alignItems={'center'} justifyContent={'space-between'} mb={1}>
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  w={'34px'}
+                  h={'34px'}
+                  borderRadius={'9px'}
+                  bg={'myGray.05'}
+                >
+                  <MyIcon name={'common/resultLight'} w={'18px'} color={'primary.600'} />
+                </Flex>
+              </Flex>
+              <Text fontSize={'xs'} color={'myGray.600'} mb={0.5}>
+                问答数量
+              </Text>
+              <Skeleton isLoaded={!isStatsLoading}>
+                <Text
+                  fontSize={['lg', 'xl']}
+                  lineHeight={1.1}
+                  fontWeight={'bold'}
+                  color={'myGray.900'}
+                  mb={0.5}
+                  mt={2}
+                >
+                  {formatNum(stats.qaCount)}
+                </Text>
+              </Skeleton>
+              <Text fontSize={'xs'} color={'myGray.500'} noOfLines={1}>
+                提问 {formatNum(stats.questionCount)} · 回答 {formatNum(stats.answerCount)}
+              </Text>
+            </Box>
+
+            <Box bg={'white'} borderRadius={'12px'} border={theme.borders.base} p={3}>
+              <Flex alignItems={'center'} justifyContent={'space-between'} mb={1}>
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  w={'34px'}
+                  h={'34px'}
+                  borderRadius={'9px'}
+                  bg={'myGray.05'}
+                >
+                  <MyIcon name={'support/user/userFill'} w={'18px'} color={'primary.600'} />
+                </Flex>
+              </Flex>
+              <Text fontSize={'xs'} color={'myGray.600'} mb={0.5}>
+                活跃用户
+              </Text>
+              <Skeleton isLoaded={!isStatsLoading}>
+                <Text
+                  fontSize={['lg', 'xl']}
+                  lineHeight={1.1}
+                  fontWeight={'bold'}
+                  color={'myGray.900'}
+                  mb={0.5}
+                  mt={2}
+                >
+                  {formatNum(stats.activeUserCount)}
+                </Text>
+              </Skeleton>
+              <Text fontSize={'xs'} color={'myGray.500'} noOfLines={1}>
+                登录用户 {formatNum(stats.activeUserLoggedInCount)} · 匿名用户{' '}
+                {formatNum(stats.activeUserAnonymousCount)}
+              </Text>
+            </Box>
+          </SimpleGrid>
         </Box>
       )}
 
@@ -204,7 +337,10 @@ const Logs = () => {
             defaultDate={dateRange}
             position="top"
             onChange={setDateRange}
-            onSuccess={() => getData(1)}
+            onSuccess={() => {
+              getData(1);
+              loadStats();
+            }}
           />
           <Pagination />
         </HStack>

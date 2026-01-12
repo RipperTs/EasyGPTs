@@ -5,3 +5,9 @@ export type GetAppChatLogsParams = RequestPaging & {
   dateStart: Date;
   dateEnd: Date;
 };
+
+export type GetAppChatLogsStatsParams = {
+  appId: string;
+  dateStart: Date;
+  dateEnd: Date;
+};

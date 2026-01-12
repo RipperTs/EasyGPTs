@@ -1,9 +1,10 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
-import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
+import type { GetAppChatLogsParams, GetAppChatLogsStatsParams } from '@/global/core/api/appReq.d';
 import { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
 import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
+import type { AppChatLogsStatsRes } from '@/pages/api/core/app/getChatLogsStats';
 import { AppLogsListItemType } from '@/types/app';
 import { PagingData } from '@/types';
 
@@ -40,6 +41,9 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) =>
   POST<PagingData<AppLogsListItemType>>(`/core/app/getChatLogs`, data);
+
+export const getAppChatLogsStats = (data: GetAppChatLogsStatsParams) =>
+  POST<AppChatLogsStatsRes>(`/core/app/getChatLogsStats`, data);
 
 export const resumeInheritPer = (appId: string) =>
   GET(`/core/app/resumeInheritPermission`, { appId });
