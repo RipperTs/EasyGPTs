@@ -2,7 +2,7 @@
 
 面向企业/团队的 LLM 应用与知识库问答平台：内置数据集（知识库）处理、向量检索、重排、工具/插件能力，并通过 Flow 可视化工作流编排实现复杂问答与自动化流程。
 
-## 形态与架构
+## 架构
 
 - Monorepo（pnpm workspace），主应用为 Next.js 14（同一进程同时提供 Web UI + API）。
 - `projects/app`：Next.js 应用（页面、API Routes、工作流画布等）。
@@ -12,7 +12,7 @@
 - `packages/plugins`：工作流插件（系统/自定义）。
 - `python/`：辅助示例代码（非主项目、未参与生产）。
 
-## 重要技术栈
+## 技术栈
 
 - 前端框架：Next.js 14（pages）+ React 18 + TypeScript
 - UI 框架：Chakra UI
@@ -60,7 +60,7 @@ make build name=app image=<your_repo/easygpts:tag>
 ```
 然后将 `docker-compose.yml` 中 `easygpts.image` 替换为你的镜像名，再 `docker compose up -d`。
 
-## 本地开发（源码）
+## 本地开发
 
 前置：Node.js >= 18.16、pnpm >= 9（Node >= 20 安装依赖时可能需要 `NODE_OPTIONS=--no-node-snapshot`）。
 
