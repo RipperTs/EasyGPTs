@@ -244,24 +244,56 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         $match: {
           teamId: teamIdQuery,
           updateTime: { $gte: startTime, $lte: endTime },
-          outLinkUid: { $exists: true, $nin: ['', null] }
+          outLinkUid: { $exists: true }
         }
       },
-      { $group: { _id: '$outLinkUid' } }
+      {
+        $group: {
+          _id: {
+            $trim: {
+              input: {
+                $convert: {
+                  input: '$outLinkUid',
+                  to: 'string',
+                  onError: '',
+                  onNull: ''
+                }
+              }
+            }
+          }
+        }
+      }
     ]),
     MongoChat.aggregate<{ _id: boolean; count: number }>([
       {
         $match: {
           teamId: teamIdQuery,
           updateTime: { $gte: startTime, $lte: endTime },
-          outLinkUid: { $exists: true, $nin: ['', null] }
+          outLinkUid: { $exists: true }
         }
       },
-      { $group: { _id: '$outLinkUid' } },
+      {
+        $group: {
+          _id: {
+            $trim: {
+              input: {
+                $convert: {
+                  input: '$outLinkUid',
+                  to: 'string',
+                  onError: '',
+                  onNull: ''
+                }
+              }
+            }
+          }
+        }
+      },
       {
         $project: {
           _id: 0,
-          isAnonymous: { $regexMatch: { input: '$_id', regex: '^shareChat-' } }
+          isAnonymous: {
+            $or: [{ $eq: ['$_id', ''] }, { $regexMatch: { input: '$_id', regex: '^shareChat-' } }]
+          }
         }
       },
       { $group: { _id: '$isAnonymous', count: { $sum: 1 } } }
@@ -314,14 +346,25 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         $match: {
           teamId: teamIdQuery,
           updateTime: { $gte: startTime, $lte: endTime },
-          outLinkUid: { $exists: true, $nin: ['', null] }
+          outLinkUid: { $exists: true }
         }
       },
       {
         $group: {
           _id: {
             day: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
-            outLinkUid: '$outLinkUid'
+            outLinkUid: {
+              $trim: {
+                input: {
+                  $convert: {
+                    input: '$outLinkUid',
+                    to: 'string',
+                    onError: '',
+                    onNull: ''
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -332,21 +375,37 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         $match: {
           teamId: teamIdQuery,
           updateTime: { $gte: startTime, $lte: endTime },
-          outLinkUid: { $exists: true, $nin: ['', null] }
+          outLinkUid: { $exists: true }
         }
       },
       {
         $group: {
           _id: {
             day: { $dateToString: { format: '%Y-%m-%d', date: '$updateTime', timezone: tz } },
-            outLinkUid: '$outLinkUid'
+            outLinkUid: {
+              $trim: {
+                input: {
+                  $convert: {
+                    input: '$outLinkUid',
+                    to: 'string',
+                    onError: '',
+                    onNull: ''
+                  }
+                }
+              }
+            }
           }
         }
       },
       {
         $project: {
           day: '$_id.day',
-          isAnonymous: { $regexMatch: { input: '$_id.outLinkUid', regex: '^shareChat-' } }
+          isAnonymous: {
+            $or: [
+              { $eq: ['$_id.outLinkUid', ''] },
+              { $regexMatch: { input: '$_id.outLinkUid', regex: '^shareChat-' } }
+            ]
+          }
         }
       },
       { $group: { _id: { day: '$day', isAnonymous: '$isAnonymous' }, count: { $sum: 1 } } }
@@ -377,7 +436,12 @@ async function handler(req: ApiRequestProps<GetTeamDashboardBody>): Promise<Team
         $match: {
           teamId: teamIdQuery,
           updateTime: { $gte: startTime, $lte: endTime },
-          outLinkUid: { $exists: true, $nin: ['', null], $not: /^shareChat-/ }
+          outLinkUid: {
+            $exists: true,
+            $type: 'string',
+            $nin: ['', null],
+            $not: /^shareChat-/
+          }
         }
       },
       {

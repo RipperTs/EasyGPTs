@@ -71,14 +71,31 @@ async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<AppC
         {
           $match: {
             ...chatWhere,
-            outLinkUid: { $exists: true, $nin: ['', null] }
+            outLinkUid: { $exists: true }
           }
         },
-        { $group: { _id: '$outLinkUid' } },
+        {
+          $group: {
+            _id: {
+              $trim: {
+                input: {
+                  $convert: {
+                    input: '$outLinkUid',
+                    to: 'string',
+                    onError: '',
+                    onNull: ''
+                  }
+                }
+              }
+            }
+          }
+        },
         {
           $project: {
             _id: 0,
-            isAnonymous: { $regexMatch: { input: '$_id', regex: '^shareChat-' } }
+            isAnonymous: {
+              $or: [{ $eq: ['$_id', ''] }, { $regexMatch: { input: '$_id', regex: '^shareChat-' } }]
+            }
           }
         },
         { $group: { _id: '$isAnonymous', count: { $sum: 1 } } }
