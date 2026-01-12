@@ -118,6 +118,8 @@ services:
     networks:
       - easygpts
     restart: always
+    ports:
+      - 13801:3000
 
   easygpts:
     container_name: easygpts
@@ -133,17 +135,18 @@ services:
     restart: always
     environment:
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
-      - DEFAULT_ROOT_PSW=fsxgt@1234
+      - DEFAULT_ROOT_PSW=<root密码>
+      - FE_DOMAIN=http://10.6.80.164
       # AI模型的API地址哦。务必加 /v1。这里默认填写了OneApi的访问地址。
       - OPENAI_BASE_URL=http://10.6.80.35:3800/v1
       # AI模型的API Key。（这里默认填写了OneAPI的快速默认key，测试通后，务必及时修改）
-      - CHAT_API_KEY=sk-P6BDiC6jdmKGvwlTF64f0dD7F531436fA8254a2589973aE0
+      - CHAT_API_KEY=<秘钥>
       # 数据库最大连接数
       - DB_MAX_LINK=100
       # 登录凭证密钥
-      - TOKEN_KEY=C586Piw8XuNkvk4Z
+      - TOKEN_KEY=<登录凭证>
       # root的密钥，常用于升级时候的初始化请求
-      - ROOT_KEY=JSccMU7w53dzMQ4n
+      - ROOT_KEY=<root秘钥>
       # 文件阅读加密
       - FILE_TOKEN_KEY=filetokenkey
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
@@ -156,10 +159,11 @@ services:
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=warn
       - STORE_LOG_LEVEL=warn
+      - XGT_UPDATE_PSW_URL=
     volumes:
       - ./config.json:/app/data/config.json
 
-# Milvus 可视化工具 Attu
+  # Milvus 可视化工具 Attu
   attu:
     container_name: dreamy_northcutt
     image: registry.cn-hangzhou.aliyuncs.com/ripper/attu:latest # 阿里云
