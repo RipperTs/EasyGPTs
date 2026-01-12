@@ -22,7 +22,7 @@
 - 存储：MongoDB（主数据）；向量库优先级 `pg > milvus`
 - 交付形态：Docker 镜像 + `docker-compose`（包含 Milvus/MinIO/etcd、Mongo、Sandbox、Attu）
 
-## 部署（仅支持 docker-compose）
+## 部署
 
 本项目的生产部署仅支持 `docker-compose.yml` 这一套方式（不提供/不维护 k8s、裸机脚本等其它部署形态）。
 
@@ -69,7 +69,7 @@ pnpm i
 make dev name=app
 ```
 
-## 配置入口（开发/部署共用）
+## 配置入口
 
 - 环境变量模板：`projects/app/.env.template`
 - 运行期配置（模型/向量/重排/前端配置等）：`projects/app/data/config.json`（部署时通过 `./config.json` 挂载到容器 `/app/data/config.json`）
