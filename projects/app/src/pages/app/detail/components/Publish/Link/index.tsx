@@ -73,9 +73,9 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
       <Flex justifyContent={'space-between'}>
         <HStack>
           <Box color={'myGray.900'} fontSize={'lg'}>
-            {t('common:core.app.Share link')}
+            在线对话窗口
           </Box>
-          <QuestionTip label={t('common:core.app.Share link desc detail')} />
+          <QuestionTip label="可以直接分享该模型给其他用户去进行对话，并设置是否需要用户登录来对话。" />
         </HStack>
         <Button
           variant={'whitePrimary'}

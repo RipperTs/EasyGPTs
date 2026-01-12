@@ -1,29 +1,21 @@
 import React, { useRef, useState } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
 
 import MyRadio from '@/components/common/MyRadio';
-import { useTranslation } from 'next-i18next';
 
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
-// const Wecom = dynamic(() => import('./Wecom'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
 
 const OutLink = () => {
-  const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
-  const { toast } = useToast();
-
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const publishList = useRef([
@@ -39,12 +31,6 @@ const OutLink = () => {
       desc: '通过 API 接入到已有系统中，或者企业微信、飞书等',
       value: PublishChannelEnum.apikey
     }
-    // {
-    //   icon: 'core/app/publish/lark',
-    //   title: t('common:core.app.publish.Fei shu bot'),
-    //   desc: t('common:core.app.publish.Fei Shu Bot Desc'),
-    //   value: PublishChannelEnum.feishu
-    // }
   ]);
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
@@ -89,7 +75,6 @@ const OutLink = () => {
         )}
         {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
-        {/* {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />} */}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
       </Flex>
     </Box>
