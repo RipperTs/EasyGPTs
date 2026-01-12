@@ -69,9 +69,8 @@ pnpm i
 make dev name=app
 ```
 
-## 配置及依赖
+## 配置相关
 
-### 配置
 - 环境变量模板：`projects/app/.env.template`
 - 运行期配置（模型/向量/重排/前端配置等）：`projects/app/data/config.json`（部署时通过 `./config.json` 挂载到容器 `/app/data/config.json`）
 
