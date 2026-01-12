@@ -122,8 +122,13 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               {t('common:support.openapi.Api manager')}
             </Box>
           </Flex>
-          <Box fontSize={'mini'} color={'myGray.600'}>
-            {tips}
+          <Box fontSize={'mini'} color={'myGray.600'} display={'flex'}>
+            <Box>{tips}</Box>
+            <Box ml={2} fontWeight={500}>
+              <a href="https://easygpts.apifox.cn/" target={'_blank'}>
+                API在线文档
+              </a>
+            </Box>
           </Box>
         </Box>
         <Flex
