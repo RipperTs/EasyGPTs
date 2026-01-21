@@ -17,6 +17,7 @@ import { getTeamDashboardStats } from '@/web/core/statistics/api';
 
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { EChartsOption } from 'echarts';
+import AppTrendModal, { type TrendAppItem } from './components/AppTrendModal';
 
 const EChartsPanel = dynamic(() => import('./components/EChartsPanel'), { ssr: false });
 
@@ -102,6 +103,7 @@ const StatisticsPage = () => {
 
   const [days, setDays] = useState<RangeDays>(30);
   const rangeText = useMemo(() => (days === 365 ? '近一年' : `近${days}天`), [days]);
+  const [trendApp, setTrendApp] = useState<TrendAppItem | null>(null);
 
   const { data, isFetching, refetch } = useQuery(
     ['teamDashboardStats', days],
@@ -596,7 +598,14 @@ const StatisticsPage = () => {
                     borderRadius={'md'}
                     cursor={'pointer'}
                     _hover={{ bg: 'myGray.05' }}
-                    onClick={() => router.push(`/app/detail/${item.appId}`)}
+                    onClick={() =>
+                      setTrendApp({
+                        appId: item.appId,
+                        name: item.name,
+                        avatar: item.avatar,
+                        type: item.type
+                      })
+                    }
                   >
                     <Text w={'22px'} fontSize={'sm'} color={'myGray.500'}>
                       {idx + 1}
@@ -632,6 +641,8 @@ const StatisticsPage = () => {
           </MyBox>
         </SimpleGrid>
       </Box>
+
+      {trendApp && <AppTrendModal app={trendApp} onClose={() => setTrendApp(null)} />}
     </PageContainer>
   );
 };

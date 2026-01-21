@@ -73,6 +73,25 @@
   - 现象：给 `Button` 设置了 `maxW`，但视觉上宽度没有变化（常见于同时写了 `w="100%"`）。
   - 原因：`maxW` 只限制最大宽度，不会主动改变布局；`w` 才是实际宽度。
   - 修复：需要固定宽度用 `w`（可用响应式数组如 `w={['100%', '360px']}`）；需要居中时用 `Flex justify="center"` 或配合 `mx="auto"`。
+- **“请求日志/对话日志”口径没先确认，导致查错集合**
+  - 现象：把“对话日志”当成“请求日志”实现，误用 `usages`（计费/消耗记录）导致“应用名”显示成训练名/文件名/任务标题等。
+  - 修复：先确认日志口径，再选集合：
+    - **会话列表**：优先 `chat`（会话维度：`title/source/updateTime/outLinkUid`）+ `chatitems`（消息维度：`obj/value/responseData`）。
+    - **计费/消耗**：`usages`（`appName` 不一定是应用名，`appId` 可能为空，需谨慎展示）。
+- **`usePagination` + `useEffect` 依赖不当导致频繁请求**
+  - 现象：页面打开后不停请求 list 接口。
+  - 原因：把 `getData`（函数引用可能不稳定）放进 `useEffect` 依赖，触发渲染-请求-再渲染循环。
+  - 修复：只依赖真正的筛选条件（如 `appId/keyword`），或用稳定的回调封装后再放依赖。
+- **i18n key 直接渲染/类型过严导致构建失败**
+  - 现象：来源显示 `common:core.chat.logs.api`；或 `t(label)` 在 build 阶段类型校验失败。
+  - 原因：`ChatSourceMap.*.name` 通过 `i18nT` 返回 key（不是中文）；同时 `next-i18next` 的 `t()` key 类型是联合类型，不能直接喂运行时字符串。
+  - 修复：按仓库规范优先直接用中文字符串；需要显示来源时用本地 `source -> 中文` 映射兜底，不要在此处硬接 i18n。
+- **Mongo 聚合 `$let` / `$$REMOVE` / TS 类型约束的坑**
+  - `$let.vars` 同层变量不能互相引用：需要嵌套 `$let`，避免 “undefined variable”。
+  - `$$REMOVE` 在部分环境/写法下不稳定：更稳的做法是先 push `null` 再用 `$filter` 清理。
+  - Mongoose `aggregate()` 的 pipeline 类型：不要用 `Record<string, unknown>[]`，用 `PipelineStage[]`（或最终断言为该类型）避免 build 的类型错误。
+- **“最近消息”要明确是问题还是答案**
+  - 经验：对话日志列表更适合展示“最近一次用户提问（Human）”，而不是最后一条 AI 回复；可在聚合前提取 `textContent`，聚合后从 Human candidates 里取第一条。
 
 ---
 
