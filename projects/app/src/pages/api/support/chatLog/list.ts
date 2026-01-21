@@ -10,6 +10,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import type { PipelineStage } from 'mongoose';
 
 export type ListChatLogBody = {
   pageNum: number;
@@ -92,7 +93,7 @@ async function handler(
       }
     : null;
 
-  const basePipeline: Record<string, unknown>[] = [
+  const basePipeline = [
     { $match: where },
     {
       $addFields: {
@@ -223,7 +224,7 @@ async function handler(
       }
     },
     ...(keywordMatch ? [{ $match: keywordMatch }] : [])
-  ];
+  ] as unknown as PipelineStage[];
 
   const [data, totalAgg] = await Promise.all([
     MongoChatItem.aggregate(

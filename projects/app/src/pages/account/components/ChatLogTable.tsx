@@ -30,13 +30,10 @@ import dayjs from 'dayjs';
 import { addDays } from 'date-fns';
 import { SearchIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import Tag from '@fastgpt/web/components/common/Tag';
-import { useTranslation } from 'next-i18next';
 
 const ChatLogTable = () => {
   const router = useRouter();
-  const { t } = useTranslation();
   const { Loading } = useLoading();
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
@@ -94,26 +91,18 @@ const ChatLogTable = () => {
 
   const getSourceLabel = (source?: string) => {
     if (!source) return '-';
-    const label = ChatSourceMap[source as keyof typeof ChatSourceMap]?.name || '';
-    if (!label) return '-';
-    if (label.includes(':')) {
-      const translated = t(label);
-      if (translated && translated !== label) return translated;
-
-      const fallbackMap: Record<string, string> = {
-        online: '在线',
-        api: 'API',
-        share: '分享',
-        team: '团队',
-        feishu: '飞书',
-        wecom: '企微',
-        official_account: '公众号',
-        test: '测试',
-        mcp: 'MCP'
-      };
-      return fallbackMap[source] || translated || label;
-    }
-    return label;
+    const fallbackMap: Record<string, string> = {
+      online: '在线',
+      api: 'API',
+      share: '分享',
+      team: '团队',
+      feishu: '飞书',
+      wecom: '企微',
+      official_account: '公众号',
+      test: '测试',
+      mcp: 'MCP'
+    };
+    return fallbackMap[source] || source;
   };
 
   return (
