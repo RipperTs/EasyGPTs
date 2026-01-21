@@ -19,6 +19,7 @@ const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
 const TeamManagement = dynamic(() => import('./components/Team/TeamManagement'));
+const ChatLogTable = dynamic(() => import('./components/ChatLogTable'));
 
 enum TabEnum {
   'info' = 'info',
@@ -29,6 +30,7 @@ enum TabEnum {
   'individuation' = 'individuation',
   'apikey' = 'apikey',
   'team' = 'team',
+  'chatLog' = 'chatLog',
   'loginout' = 'loginout'
 }
 
@@ -57,6 +59,11 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
         ]
       : []),
     {
+      icon: 'common/logLight',
+      label: '对话日志',
+      value: TabEnum.chatLog
+    },
+    {
       icon: 'support/account/loginoutLight',
       label: '退出登录',
       value: TabEnum.loginout
@@ -78,9 +85,10 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           router.replace('/login');
         })();
       } else {
+        const safeTab = tab === 'requestLog' ? TabEnum.chatLog : tab;
         router.replace({
           query: {
-            currentTab: tab
+            currentTab: safeTab
           }
         });
       }
@@ -135,6 +143,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
             {currentTab === TabEnum.team && <TeamManagement />}
+            {currentTab === TabEnum.chatLog && <ChatLogTable />}
           </Box>
         </Flex>
         <ConfirmModal />
