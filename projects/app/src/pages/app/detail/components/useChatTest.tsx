@@ -92,6 +92,7 @@ export const useChatTest = ({
         chatHistories={chatRecords}
         setChatHistories={setChatRecords}
         variablesForm={variablesForm}
+        showCustomVariables={true}
         appId={appDetail._id}
         appAvatar={appDetail.avatar}
         userAvatar={userInfo?.avatar}

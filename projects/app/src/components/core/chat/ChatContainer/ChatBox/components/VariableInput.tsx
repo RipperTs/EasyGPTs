@@ -71,6 +71,18 @@ const VariableInput = ({
                   maxLength={4000}
                 />
               )}
+              {item.type === VariableInputEnum.custom && (
+                <Textarea
+                  bg={'myWhite.400'}
+                  {...register(item.key, {
+                    required: item.required
+                  })}
+                  rows={5}
+                  placeholder={
+                    '支持 JSON（如 {"a":1} / true / 123 / "text"），非 JSON 将按字符串处理'
+                  }
+                />
+              )}
               {item.type === VariableInputEnum.select && (
                 <Controller
                   key={item.key}

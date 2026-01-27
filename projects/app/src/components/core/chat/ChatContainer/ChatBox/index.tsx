@@ -53,6 +53,7 @@ import {
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 import ChatItem from './components/ChatItem';
 
@@ -442,9 +443,27 @@ const ChatBox = (
           }
 
           // Only declared variables are kept
-          const requestVariables: Record<string, any> = {};
+          const requestVariables: Record<string, unknown> = {};
           allVariableList?.forEach((item) => {
-            requestVariables[item.key] = variables[item.key] || '';
+            const rawValue = (variables as Record<string, unknown>)[item.key];
+
+            // Debug scene: allow "custom" variable to pass non-string types via JSON input.
+            if (item.type === VariableInputEnum.custom && typeof rawValue === 'string') {
+              const str = rawValue.trim();
+              if (!str) {
+                requestVariables[item.key] = '';
+                return;
+              }
+              try {
+                requestVariables[item.key] = JSON.parse(str);
+              } catch {
+                requestVariables[item.key] = rawValue;
+              }
+              return;
+            }
+
+            // Keep falsy values like 0/false, but normalize undefined/null to empty string.
+            requestVariables[item.key] = rawValue ?? '';
           });
 
           const responseChatId = getNanoid(24);

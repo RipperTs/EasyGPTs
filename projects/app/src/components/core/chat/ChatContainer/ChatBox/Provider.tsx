@@ -25,6 +25,11 @@ export type ChatProviderProps = OutLinkChatAuthProps & {
   appAvatar?: string;
   appId: string;
   chatConfig?: AppChatConfigType;
+  /**
+   * Only used in local/debug scenes (e.g. workflow test panel).
+   * Custom variables are not user-input in normal chats, but are useful for debugging branches.
+   */
+  showCustomVariables?: boolean;
 
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
@@ -215,7 +220,9 @@ const Provider = ({
     teamId,
     teamToken,
     welcomeText,
-    variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
+    variableList: props.showCustomVariables
+      ? variables
+      : variables.filter((item) => item.type !== VariableInputEnum.custom),
     allVariableList: variables,
     questionGuide,
     ttsConfig,
