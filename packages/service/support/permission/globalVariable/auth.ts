@@ -4,113 +4,97 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { GlobalVariablePermission } from '@fastgpt/global/support/permission/globalVariable/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { GlobalVariableDefaultPermissionVal } from '@fastgpt/global/support/permission/globalVariable/constant';
-import { MongoTeamGlobalVariable } from '../../globalVariable/schema';
+import { MongoTeamGlobalVariableGroup } from '../../globalVariable/schema';
 import { AuthModeType, AuthResponseType } from '../type';
-import { TeamGlobalVariableSchemaType } from '@fastgpt/global/support/globalVariable/type';
+import { TeamGlobalVariableGroupSchemaType } from '@fastgpt/global/support/globalVariable/type';
 
-const getOrCreateGlobalVariable = async ({
-  teamId,
-  tmbId
-}: {
-  teamId: string;
-  tmbId: string;
-}): Promise<TeamGlobalVariableSchemaType> => {
-  const resource = await MongoTeamGlobalVariable.findOne({ teamId }).lean();
-  if (resource) return resource;
-
-  try {
-    const created = await MongoTeamGlobalVariable.create({
-      teamId,
-      tmbId,
-      variables: [],
-      defaultPermission: GlobalVariableDefaultPermissionVal,
-      inheritPermission: true
-    });
-    return created.toObject();
-  } catch (error) {
-    const exists = await MongoTeamGlobalVariable.findOne({ teamId }).lean();
-    if (!exists) throw error;
-    return exists;
-  }
-};
-
-export const authGlobalVariableByTmbId = async ({
+export const authGlobalVariableGroupByTmbId = async ({
   teamId,
   tmbId,
+  groupId,
   per,
   isRoot = false
 }: {
   teamId: string;
   tmbId: string;
+  groupId: string;
   per: PermissionValueType;
   isRoot?: boolean;
 }): Promise<{
-  globalVariable: TeamGlobalVariableSchemaType & {
+  group: TeamGlobalVariableGroupSchemaType & {
     permission: GlobalVariablePermission;
   };
 }> => {
-  const [{ teamId: tmbTeamId, permission: tmbPer }, resource] = await Promise.all([
+  const [{ teamId: tmbTeamId, permission: tmbPer }, group] = await Promise.all([
     getTmbInfoByTmbId({ tmbId }),
-    getOrCreateGlobalVariable({ teamId, tmbId })
+    MongoTeamGlobalVariableGroup.findById(groupId).lean()
   ]);
+
+  if (!group) {
+    return Promise.reject('分组不存在');
+  }
 
   if (!isRoot && String(tmbTeamId) !== String(teamId)) {
     return Promise.reject(TeamErrEnum.unAuthTeam);
   }
+  if (!isRoot && String(group.teamId) !== String(teamId)) {
+    return Promise.reject(TeamErrEnum.unAuthTeam);
+  }
 
-  const isOwner = isRoot || tmbPer.isOwner || String(resource.tmbId) === String(tmbId);
-
+  const isOwner = isRoot || tmbPer.isOwner || String(group.tmbId) === String(tmbId);
   const rp = isRoot
     ? null
     : await getResourcePermission({
         teamId,
         tmbId,
-        resourceId: resource._id,
+        resourceId: group._id,
         resourceType: PerResourceTypeEnum.globalVariable
       });
 
-  const resourcePermission = new GlobalVariablePermission({
-    per: rp?.permission ?? resource.defaultPermission,
+  const permission = new GlobalVariablePermission({
+    per: rp?.permission ?? group.defaultPermission,
     isOwner
   });
 
-  if (!resourcePermission.checkPer(per)) {
+  if (!permission.checkPer(per)) {
     return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
   return {
-    globalVariable: {
-      ...resource,
-      permission: resourcePermission
+    group: {
+      ...group,
+      permission
     }
   };
 };
 
-export const authGlobalVariable = async ({
+export const authGlobalVariableGroup = async ({
+  groupId,
   per,
   ...props
 }: AuthModeType & {
+  groupId: string;
   per: PermissionValueType;
 }): Promise<
   AuthResponseType & {
-    globalVariable: TeamGlobalVariableSchemaType & {
+    group: TeamGlobalVariableGroupSchemaType & {
       permission: GlobalVariablePermission;
     };
   }
 > => {
   const result = await parseHeaderCert(props);
 
-  const { globalVariable } = await authGlobalVariableByTmbId({
+  const { group } = await authGlobalVariableGroupByTmbId({
     teamId: result.teamId,
     tmbId: result.tmbId,
+    groupId,
     per,
     isRoot: result.isRoot
   });
 
   return {
     ...result,
-    permission: globalVariable.permission,
-    globalVariable
+    permission: group.permission,
+    group
   };
 };

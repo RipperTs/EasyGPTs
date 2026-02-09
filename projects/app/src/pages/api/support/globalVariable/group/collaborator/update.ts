@@ -1,24 +1,25 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { authGlobalVariable } from '@fastgpt/service/support/permission/globalVariable/auth';
 import {
   ManagePermissionVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { UpdateGlobalVariableCollaboratorBody } from '@fastgpt/global/support/globalVariable/api';
+import { UpdateGlobalVariableGroupCollaboratorBody } from '@fastgpt/global/support/globalVariable/api';
+import { authGlobalVariableGroup } from '@fastgpt/service/support/permission/globalVariable/auth';
 
-async function handler(req: ApiRequestProps<UpdateGlobalVariableCollaboratorBody>) {
-  const { tmbIds, permission } = req.body;
+async function handler(req: ApiRequestProps<UpdateGlobalVariableGroupCollaboratorBody>) {
+  const { groupId, tmbIds, permission } = req.body;
 
-  if (!Array.isArray(tmbIds) || tmbIds.length === 0 || permission === undefined) {
+  if (!groupId || !Array.isArray(tmbIds) || tmbIds.length === 0 || permission === undefined) {
     throw new Error('缺少参数');
   }
 
-  const { teamId, globalVariable } = await authGlobalVariable({
+  const { teamId, group } = await authGlobalVariableGroup({
     req,
     authToken: true,
+    groupId,
     per: ManagePermissionVal
   });
 
@@ -26,7 +27,7 @@ async function handler(req: ApiRequestProps<UpdateGlobalVariableCollaboratorBody
     await MongoResourcePermission.deleteMany(
       {
         resourceType: PerResourceTypeEnum.globalVariable,
-        resourceId: globalVariable._id,
+        resourceId: group._id,
         teamId,
         tmbId: { $in: tmbIds }
       },
@@ -36,7 +37,7 @@ async function handler(req: ApiRequestProps<UpdateGlobalVariableCollaboratorBody
     await MongoResourcePermission.insertMany(
       tmbIds.map((tmbId: string) => ({
         resourceType: PerResourceTypeEnum.globalVariable,
-        resourceId: globalVariable._id,
+        resourceId: group._id,
         teamId,
         tmbId,
         permission

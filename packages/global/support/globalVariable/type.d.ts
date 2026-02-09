@@ -6,14 +6,16 @@ export type TeamGlobalVariableItemType = {
   value: string;
 };
 
-export type TeamGlobalVariableSchemaType = {
+export type TeamGlobalVariableGroupSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
+  name: string;
+  groupKey: string;
   updateTime: Date;
   variables: TeamGlobalVariableItemType[];
 } & PermissionSchemaType;
 
-export type TeamGlobalVariableDetailType = TeamGlobalVariableSchemaType & {
+export type TeamGlobalVariableGroupDetailType = TeamGlobalVariableGroupSchemaType & {
   permission: GlobalVariablePermission;
 };

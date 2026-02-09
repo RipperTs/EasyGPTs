@@ -5,11 +5,11 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { getPermissionSchema } from '@fastgpt/global/support/permission/utils';
 import { GlobalVariableDefaultPermissionVal } from '@fastgpt/global/support/permission/globalVariable/constant';
-import { TeamGlobalVariableSchemaType } from '@fastgpt/global/support/globalVariable/type';
+import { TeamGlobalVariableGroupSchemaType } from '@fastgpt/global/support/globalVariable/type';
 
-export const TeamGlobalVariableCollectionName = 'team_global_variables';
+export const TeamGlobalVariableGroupCollectionName = 'team_global_variable_groups';
 
-const TeamGlobalVariableSchema = new Schema({
+const TeamGlobalVariableGroupSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -18,6 +18,14 @@ const TeamGlobalVariableSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  groupKey: {
+    type: String,
     required: true
   },
   updateTime: {
@@ -43,12 +51,13 @@ const TeamGlobalVariableSchema = new Schema({
 });
 
 try {
-  TeamGlobalVariableSchema.index({ teamId: 1 }, { unique: true });
+  TeamGlobalVariableGroupSchema.index({ teamId: 1, groupKey: 1 }, { unique: true });
+  TeamGlobalVariableGroupSchema.index({ teamId: 1, updateTime: -1 });
 } catch (error) {
   console.log(error);
 }
 
-export const MongoTeamGlobalVariable = getMongoModel<TeamGlobalVariableSchemaType>(
-  TeamGlobalVariableCollectionName,
-  TeamGlobalVariableSchema
+export const MongoTeamGlobalVariableGroup = getMongoModel<TeamGlobalVariableGroupSchemaType>(
+  TeamGlobalVariableGroupCollectionName,
+  TeamGlobalVariableGroupSchema
 );

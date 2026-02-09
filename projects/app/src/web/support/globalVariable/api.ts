@@ -1,23 +1,35 @@
 import { DELETE, GET, POST } from '@/web/common/api/request';
-import { TeamGlobalVariableDetailType } from '@fastgpt/global/support/globalVariable/type';
 import {
+  TeamGlobalVariableGroupDetailType,
+  TeamGlobalVariableGroupSchemaType
+} from '@fastgpt/global/support/globalVariable/type';
+import {
+  CreateGlobalVariableGroupBody,
   GlobalVariableCollaboratorDeleteParams,
-  UpdateGlobalVariableBody,
-  UpdateGlobalVariableCollaboratorBody
+  GlobalVariableGroupDeleteParams,
+  UpdateGlobalVariableGroupBody,
+  UpdateGlobalVariableGroupCollaboratorBody
 } from '@fastgpt/global/support/globalVariable/api';
 import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
-export const getGlobalVariableDetail = () =>
-  GET<TeamGlobalVariableDetailType>('/support/globalVariable/detail');
+export const getGlobalVariableGroupList = () =>
+  GET<TeamGlobalVariableGroupDetailType[]>('/support/globalVariable/group/list');
 
-export const updateGlobalVariable = (body: UpdateGlobalVariableBody) =>
-  POST<boolean>('/support/globalVariable/update', body);
+export const createGlobalVariableGroup = (body: CreateGlobalVariableGroupBody) =>
+  POST<TeamGlobalVariableGroupSchemaType>('/support/globalVariable/group/create', body);
 
-export const getGlobalVariableCollaboratorList = () =>
-  GET<CollaboratorItemType[]>('/support/globalVariable/collaborator/list');
+export const updateGlobalVariableGroup = (body: UpdateGlobalVariableGroupBody) =>
+  POST<boolean>('/support/globalVariable/group/update', body);
 
-export const updateGlobalVariableCollaborators = (body: UpdateGlobalVariableCollaboratorBody) =>
-  POST<boolean>('/support/globalVariable/collaborator/update', body);
+export const deleteGlobalVariableGroup = (params: GlobalVariableGroupDeleteParams) =>
+  DELETE<boolean>('/support/globalVariable/group/delete', params);
+
+export const getGlobalVariableGroupCollaboratorList = (groupId: string) =>
+  GET<CollaboratorItemType[]>('/support/globalVariable/group/collaborator/list', { groupId });
+
+export const updateGlobalVariableGroupCollaborators = (
+  body: UpdateGlobalVariableGroupCollaboratorBody
+) => POST<boolean>('/support/globalVariable/group/collaborator/update', body);
 
 export const deleteGlobalVariableCollaborators = (params: GlobalVariableCollaboratorDeleteParams) =>
-  DELETE<boolean>('/support/globalVariable/collaborator/delete', params);
+  DELETE<boolean>('/support/globalVariable/group/collaborator/delete', params);

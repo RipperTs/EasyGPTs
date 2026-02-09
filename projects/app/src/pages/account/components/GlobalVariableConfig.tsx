@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -16,11 +16,13 @@ import {
 } from '@chakra-ui/react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
+  createGlobalVariableGroup,
   deleteGlobalVariableCollaborators,
-  getGlobalVariableCollaboratorList,
-  getGlobalVariableDetail,
-  updateGlobalVariable,
-  updateGlobalVariableCollaborators
+  deleteGlobalVariableGroup,
+  getGlobalVariableGroupCollaboratorList,
+  getGlobalVariableGroupList,
+  updateGlobalVariableGroup,
+  updateGlobalVariableGroupCollaborators
 } from '@/web/support/globalVariable/api';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
@@ -33,68 +35,181 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
-type EditStateType = {
+type VariableEditStateType = {
   index: number | null;
   key: string;
   value: string;
 };
 
+type GroupEditStateType = {
+  mode: 'create' | 'edit';
+  name: string;
+  groupKey: string;
+};
+
 const GlobalVariableConfig = () => {
   const { toast } = useToast();
 
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
-  const [editState, setEditState] = useState<EditStateType | null>(null);
+  const [variableEditState, setVariableEditState] = useState<VariableEditStateType | null>(null);
+  const [groupEditState, setGroupEditState] = useState<GroupEditStateType | null>(null);
 
   const {
-    data: detail,
-    error,
-    loading: isLoading,
-    runAsync: refetchDetail
-  } = useRequest2(getGlobalVariableDetail, {
+    data: groups = [],
+    loading: isLoadingGroups,
+    runAsync: refetchGroups
+  } = useRequest2(getGlobalVariableGroupList, {
     manual: false
   });
 
-  const { runAsync: updateDetail, loading: isSaving } = useRequest2(updateGlobalVariable, {
-    manual: true,
-    successToast: '更新成功'
-  });
+  useEffect(() => {
+    if (!groups.length) {
+      setSelectedGroupId('');
+      return;
+    }
+    if (!groups.some((item) => String(item._id) === selectedGroupId)) {
+      setSelectedGroupId(String(groups[0]._id));
+    }
+  }, [groups, selectedGroupId]);
 
-  const variables = detail?.variables || [];
-  const canWrite = !!detail?.permission?.hasWritePer;
-  const canManage = !!detail?.permission?.hasManagePer;
+  const selectedGroup = useMemo(
+    () => groups.find((item) => String(item._id) === selectedGroupId),
+    [groups, selectedGroupId]
+  );
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    type: 'delete',
-    content: '确认删除该变量？'
-  });
+  const canWrite = !!selectedGroup?.permission?.hasWritePer;
+  const canManage = !!selectedGroup?.permission?.hasManagePer;
+  const variables = selectedGroup?.variables || [];
 
-  const saving = useMemo(() => isSaving || isLoading, [isLoading, isSaving]);
+  const { runAsync: onCreateGroup, loading: isCreatingGroup } = useRequest2(
+    createGlobalVariableGroup,
+    {
+      manual: true,
+      successToast: '创建分组成功'
+    }
+  );
+  const { runAsync: onUpdateGroup, loading: isUpdatingGroup } = useRequest2(
+    updateGlobalVariableGroup,
+    {
+      manual: true,
+      successToast: '更新成功'
+    }
+  );
+  const { runAsync: onDeleteGroup, loading: isDeletingGroup } = useRequest2(
+    deleteGlobalVariableGroup,
+    {
+      manual: true,
+      successToast: '删除成功'
+    }
+  );
 
-  const onOpenCreateModal = () => {
-    if (!canWrite) return;
-    setEditState({
+  const loadingAction = isCreatingGroup || isUpdatingGroup || isDeletingGroup;
+
+  const { openConfirm: openDeleteGroupConfirm, ConfirmModal: DeleteGroupConfirmModal } = useConfirm(
+    {
+      type: 'delete',
+      content: '确认删除该分组？删除后该分组下变量将一并删除。'
+    }
+  );
+  const { openConfirm: openDeleteVariableConfirm, ConfirmModal: DeleteVariableConfirmModal } =
+    useConfirm({
+      type: 'delete',
+      content: '确认删除该变量？'
+    });
+
+  const openCreateGroupModal = () => {
+    setGroupEditState({
+      mode: 'create',
+      name: '',
+      groupKey: ''
+    });
+  };
+
+  const openEditGroupModal = () => {
+    if (!selectedGroup || !canWrite) return;
+    setGroupEditState({
+      mode: 'edit',
+      name: selectedGroup.name,
+      groupKey: selectedGroup.groupKey
+    });
+  };
+
+  const saveGroup = async () => {
+    if (!groupEditState) return;
+
+    const name = groupEditState.name.trim();
+    const groupKey = groupEditState.groupKey.trim();
+    if (!name) {
+      toast({
+        status: 'warning',
+        title: '分组名称不能为空'
+      });
+      return;
+    }
+    if (!groupKey) {
+      toast({
+        status: 'warning',
+        title: '分组标识不能为空'
+      });
+      return;
+    }
+
+    if (groupEditState.mode === 'create') {
+      const created = await onCreateGroup({
+        name,
+        groupKey
+      });
+      await refetchGroups();
+      setSelectedGroupId(String(created._id));
+    } else if (selectedGroup) {
+      await onUpdateGroup({
+        groupId: String(selectedGroup._id),
+        name,
+        groupKey
+      });
+      await refetchGroups();
+    }
+
+    setGroupEditState(null);
+  };
+
+  const removeGroup = () => {
+    if (!selectedGroup || !canManage) return;
+
+    openDeleteGroupConfirm(async () => {
+      await onDeleteGroup({
+        groupId: String(selectedGroup._id)
+      });
+      await refetchGroups();
+    })();
+  };
+
+  const openCreateVariableModal = () => {
+    if (!selectedGroup || !canWrite) return;
+    setVariableEditState({
       index: null,
       key: '',
       value: ''
     });
   };
 
-  const onOpenEditModal = (index: number) => {
-    if (!canWrite) return;
+  const openEditVariableModal = (index: number) => {
+    if (!selectedGroup || !canWrite) return;
     const current = variables[index];
     if (!current) return;
 
-    setEditState({
+    setVariableEditState({
       index,
       key: current.key,
       value: current.value
     });
   };
 
-  const onSaveVariable = async () => {
-    if (!canWrite || !detail || !editState) return;
+  const saveVariable = async () => {
+    if (!selectedGroup || !canWrite || !variableEditState) return;
 
-    const key = editState.key.trim();
+    const key = variableEditState.key.trim();
     if (!key) {
       toast({
         status: 'warning',
@@ -104,45 +219,47 @@ const GlobalVariableConfig = () => {
     }
 
     const duplicate = variables.some(
-      (item, index) => item.key === key && (editState.index === null || index !== editState.index)
+      (item, index) =>
+        item.key === key && (variableEditState.index === null || index !== variableEditState.index)
     );
     if (duplicate) {
       toast({
         status: 'warning',
-        title: '变量 key 不能重复'
+        title: '同一分组下变量 key 不能重复'
       });
       return;
     }
 
     const newVariables = [...variables];
-    if (editState.index === null) {
+    if (variableEditState.index === null) {
       newVariables.push({
         key,
-        value: editState.value
+        value: variableEditState.value
       });
     } else {
-      newVariables[editState.index] = {
+      newVariables[variableEditState.index] = {
         key,
-        value: editState.value
+        value: variableEditState.value
       };
     }
 
-    await updateDetail({
+    await onUpdateGroup({
+      groupId: String(selectedGroup._id),
       variables: newVariables
     });
-    await refetchDetail();
-    setEditState(null);
+    await refetchGroups();
+    setVariableEditState(null);
   };
 
-  const onDeleteVariable = (index: number) => {
-    if (!canWrite || !detail) return;
+  const removeVariable = (index: number) => {
+    if (!selectedGroup || !canWrite) return;
 
-    openConfirm(async () => {
-      const newVariables = detail.variables.filter((_, i) => i !== index);
-      await updateDetail({
-        variables: newVariables
+    openDeleteVariableConfirm(async () => {
+      await onUpdateGroup({
+        groupId: String(selectedGroup._id),
+        variables: variables.filter((_, i) => i !== index)
       });
-      await refetchDetail();
+      await refetchGroups();
     })();
   };
 
@@ -155,85 +272,204 @@ const GlobalVariableConfig = () => {
         flexDirection={['column', 'row']}
         gap={2}
       >
-        <Flex alignItems={'center'} gap={3}>
-          <Box fontSize={'md'} fontWeight={'bold'}>
-            团队全局变量
-          </Box>
-          {detail && <PermissionIconText defaultPermission={detail.defaultPermission} />}
-        </Flex>
-
-        <Flex gap={2}>
-          {canManage && (
-            <Button
-              size={'sm'}
-              variant={'whitePrimary'}
-              onClick={() => setIsPermissionModalOpen(true)}
-              isDisabled={saving}
-            >
-              权限配置
-            </Button>
-          )}
-          <Button
-            size={'sm'}
-            onClick={onOpenCreateModal}
-            isDisabled={!canWrite || saving}
-            isLoading={isSaving}
-          >
-            新增变量
-          </Button>
-        </Flex>
+        <Box fontSize={'md'} fontWeight={'bold'}>
+          团队全局变量分组
+        </Box>
+        <Button size={'sm'} onClick={openCreateGroupModal} isLoading={isCreatingGroup}>
+          新建分组
+        </Button>
       </Flex>
 
-      <TableContainer mt={3} px={[3, 8]} flex={'1 0 0'} h={0} overflowY={'auto'}>
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Key</Th>
-              <Th>Value</Th>
-              <Th w={'170px'}>操作</Th>
-            </Tr>
-          </Thead>
-          <Tbody fontSize={'sm'}>
-            {variables.map((item, index) => (
-              <Tr key={item.key}>
-                <Td>{item.key}</Td>
-                <Td whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
-                  {item.value}
-                </Td>
-                <Td>
+      <Flex px={[3, 8]} mt={3} gap={4} flex={'1 0 0'} h={0} overflow={'hidden'}>
+        <Box w={['160px', '240px']} border={'base'} borderRadius={'md'} p={2} overflowY={'auto'}>
+          {groups.map((group) => {
+            const active = String(group._id) === selectedGroupId;
+            return (
+              <Box
+                key={String(group._id)}
+                px={3}
+                py={2}
+                mb={2}
+                borderRadius={'md'}
+                borderWidth={1}
+                borderColor={active ? 'primary.600' : 'myGray.200'}
+                bg={active ? 'primary.50' : 'transparent'}
+                cursor={'pointer'}
+                onClick={() => setSelectedGroupId(String(group._id))}
+              >
+                <Box className="textEllipsis">{group.name}</Box>
+                <Box fontSize={'xs'} color={'myGray.500'} className="textEllipsis">
+                  {group.groupKey}
+                </Box>
+              </Box>
+            );
+          })}
+          {!isLoadingGroups && groups.length === 0 && <EmptyTip text={'暂无分组'} />}
+        </Box>
+
+        <Flex flexDirection={'column'} flex={'1 0 0'} minW={0}>
+          {selectedGroup ? (
+            <>
+              <Flex
+                justifyContent={'space-between'}
+                alignItems={'center'}
+                mb={2}
+                gap={2}
+                flexWrap={'wrap'}
+              >
+                <Flex alignItems={'center'} gap={2} minW={0}>
+                  <Box fontWeight={'bold'} className="textEllipsis">
+                    {selectedGroup.name}
+                  </Box>
+                  <Box fontSize={'sm'} color={'myGray.500'}>
+                    ({selectedGroup.groupKey})
+                  </Box>
+                  <PermissionIconText defaultPermission={selectedGroup.defaultPermission} />
+                </Flex>
+
+                <Flex gap={2} flexWrap={'wrap'}>
+                  {canManage && (
+                    <Button
+                      size={'sm'}
+                      variant={'whitePrimary'}
+                      onClick={() => setIsPermissionModalOpen(true)}
+                      isDisabled={loadingAction}
+                    >
+                      权限配置
+                    </Button>
+                  )}
                   <Button
                     size={'sm'}
-                    mr={2}
                     variant={'whitePrimary'}
-                    onClick={() => onOpenEditModal(index)}
-                    isDisabled={!canWrite || saving}
+                    onClick={openEditGroupModal}
+                    isDisabled={!canWrite || loadingAction}
                   >
-                    编辑
+                    编辑分组
                   </Button>
                   <Button
                     size={'sm'}
                     variant={'whitePrimary'}
                     colorScheme="red"
-                    onClick={() => onDeleteVariable(index)}
-                    isDisabled={!canWrite || saving}
+                    onClick={removeGroup}
+                    isDisabled={!canManage || loadingAction}
                   >
-                    删除
+                    删除分组
                   </Button>
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+                  <Button
+                    size={'sm'}
+                    onClick={openCreateVariableModal}
+                    isDisabled={!canWrite || loadingAction}
+                  >
+                    新增变量
+                  </Button>
+                </Flex>
+              </Flex>
 
-        {!isLoading && detail && variables.length === 0 && <EmptyTip text={'暂无全局变量'} />}
-        {!isLoading && !detail && !!error && <EmptyTip text={'无权限访问全局变量'} />}
-      </TableContainer>
+              <TableContainer
+                border={'base'}
+                borderRadius={'md'}
+                flex={'1 0 0'}
+                h={0}
+                overflowY={'auto'}
+              >
+                <Table>
+                  <Thead>
+                    <Tr>
+                      <Th>Key</Th>
+                      <Th>Value</Th>
+                      <Th w={'170px'}>操作</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody fontSize={'sm'}>
+                    {variables.map((item, index) => (
+                      <Tr key={item.key}>
+                        <Td>{item.key}</Td>
+                        <Td whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
+                          {item.value}
+                        </Td>
+                        <Td>
+                          <Button
+                            size={'sm'}
+                            mr={2}
+                            variant={'whitePrimary'}
+                            onClick={() => openEditVariableModal(index)}
+                            isDisabled={!canWrite || loadingAction}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            size={'sm'}
+                            variant={'whitePrimary'}
+                            colorScheme="red"
+                            onClick={() => removeVariable(index)}
+                            isDisabled={!canWrite || loadingAction}
+                          >
+                            删除
+                          </Button>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+                {variables.length === 0 && <EmptyTip text={'该分组暂无变量'} />}
+              </TableContainer>
+            </>
+          ) : (
+            <EmptyTip text={'请先新建分组'} />
+          )}
+        </Flex>
+      </Flex>
 
-      {editState && (
+      {groupEditState && (
         <MyModal
           isOpen
-          onClose={() => setEditState(null)}
-          title={editState.index === null ? '新增全局变量' : '编辑全局变量'}
+          onClose={() => setGroupEditState(null)}
+          title={groupEditState.mode === 'create' ? '新建分组' : '编辑分组'}
+          iconSrc="/imgs/modal/key.svg"
+        >
+          <ModalBody>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              分组名称
+            </Box>
+            <Input
+              mt={1}
+              value={groupEditState.name}
+              placeholder="例如：开发环境"
+              onChange={(e) =>
+                setGroupEditState((state) => (state ? { ...state, name: e.target.value } : state))
+              }
+            />
+
+            <Box mt={4} fontSize={'sm'} color={'myGray.600'}>
+              分组标识（用于工作流引用前缀）
+            </Box>
+            <Input
+              mt={1}
+              value={groupEditState.groupKey}
+              placeholder="例如：dev"
+              onChange={(e) =>
+                setGroupEditState((state) =>
+                  state ? { ...state, groupKey: e.target.value } : state
+                )
+              }
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant={'whiteBase'} onClick={() => setGroupEditState(null)}>
+              取消
+            </Button>
+            <Button ml={3} onClick={saveGroup} isLoading={isCreatingGroup || isUpdatingGroup}>
+              保存
+            </Button>
+          </ModalFooter>
+        </MyModal>
+      )}
+
+      {variableEditState && (
+        <MyModal
+          isOpen
+          onClose={() => setVariableEditState(null)}
+          title={variableEditState.index === null ? '新增变量' : '编辑变量'}
           iconSrc="/imgs/modal/key.svg"
         >
           <ModalBody>
@@ -242,10 +478,10 @@ const GlobalVariableConfig = () => {
             </Box>
             <Input
               mt={1}
-              value={editState.key}
-              placeholder="例如: API_BASE_URL"
+              value={variableEditState.key}
+              placeholder="例如：API_BASE_URL"
               onChange={(e) =>
-                setEditState((state) => (state ? { ...state, key: e.target.value } : state))
+                setVariableEditState((state) => (state ? { ...state, key: e.target.value } : state))
               }
             />
 
@@ -254,55 +490,66 @@ const GlobalVariableConfig = () => {
             </Box>
             <Input
               mt={1}
-              value={editState.value}
+              value={variableEditState.value}
               placeholder="请输入字符串值"
               onChange={(e) =>
-                setEditState((state) => (state ? { ...state, value: e.target.value } : state))
+                setVariableEditState((state) =>
+                  state ? { ...state, value: e.target.value } : state
+                )
               }
             />
           </ModalBody>
           <ModalFooter>
-            <Button variant={'whiteBase'} onClick={() => setEditState(null)}>
+            <Button variant={'whiteBase'} onClick={() => setVariableEditState(null)}>
               取消
             </Button>
-            <Button ml={3} onClick={onSaveVariable} isLoading={isSaving}>
+            <Button ml={3} onClick={saveVariable} isLoading={isUpdatingGroup}>
               保存
             </Button>
           </ModalFooter>
         </MyModal>
       )}
 
-      {isPermissionModalOpen && detail && (
+      {isPermissionModalOpen && selectedGroup && (
         <ConfigPerModal
           avatar={'/icon/logo.svg'}
-          name={'团队全局变量'}
+          name={`全局变量分组：${selectedGroup.name}`}
           isInheritPermission={true}
-          refetchResource={refetchDetail}
+          refetchResource={refetchGroups}
           defaultPer={{
-            value: detail.defaultPermission,
+            value: selectedGroup.defaultPermission,
             defaultValue: GlobalVariableDefaultPermissionVal,
             onChange: async (permission) => {
-              await updateDetail({
+              await onUpdateGroup({
+                groupId: String(selectedGroup._id),
                 defaultPermission: permission
               });
-              await refetchDetail();
+              await refetchGroups();
             }
           }}
           managePer={{
-            permission: detail.permission,
-            onGetCollaboratorList: getGlobalVariableCollaboratorList,
+            permission: selectedGroup.permission,
+            onGetCollaboratorList: () =>
+              getGlobalVariableGroupCollaboratorList(String(selectedGroup._id)),
             permissionList: GlobalVariablePermissionList,
-            onUpdateCollaborators: updateGlobalVariableCollaborators,
+            onUpdateCollaborators: ({ tmbIds, permission }) =>
+              updateGlobalVariableGroupCollaborators({
+                groupId: String(selectedGroup._id),
+                tmbIds,
+                permission
+              }),
             onDelOneCollaborator: (tmbId: string) =>
               deleteGlobalVariableCollaborators({
+                groupId: String(selectedGroup._id),
                 tmbId
               }),
-            refreshDeps: [detail._id]
+            refreshDeps: [selectedGroup._id]
           }}
           onClose={() => setIsPermissionModalOpen(false)}
         />
       )}
-      <ConfirmModal />
+      <DeleteGroupConfirmModal />
+      <DeleteVariableConfirmModal />
     </Flex>
   );
 };
