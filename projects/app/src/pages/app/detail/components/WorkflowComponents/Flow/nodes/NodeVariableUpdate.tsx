@@ -45,6 +45,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
+  const globalVariableGroups = useContextSelector(WorkflowContext, (v) => v.globalVariableGroups);
 
   const variables = useCreation(() => {
     return getEditorVariables({
@@ -53,9 +54,18 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       edges,
       appDetail,
       globalVariableOptions,
+      globalVariableGroups,
       t
     });
-  }, [appDetail.chatConfig, nodeList, edges, globalVariableOptions, inputs, t]);
+  }, [
+    appDetail.chatConfig,
+    nodeList,
+    edges,
+    globalVariableOptions,
+    globalVariableGroups,
+    inputs,
+    t
+  ]);
 
   const updateList = useMemo(
     () =>

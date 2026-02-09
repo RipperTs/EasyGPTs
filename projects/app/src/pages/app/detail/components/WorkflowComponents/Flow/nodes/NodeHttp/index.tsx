@@ -235,6 +235,7 @@ export function RenderHttpProps({
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
+  const globalVariableGroups = useContextSelector(WorkflowContext, (v) => v.globalVariableGroups);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -257,9 +258,18 @@ export function RenderHttpProps({
       edges,
       appDetail,
       globalVariableOptions,
+      globalVariableGroups,
       t
     });
-  }, [appDetail.chatConfig, nodeList, edges, globalVariableOptions, inputs, t]);
+  }, [
+    appDetail.chatConfig,
+    nodeList,
+    edges,
+    globalVariableOptions,
+    globalVariableGroups,
+    inputs,
+    t
+  ]);
 
   const variableText = useMemo(() => {
     return variables

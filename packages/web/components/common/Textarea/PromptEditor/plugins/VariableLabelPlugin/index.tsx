@@ -28,7 +28,7 @@ export default function VariableLabelPlugin({
     (textNode: TextNode): VariableLabelNode => {
       const [parentKey, childrenKey] = textNode.getTextContent().slice(3, -3).split('.');
       const currentVariable = variables.find(
-        (item) => item.parent.id === parentKey && item.key === childrenKey
+        (item) => (item.parent.insertId || item.parent.id) === parentKey && item.key === childrenKey
       );
       const parentLabel = currentVariable?.parent?.label
         ? tKey(currentVariable.parent.label)

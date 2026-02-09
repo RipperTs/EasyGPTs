@@ -6,7 +6,12 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { TFunction } from 'i18next';
 import { type Node, type Edge } from 'reactflow';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
+} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { TeamGlobalVariableGroupDetailType } from '@fastgpt/global/support/globalVariable/type';
 
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
@@ -82,6 +87,7 @@ export const getEditorVariables = ({
   edges,
   appDetail,
   globalVariableOptions,
+  globalVariableGroups,
   t
 }: {
   nodeId: string;
@@ -89,6 +95,7 @@ export const getEditorVariables = ({
   edges: Edge<any>[];
   appDetail: AppDetailType;
   globalVariableOptions?: EditorVariablePickerType[];
+  globalVariableGroups?: TeamGlobalVariableGroupDetailType[];
   t: TFunction;
 }) => {
   const currentNode = nodeList.find((node) => node.nodeId === nodeId);
@@ -122,23 +129,57 @@ export const getEditorVariables = ({
     t
   });
 
-  const sourceNodeVariables = !sourceNodes
+  const sourceNodeVariables: EditorVariableLabelPickerType[] = !sourceNodes
     ? []
     : sourceNodes
         .map((node) => {
-          return node.outputs
-            .filter((output) => !!output.label && output.id !== NodeOutputKeyEnum.addOutputParam)
-            .map((output) => {
+          const outputList = node.outputs.filter(
+            (output) => !!output.label && output.id !== NodeOutputKeyEnum.addOutputParam
+          );
+
+          if (node.nodeId !== VARIABLE_NODE_ID) {
+            return outputList.map((output) => ({
+              label: t((output.label as any) || ''),
+              key: output.id,
+              parent: {
+                id: node.nodeId,
+                label: t(node.name as any),
+                avatar: node.avatar
+              }
+            }));
+          }
+
+          return outputList.map((output) => {
+            const matchedGroup = globalVariableGroups?.find((group) =>
+              output.id.startsWith(`${group.groupKey}.`)
+            );
+
+            if (matchedGroup) {
               return {
-                label: t((output.label as any) || ''),
+                label: output.id.slice(`${matchedGroup.groupKey}.`.length) || output.id,
                 key: output.id,
+                icon: 'core/app/simpleMode/variable',
                 parent: {
-                  id: node.nodeId,
-                  label: t(node.name as any),
-                  avatar: node.avatar
+                  id: `${VARIABLE_NODE_ID}/${matchedGroup.groupKey}`,
+                  insertId: VARIABLE_NODE_ID,
+                  label: matchedGroup.name,
+                  avatar: 'core/app/simpleMode/variable'
                 }
               };
-            });
+            }
+
+            return {
+              label: t((output.label as any) || ''),
+              key: output.id,
+              icon: 'core/app/simpleMode/variable',
+              parent: {
+                id: `${VARIABLE_NODE_ID}/__default__`,
+                insertId: VARIABLE_NODE_ID,
+                label: '应用与系统变量',
+                avatar: 'core/app/simpleMode/variable'
+              }
+            };
+          });
         })
         .flat();
 

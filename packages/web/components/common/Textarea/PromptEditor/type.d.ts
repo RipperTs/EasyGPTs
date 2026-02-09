@@ -17,6 +17,7 @@ export type EditorVariableLabelPickerType = {
   valueType?: WorkflowIOValueTypeEnum;
   parent: {
     id: string;
+    insertId?: string;
     label: string;
     avatar?: string;
   };

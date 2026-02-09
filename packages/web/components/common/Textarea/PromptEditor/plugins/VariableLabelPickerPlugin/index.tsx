@@ -10,6 +10,7 @@ import { EditorVariableLabelPickerType } from '../../type';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../../Avatar';
+import MyIcon from '../../../../Icon';
 
 interface EditorVariableItemType {
   key: string;
@@ -21,6 +22,7 @@ interface EditorVariableItemType {
 }
 interface TransformedParent {
   id: string;
+  insertId?: string;
   label: string;
   avatar: string;
   children: EditorVariableItemType[];
@@ -72,7 +74,9 @@ export default function VariableLabelPickerPlugin({
           nodeToRemove.remove();
         }
         selection.insertNodes([
-          $createTextNode(`{{$${selectedOption.parent?.id}.${selectedOption.key}$}}`)
+          $createTextNode(
+            `{{$${selectedOption.parent?.insertId || selectedOption.parent?.id}.${selectedOption.key}$}}`
+          )
         ]);
         closeMenu();
       });
@@ -181,6 +185,9 @@ export default function VariableLabelPickerPlugin({
                               selectOptionAndCleanUp({ ...child, parent: item });
                             }}
                           >
+                            {child.icon && (
+                              <MyIcon name={child.icon as any} w={'14px'} color={'myGray.500'} />
+                            )}
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
                               {child.label}
                             </Box>
@@ -215,6 +222,7 @@ function transformVariables(variables: EditorVariableLabelPickerType[]): Transfo
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
         id: parentId,
+        insertId: item.parent.insertId,
         label: parentLabel,
         avatar: parentAvatar || '',
         children: []
