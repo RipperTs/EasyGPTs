@@ -1,8 +1,11 @@
 export const primaryColor = '#3370FF';
 export const lowPrimaryColor = '#94B5FF';
 
+const LEGACY_HANDLE_SIZE = 18;
 const HANDLE_SIZE = 28;
 const HANDLE_CONNECTED_SIZE = 24;
+
+export const HANDLE_SIZE_COMPENSATION = (HANDLE_SIZE - LEGACY_HANDLE_SIZE) / 2;
 
 export const handleSize = {
   width: `${HANDLE_SIZE}px`,

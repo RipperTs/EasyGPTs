@@ -1,7 +1,13 @@
 import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSize } from './style';
+import {
+  handleHighLightStyle,
+  sourceCommonStyle,
+  handleConnectedStyle,
+  handleSize,
+  HANDLE_SIZE_COMPENSATION
+} from './style';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
@@ -11,6 +17,35 @@ type Props = {
   handleId: string;
   position: Position;
   translate?: [number, number];
+};
+
+const getTranslateStr = ({
+  position,
+  translate,
+  extraX = 0,
+  extraY = 0
+}: {
+  position: Position;
+  translate?: [number, number];
+  extraX?: number;
+  extraY?: number;
+}) => {
+  if (!translate) return '';
+
+  if (position === Position.Right) {
+    return `${translate[0] + HANDLE_SIZE_COMPENSATION + extraX}px, -50%`;
+  }
+  if (position === Position.Left) {
+    return `${translate[0] - HANDLE_SIZE_COMPENSATION + extraX}px, -50%`;
+  }
+  if (position === Position.Top) {
+    return `-50%, ${translate[1] - HANDLE_SIZE_COMPENSATION + extraY}px`;
+  }
+  if (position === Position.Bottom) {
+    return `-50%, ${translate[1] + HANDLE_SIZE_COMPENSATION + extraY}px`;
+  }
+
+  return '';
 };
 
 const MySourceHandle = React.memo(function MySourceHandle({
@@ -40,19 +75,28 @@ const MySourceHandle = React.memo(function MySourceHandle({
   );
 
   const translateStr = useMemo(() => {
-    if (!translate) return '';
-    if (position === Position.Right) {
-      return `${active ? translate[0] + 2 : translate[0]}px, -50%`;
-    }
-    if (position === Position.Left) {
-      return `${active ? translate[0] + 2 : translate[0]}px, -50%`;
+    if (position === Position.Right || position === Position.Left) {
+      return getTranslateStr({
+        position,
+        translate,
+        extraX: active ? 2 : 0
+      });
     }
     if (position === Position.Top) {
-      return `-50%, ${active ? translate[1] - 2 : translate[1]}px`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraY: active ? -2 : 0
+      });
     }
     if (position === Position.Bottom) {
-      return `-50%, ${active ? translate[1] + 2 : translate[1]}px`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraY: active ? 2 : 0
+      });
     }
+    return '';
   }, [active, position, translate]);
 
   const transform = useMemo(
@@ -150,20 +194,35 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   const connectedEdges = edges.filter((edge) => edge.target === nodeId);
 
   const translateStr = useMemo(() => {
-    if (!translate) return '';
-
     if (position === Position.Right) {
-      return `${connectingEdge ? translate[0] + 2 : translate[0]}px, -50%`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraX: connectingEdge ? 2 : 0
+      });
     }
     if (position === Position.Left) {
-      return `${connectingEdge ? translate[0] - 2 : translate[0]}px, -50%`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraX: connectingEdge ? -2 : 0
+      });
     }
     if (position === Position.Top) {
-      return `-50%, ${connectingEdge ? translate[1] - 2 : translate[1]}px`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraY: connectingEdge ? -2 : 0
+      });
     }
     if (position === Position.Bottom) {
-      return `-50%, ${connectingEdge ? translate[1] + 2 : translate[1]}px`;
+      return getTranslateStr({
+        position,
+        translate,
+        extraY: connectingEdge ? 2 : 0
+      });
     }
+    return '';
   }, [connectingEdge, position, translate]);
 
   const transform = useMemo(
