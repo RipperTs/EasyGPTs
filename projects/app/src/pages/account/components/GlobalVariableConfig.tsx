@@ -264,7 +264,7 @@ const GlobalVariableConfig = () => {
   };
 
   return (
-    <Flex flexDirection={'column'} py={[0, 5]} h={'100%'}>
+    <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} fontSize={'sm'}>
       <Flex
         px={[3, 8]}
         alignItems={['flex-start', 'center']}
@@ -272,8 +272,8 @@ const GlobalVariableConfig = () => {
         flexDirection={['column', 'row']}
         gap={2}
       >
-        <Box fontSize={'md'} fontWeight={'bold'}>
-          团队全局变量分组
+        <Box fontSize={'sm'} fontWeight={'bold'}>
+          系统全局变量
         </Box>
         <Button size={'sm'} onClick={openCreateGroupModal} isLoading={isCreatingGroup}>
           新建分组
@@ -297,7 +297,9 @@ const GlobalVariableConfig = () => {
                 cursor={'pointer'}
                 onClick={() => setSelectedGroupId(String(group._id))}
               >
-                <Box className="textEllipsis">{group.name}</Box>
+                <Box fontSize={'xs'} fontWeight={'bold'} className="textEllipsis">
+                  {group.name}
+                </Box>
                 <Box fontSize={'xs'} color={'myGray.500'} className="textEllipsis">
                   {group.groupKey}
                 </Box>
@@ -318,10 +320,10 @@ const GlobalVariableConfig = () => {
                 flexWrap={'wrap'}
               >
                 <Flex alignItems={'center'} gap={2} minW={0}>
-                  <Box fontWeight={'bold'} className="textEllipsis">
+                  <Box fontSize={'sm'} fontWeight={'bold'} className="textEllipsis">
                     {selectedGroup.name}
                   </Box>
-                  <Box fontSize={'sm'} color={'myGray.500'}>
+                  <Box fontSize={'xs'} color={'myGray.500'}>
                     ({selectedGroup.groupKey})
                   </Box>
                   <PermissionIconText defaultPermission={selectedGroup.defaultPermission} />
@@ -380,7 +382,7 @@ const GlobalVariableConfig = () => {
                       <Th w={'170px'}>操作</Th>
                     </Tr>
                   </Thead>
-                  <Tbody fontSize={'sm'}>
+                  <Tbody fontSize={'xs'}>
                     {variables.map((item, index) => (
                       <Tr key={item.key}>
                         <Td>{item.key}</Td>
@@ -389,17 +391,17 @@ const GlobalVariableConfig = () => {
                         </Td>
                         <Td>
                           <Button
-                            size={'sm'}
+                            size={'xs'}
                             mr={2}
-                            variant={'whitePrimary'}
+                            variant={'ghost'}
                             onClick={() => openEditVariableModal(index)}
                             isDisabled={!canWrite || loadingAction}
                           >
                             编辑
                           </Button>
                           <Button
-                            size={'sm'}
-                            variant={'whitePrimary'}
+                            size={'xs'}
+                            variant="ghost"
                             colorScheme="red"
                             onClick={() => removeVariable(index)}
                             isDisabled={!canWrite || loadingAction}
@@ -432,6 +434,7 @@ const GlobalVariableConfig = () => {
               分组名称
             </Box>
             <Input
+              size={'sm'}
               mt={1}
               value={groupEditState.name}
               placeholder="例如：开发环境"
@@ -444,6 +447,7 @@ const GlobalVariableConfig = () => {
               分组标识（用于工作流引用前缀）
             </Box>
             <Input
+              size={'sm'}
               mt={1}
               value={groupEditState.groupKey}
               placeholder="例如：dev"
@@ -477,6 +481,7 @@ const GlobalVariableConfig = () => {
               变量 Key
             </Box>
             <Input
+              size={'sm'}
               mt={1}
               value={variableEditState.key}
               placeholder="例如：API_BASE_URL"
@@ -489,6 +494,7 @@ const GlobalVariableConfig = () => {
               变量 Value
             </Box>
             <Input
+              size={'sm'}
               mt={1}
               value={variableEditState.value}
               placeholder="请输入字符串值"
