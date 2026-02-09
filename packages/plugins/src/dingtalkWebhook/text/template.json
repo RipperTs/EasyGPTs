@@ -6,10 +6,8 @@
   "intro": "发送钉钉 text 消息。",
   "showStatus": true,
   "weight": 10,
-
   "isTool": true,
   "templateType": "communication",
-
   "workflow": {
     "nodes": [
       {
@@ -26,7 +24,10 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -38,7 +39,10 @@
             "toolDescription": "钉钉机器人 WebHook 完整地址"
           },
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -49,7 +53,10 @@
             "defaultValue": ""
           },
           {
-            "renderTypeList": ["textarea", "reference"],
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -61,7 +68,10 @@
             "toolDescription": "消息正文"
           },
           {
-            "renderTypeList": ["textarea", "reference"],
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -72,7 +82,10 @@
             "defaultValue": ""
           },
           {
-            "renderTypeList": ["textarea", "reference"],
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -83,7 +96,9 @@
             "defaultValue": ""
           },
           {
-            "renderTypeList": ["switch"],
+            "renderTypeList": [
+              "switch"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "boolean",
             "canEdit": true,
@@ -153,13 +168,102 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "object",
             "canEdit": true,
             "key": "result",
             "label": "result",
-            "description": "发送结果",
-            "value": ["dingtalkTextRequest", "httpRawResponse"]
+            "description": "完整返回结果",
+            "value": [
+              "dingtalkTextRequest",
+              "httpRawResponse"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "success",
+            "label": "success",
+            "description": "是否发送成功",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_success"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "msgtype",
+            "label": "msgtype",
+            "description": "消息类型",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_msgtype"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "signed",
+            "label": "signed",
+            "description": "是否使用签名",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_signed"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "errcode",
+            "label": "errcode",
+            "description": "钉钉返回错误码",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_errcode"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "errmsg",
+            "label": "errmsg",
+            "description": "钉钉返回错误信息",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_errmsg"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "response",
+            "label": "response",
+            "description": "钉钉原始 response 对象",
+            "value": [
+              "dingtalkTextRequest",
+              "dingtalk_response"
+            ]
           }
         ],
         "outputs": []
@@ -179,7 +283,9 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": ["addInputParam"],
+            "renderTypeList": [
+              "addInputParam"
+            ],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -207,7 +313,9 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -215,7 +323,9 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "string",
             "label": "",
             "description": "core.module.input.description.Http Request Url",
@@ -225,7 +335,9 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -235,7 +347,9 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -243,65 +357,97 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": "{\n  \"hook_url\": \"{{hook_url}}\",\n  \"secret\": \"{{secret}}\",\n  \"content\": \"{{content}}\",\n  \"at_user_ids\": \"{{at_user_ids}}\",\n  \"at_mobiles\": \"{{at_mobiles}}\",\n  \"is_at_all\": \"{{is_at_all}}\"\n}",
             "label": "",
             "required": false
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "hook_url",
             "label": "hook_url",
             "required": true,
-            "value": ["pluginInput", "hook_url"]
+            "value": [
+              "pluginInput",
+              "hook_url"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "secret",
             "label": "secret",
             "required": false,
-            "value": ["pluginInput", "secret"]
+            "value": [
+              "pluginInput",
+              "secret"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "content",
             "label": "content",
             "required": true,
-            "value": ["pluginInput", "content"]
+            "value": [
+              "pluginInput",
+              "content"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "at_user_ids",
             "label": "at_user_ids",
             "required": false,
-            "value": ["pluginInput", "at_user_ids"]
+            "value": [
+              "pluginInput",
+              "at_user_ids"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "at_mobiles",
             "label": "at_mobiles",
             "required": false,
-            "value": ["pluginInput", "at_mobiles"]
+            "value": [
+              "pluginInput",
+              "at_mobiles"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "boolean",
             "canEdit": true,
             "key": "is_at_all",
             "label": "is_at_all",
             "required": false,
-            "value": ["pluginInput", "is_at_all"]
+            "value": [
+              "pluginInput",
+              "is_at_all"
+            ]
           }
         ],
         "outputs": [
@@ -348,6 +494,48 @@
             "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
             "valueType": "any",
             "type": "static"
+          },
+          {
+            "id": "dingtalk_success",
+            "type": "dynamic",
+            "key": "result.success",
+            "valueType": "boolean",
+            "label": "success"
+          },
+          {
+            "id": "dingtalk_msgtype",
+            "type": "dynamic",
+            "key": "result.msgtype",
+            "valueType": "string",
+            "label": "msgtype"
+          },
+          {
+            "id": "dingtalk_signed",
+            "type": "dynamic",
+            "key": "result.signed",
+            "valueType": "boolean",
+            "label": "signed"
+          },
+          {
+            "id": "dingtalk_errcode",
+            "type": "dynamic",
+            "key": "result.response.errcode",
+            "valueType": "number",
+            "label": "errcode"
+          },
+          {
+            "id": "dingtalk_errmsg",
+            "type": "dynamic",
+            "key": "result.response.errmsg",
+            "valueType": "string",
+            "label": "errmsg"
+          },
+          {
+            "id": "dingtalk_response",
+            "type": "dynamic",
+            "key": "result.response",
+            "valueType": "object",
+            "label": "response"
           }
         ]
       }

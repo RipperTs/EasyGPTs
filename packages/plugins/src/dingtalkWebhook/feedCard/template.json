@@ -6,10 +6,8 @@
   "intro": "发送钉钉 feedCard 消息。",
   "showStatus": true,
   "weight": 10,
-
   "isTool": true,
   "templateType": "communication",
-
   "workflow": {
     "nodes": [
       {
@@ -19,17 +17,79 @@
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
-        "position": { "x": 420, "y": 20 },
+        "position": {
+          "x": 420,
+          "y": 20
+        },
         "version": "481",
         "inputs": [
-          { "renderTypeList": ["input", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "hook_url", "label": "hook_url", "description": "钉钉机器人 WebHook 完整地址", "required": true, "defaultValue": "", "toolDescription": "钉钉机器人 WebHook 完整地址" },
-          { "renderTypeList": ["input", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "secret", "label": "secret", "description": "可选，加签密钥", "required": false, "defaultValue": "" },
-          { "renderTypeList": ["textarea", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "feed_links_json", "label": "feed_links_json", "description": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）", "required": true, "defaultValue": "", "toolDescription": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）" }
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "hook_url",
+            "label": "hook_url",
+            "description": "钉钉机器人 WebHook 完整地址",
+            "required": true,
+            "defaultValue": "",
+            "toolDescription": "钉钉机器人 WebHook 完整地址"
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "secret",
+            "label": "secret",
+            "description": "可选，加签密钥",
+            "required": false,
+            "defaultValue": ""
+          },
+          {
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "feed_links_json",
+            "label": "feed_links_json",
+            "description": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）",
+            "required": true,
+            "defaultValue": "",
+            "toolDescription": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）"
+          }
         ],
         "outputs": [
-          { "id": "hook_url", "valueType": "string", "key": "hook_url", "label": "hook_url", "type": "hidden" },
-          { "id": "secret", "valueType": "string", "key": "secret", "label": "secret", "type": "hidden" },
-          { "id": "feed_links_json", "valueType": "string", "key": "feed_links_json", "label": "feed_links_json", "type": "hidden" }
+          {
+            "id": "hook_url",
+            "valueType": "string",
+            "key": "hook_url",
+            "label": "hook_url",
+            "type": "hidden"
+          },
+          {
+            "id": "secret",
+            "valueType": "string",
+            "key": "secret",
+            "label": "secret",
+            "type": "hidden"
+          },
+          {
+            "id": "feed_links_json",
+            "valueType": "string",
+            "key": "feed_links_json",
+            "label": "feed_links_json",
+            "type": "hidden"
+          }
         ]
       },
       {
@@ -39,10 +99,110 @@
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
-        "position": { "x": 1880, "y": 20 },
+        "position": {
+          "x": 1880,
+          "y": 20
+        },
         "version": "481",
         "inputs": [
-          { "renderTypeList": ["reference"], "valueType": "object", "canEdit": true, "key": "result", "label": "result", "description": "发送结果", "value": ["dingtalkFeedCardRequest", "httpRawResponse"] }
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "description": "完整返回结果",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "httpRawResponse"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "success",
+            "label": "success",
+            "description": "是否发送成功",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_success"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "msgtype",
+            "label": "msgtype",
+            "description": "消息类型",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_msgtype"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "signed",
+            "label": "signed",
+            "description": "是否使用签名",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_signed"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "errcode",
+            "label": "errcode",
+            "description": "钉钉返回错误码",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_errcode"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "errmsg",
+            "label": "errmsg",
+            "description": "钉钉返回错误信息",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_errmsg"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "response",
+            "label": "response",
+            "description": "钉钉原始 response 对象",
+            "value": [
+              "dingtalkFeedCardRequest",
+              "dingtalk_response"
+            ]
+          }
         ],
         "outputs": []
       },
@@ -53,41 +213,242 @@
         "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
-        "position": { "x": 1120, "y": -210 },
+        "position": {
+          "x": 1120,
+          "y": -210
+        },
         "version": "481",
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": ["addInputParam"],
+            "renderTypeList": [
+              "addInputParam"
+            ],
             "valueType": "dynamic",
             "label": "",
             "required": false,
             "description": "core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
-              "selectValueTypeList": ["string", "number", "boolean", "object", "arrayString", "arrayNumber", "arrayBoolean", "arrayObject", "any", "chatHistory", "datasetQuote", "dynamic", "selectApp", "selectDataset"],
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
               "showDescription": false,
               "showDefaultValue": true
             }
           },
-          { "key": "system_httpMethod", "renderTypeList": ["custom"], "valueType": "string", "label": "", "value": "POST", "required": true },
-          { "key": "system_httpReqUrl", "renderTypeList": ["hidden"], "valueType": "string", "label": "", "description": "core.module.input.description.Http Request Url", "placeholder": "https://api.ai.com/getInventory", "required": false, "value": "dingtalkWebhook/feedCard" },
-          { "key": "system_httpHeader", "renderTypeList": ["custom"], "valueType": "any", "value": [], "label": "", "description": "core.module.input.description.Http Request Header", "placeholder": "core.module.input.description.Http Request Header", "required": false },
-          { "key": "system_httpParams", "renderTypeList": ["hidden"], "valueType": "any", "value": [], "label": "", "required": false },
-          { "key": "system_httpJsonBody", "renderTypeList": ["hidden"], "valueType": "any", "value": "{\n  \"hook_url\": \"{{hook_url}}\",\n  \"secret\": \"{{secret}}\",\n  \"feed_links_json\": \"{{feed_links_json}}\"\n}", "label": "", "required": false },
-          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "hook_url", "label": "hook_url", "required": true, "value": ["pluginInput", "hook_url"] },
-          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "secret", "label": "secret", "required": false, "value": ["pluginInput", "secret"] },
-          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "feed_links_json", "label": "feed_links_json", "required": true, "value": ["pluginInput", "feed_links_json"] }
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "dingtalkWebhook/feedCard"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n  \"hook_url\": \"{{hook_url}}\",\n  \"secret\": \"{{secret}}\",\n  \"feed_links_json\": \"{{feed_links_json}}\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "hook_url",
+            "label": "hook_url",
+            "required": true,
+            "value": [
+              "pluginInput",
+              "hook_url"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "secret",
+            "label": "secret",
+            "required": false,
+            "value": [
+              "pluginInput",
+              "secret"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "feed_links_json",
+            "label": "feed_links_json",
+            "required": true,
+            "value": [
+              "pluginInput",
+              "feed_links_json"
+            ]
+          }
         ],
         "outputs": [
-          { "id": "system_addOutputParam", "key": "system_addOutputParam", "type": "dynamic", "valueType": "dynamic", "label": "", "customFieldConfig": { "selectValueTypeList": ["string", "number", "boolean", "object", "arrayString", "arrayNumber", "arrayBoolean", "arrayObject", "any", "chatHistory", "datasetQuote", "dynamic", "selectApp", "selectDataset"], "showDescription": false, "showDefaultValue": true } },
-          { "id": "error", "key": "error", "label": "请求错误", "description": "HTTP请求错误信息，成功时返回空", "valueType": "object", "type": "static" },
-          { "id": "httpRawResponse", "key": "httpRawResponse", "label": "原始响应", "required": true, "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。", "valueType": "any", "type": "static" }
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "dingtalk_success",
+            "type": "dynamic",
+            "key": "result.success",
+            "valueType": "boolean",
+            "label": "success"
+          },
+          {
+            "id": "dingtalk_msgtype",
+            "type": "dynamic",
+            "key": "result.msgtype",
+            "valueType": "string",
+            "label": "msgtype"
+          },
+          {
+            "id": "dingtalk_signed",
+            "type": "dynamic",
+            "key": "result.signed",
+            "valueType": "boolean",
+            "label": "signed"
+          },
+          {
+            "id": "dingtalk_errcode",
+            "type": "dynamic",
+            "key": "result.response.errcode",
+            "valueType": "number",
+            "label": "errcode"
+          },
+          {
+            "id": "dingtalk_errmsg",
+            "type": "dynamic",
+            "key": "result.response.errmsg",
+            "valueType": "string",
+            "label": "errmsg"
+          },
+          {
+            "id": "dingtalk_response",
+            "type": "dynamic",
+            "key": "result.response",
+            "valueType": "object",
+            "label": "response"
+          }
         ]
       }
     ],
     "edges": [
-      { "source": "pluginInput", "target": "dingtalkFeedCardRequest", "sourceHandle": "pluginInput-source-right", "targetHandle": "dingtalkFeedCardRequest-target-left" },
-      { "source": "dingtalkFeedCardRequest", "target": "pluginOutput", "sourceHandle": "dingtalkFeedCardRequest-source-right", "targetHandle": "pluginOutput-target-left" }
+      {
+        "source": "pluginInput",
+        "target": "dingtalkFeedCardRequest",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "dingtalkFeedCardRequest-target-left"
+      },
+      {
+        "source": "dingtalkFeedCardRequest",
+        "target": "pluginOutput",
+        "sourceHandle": "dingtalkFeedCardRequest-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
     ]
   }
 }
