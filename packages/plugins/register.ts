@@ -14,6 +14,7 @@ const staticPluginList = [
   `Doc2X/FilePDF2text`,
   `Doc2X/FileImg2text`,
   'feishu',
+  'dingtalkWebhook',
   'bing',
   'google',
   'GenPyChart',
