@@ -42,7 +42,8 @@ const packagePluginList = [
   'sleep',
   'redisConnection',
   'webSearchPro',
-  'email'
+  'email',
+  'sshCommand'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];

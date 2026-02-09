@@ -1,0 +1,468 @@
+{
+  "author": "",
+  "version": "1.0.0",
+  "templateType": "tools",
+  "name": "SSH命令执行",
+  "avatar": "core/workflow/template/httpRequest",
+  "intro": "连接远程 SSH 主机并执行命令，返回 stdout 和 stderr。",
+  "showStatus": true,
+  "isTool": true,
+  "weight": 10,
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "插件输入",
+        "intro": "配置 SSH 连接信息和要执行的命令",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 460,
+          "y": -220
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "host",
+            "label": "host",
+            "description": "远程主机地址（IP 或域名）",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "远程主机地址（IP 或域名）",
+            "list": []
+          },
+          {
+            "renderTypeList": ["numberInput", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "port",
+            "label": "port",
+            "description": "SSH 端口，默认 22",
+            "defaultValue": "22",
+            "required": true,
+            "toolDescription": "SSH 端口，默认 22",
+            "list": []
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "username",
+            "label": "username",
+            "description": "SSH 登录用户名",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "SSH 登录用户名",
+            "list": []
+          },
+          {
+            "renderTypeList": ["select", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "auth_type",
+            "label": "auth_type",
+            "description": "认证方式：password 或 key",
+            "defaultValue": "password",
+            "required": true,
+            "toolDescription": "认证方式：password 或 key",
+            "list": [
+              {
+                "label": "password",
+                "value": "password"
+              },
+              {
+                "label": "key",
+                "value": "key"
+              }
+            ]
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "password",
+            "label": "password",
+            "description": "密码认证时必填",
+            "defaultValue": "",
+            "required": false,
+            "toolDescription": "密码认证时必填",
+            "list": []
+          },
+          {
+            "renderTypeList": ["textarea", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "private_key",
+            "label": "private_key",
+            "description": "密钥认证时必填，填私钥内容",
+            "defaultValue": "",
+            "required": false,
+            "toolDescription": "密钥认证时必填，填私钥内容",
+            "list": []
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "passphrase",
+            "label": "passphrase",
+            "description": "私钥加密时填写解密口令",
+            "defaultValue": "",
+            "required": false,
+            "toolDescription": "私钥加密时填写解密口令",
+            "list": []
+          },
+          {
+            "renderTypeList": ["textarea", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "command",
+            "label": "command",
+            "description": "需要执行的命令",
+            "defaultValue": "",
+            "required": true,
+            "toolDescription": "需要执行的命令",
+            "list": []
+          }
+        ],
+        "outputs": [
+          {
+            "id": "host",
+            "valueType": "string",
+            "key": "host",
+            "label": "host",
+            "type": "hidden"
+          },
+          {
+            "id": "port",
+            "valueType": "number",
+            "key": "port",
+            "label": "port",
+            "type": "hidden"
+          },
+          {
+            "id": "username",
+            "valueType": "string",
+            "key": "username",
+            "label": "username",
+            "type": "hidden"
+          },
+          {
+            "id": "auth_type",
+            "valueType": "string",
+            "key": "auth_type",
+            "label": "auth_type",
+            "type": "hidden"
+          },
+          {
+            "id": "password",
+            "valueType": "string",
+            "key": "password",
+            "label": "password",
+            "type": "hidden"
+          },
+          {
+            "id": "private_key",
+            "valueType": "string",
+            "key": "private_key",
+            "label": "private_key",
+            "type": "hidden"
+          },
+          {
+            "id": "passphrase",
+            "valueType": "string",
+            "key": "passphrase",
+            "label": "passphrase",
+            "type": "hidden"
+          },
+          {
+            "id": "command",
+            "valueType": "string",
+            "key": "command",
+            "label": "command",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "插件输出",
+        "intro": "返回命令执行结果",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1730,
+          "y": -210
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "stdout",
+            "label": "stdout",
+            "description": "命令标准输出",
+            "isToolOutput": true,
+            "value": ["httpRequest", "stdout_output"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "stderr",
+            "label": "stderr",
+            "description": "命令标准错误输出",
+            "isToolOutput": true,
+            "value": ["httpRequest", "stderr_output"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "success",
+            "label": "success",
+            "description": "是否执行成功",
+            "isToolOutput": true,
+            "value": ["httpRequest", "success_output"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "httpRequest",
+        "name": "HTTP 请求",
+        "intro": "通过系统插件回调执行 SSH 命令",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1050,
+          "y": -530
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "required": false,
+            "value": "sshCommand"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n  \"host\": \"{{host}}\",\n  \"port\": {{port}},\n  \"username\": \"{{username}}\",\n  \"auth_type\": \"{{auth_type}}\",\n  \"password\": \"{{password}}\",\n  \"private_key\": \"{{private_key}}\",\n  \"passphrase\": \"{{passphrase}}\",\n  \"command\": \"{{command}}\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "host",
+            "label": "host",
+            "required": true,
+            "value": ["pluginInput", "host"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "port",
+            "label": "port",
+            "required": true,
+            "value": ["pluginInput", "port"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "username",
+            "label": "username",
+            "required": true,
+            "value": ["pluginInput", "username"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "auth_type",
+            "label": "auth_type",
+            "required": true,
+            "value": ["pluginInput", "auth_type"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "password",
+            "label": "password",
+            "required": false,
+            "value": ["pluginInput", "password"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "private_key",
+            "label": "private_key",
+            "required": false,
+            "value": ["pluginInput", "private_key"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "passphrase",
+            "label": "passphrase",
+            "required": false,
+            "value": ["pluginInput", "passphrase"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "command",
+            "label": "command",
+            "required": true,
+            "value": ["pluginInput", "command"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP 请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "原始响应",
+            "description": "HTTP 请求的原始响应",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": ""
+          },
+          {
+            "id": "stdout_output",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "stdout",
+            "label": "stdout"
+          },
+          {
+            "id": "stderr_output",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "stderr",
+            "label": "stderr"
+          },
+          {
+            "id": "success_output",
+            "valueType": "boolean",
+            "type": "dynamic",
+            "key": "success",
+            "label": "success"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "httpRequest",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "httpRequest-target-left"
+      },
+      {
+        "source": "httpRequest",
+        "target": "pluginOutput",
+        "sourceHandle": "httpRequest-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
