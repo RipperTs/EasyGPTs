@@ -1,0 +1,93 @@
+{
+  "author": "",
+  "version": "481",
+  "name": "钉钉 WebHook - FeedCard消息",
+  "avatar": "/imgs/app/avatar/plugin.svg",
+  "intro": "发送钉钉 feedCard 消息。",
+  "showStatus": true,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "communication",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "配置插件输入参数",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": { "x": 420, "y": 20 },
+        "version": "481",
+        "inputs": [
+          { "renderTypeList": ["input", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "hook_url", "label": "hook_url", "description": "钉钉机器人 WebHook 完整地址", "required": true, "defaultValue": "", "toolDescription": "钉钉机器人 WebHook 完整地址" },
+          { "renderTypeList": ["input", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "secret", "label": "secret", "description": "可选，加签密钥", "required": false, "defaultValue": "" },
+          { "renderTypeList": ["textarea", "reference"], "selectedTypeIndex": 0, "valueType": "string", "canEdit": true, "key": "feed_links_json", "label": "feed_links_json", "description": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）", "required": true, "defaultValue": "", "toolDescription": "links JSON数组（每项需含 title 与 messageURL，可选 picURL）" }
+        ],
+        "outputs": [
+          { "id": "hook_url", "valueType": "string", "key": "hook_url", "label": "hook_url", "type": "hidden" },
+          { "id": "secret", "valueType": "string", "key": "secret", "label": "secret", "type": "hidden" },
+          { "id": "feed_links_json", "valueType": "string", "key": "feed_links_json", "label": "feed_links_json", "type": "hidden" }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "配置插件输出参数",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": { "x": 1880, "y": 20 },
+        "version": "481",
+        "inputs": [
+          { "renderTypeList": ["reference"], "valueType": "object", "canEdit": true, "key": "result", "label": "result", "description": "发送结果", "value": ["dingtalkFeedCardRequest", "httpRawResponse"] }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "dingtalkFeedCardRequest",
+        "name": "HTTP 请求",
+        "intro": "调用钉钉 feedCard 消息插件",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": { "x": 1120, "y": -210 },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": ["string", "number", "boolean", "object", "arrayString", "arrayNumber", "arrayBoolean", "arrayObject", "any", "chatHistory", "datasetQuote", "dynamic", "selectApp", "selectDataset"],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          { "key": "system_httpMethod", "renderTypeList": ["custom"], "valueType": "string", "label": "", "value": "POST", "required": true },
+          { "key": "system_httpReqUrl", "renderTypeList": ["hidden"], "valueType": "string", "label": "", "description": "core.module.input.description.Http Request Url", "placeholder": "https://api.ai.com/getInventory", "required": false, "value": "dingtalkWebhook/feedCard" },
+          { "key": "system_httpHeader", "renderTypeList": ["custom"], "valueType": "any", "value": [], "label": "", "description": "core.module.input.description.Http Request Header", "placeholder": "core.module.input.description.Http Request Header", "required": false },
+          { "key": "system_httpParams", "renderTypeList": ["hidden"], "valueType": "any", "value": [], "label": "", "required": false },
+          { "key": "system_httpJsonBody", "renderTypeList": ["hidden"], "valueType": "any", "value": "{\n  \"hook_url\": \"{{hook_url}}\",\n  \"secret\": \"{{secret}}\",\n  \"feed_links_json\": \"{{feed_links_json}}\"\n}", "label": "", "required": false },
+          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "hook_url", "label": "hook_url", "required": true, "value": ["pluginInput", "hook_url"] },
+          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "secret", "label": "secret", "required": false, "value": ["pluginInput", "secret"] },
+          { "renderTypeList": ["reference"], "valueType": "string", "canEdit": true, "key": "feed_links_json", "label": "feed_links_json", "required": true, "value": ["pluginInput", "feed_links_json"] }
+        ],
+        "outputs": [
+          { "id": "system_addOutputParam", "key": "system_addOutputParam", "type": "dynamic", "valueType": "dynamic", "label": "", "customFieldConfig": { "selectValueTypeList": ["string", "number", "boolean", "object", "arrayString", "arrayNumber", "arrayBoolean", "arrayObject", "any", "chatHistory", "datasetQuote", "dynamic", "selectApp", "selectDataset"], "showDescription": false, "showDefaultValue": true } },
+          { "id": "error", "key": "error", "label": "请求错误", "description": "HTTP请求错误信息，成功时返回空", "valueType": "object", "type": "static" },
+          { "id": "httpRawResponse", "key": "httpRawResponse", "label": "原始响应", "required": true, "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。", "valueType": "any", "type": "static" }
+        ]
+      }
+    ],
+    "edges": [
+      { "source": "pluginInput", "target": "dingtalkFeedCardRequest", "sourceHandle": "pluginInput-source-right", "targetHandle": "dingtalkFeedCardRequest-target-left" },
+      { "source": "dingtalkFeedCardRequest", "target": "pluginOutput", "sourceHandle": "dingtalkFeedCardRequest-source-right", "targetHandle": "pluginOutput-target-left" }
+    ]
+  }
+}
