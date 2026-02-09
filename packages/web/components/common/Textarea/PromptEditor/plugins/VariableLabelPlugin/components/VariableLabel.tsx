@@ -11,7 +11,9 @@ export default function VariableLabel({
   nodeAvatar: string;
 }) {
   const { t } = useTranslation();
-  const [parentLabel, childLabel] = variableLabel.split('.');
+  const splitIndex = variableLabel.indexOf('.');
+  const parentLabel = splitIndex >= 0 ? variableLabel.slice(0, splitIndex) : variableLabel;
+  const childLabel = splitIndex >= 0 ? variableLabel.slice(splitIndex + 1) : '';
 
   return (
     <>
