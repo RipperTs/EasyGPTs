@@ -1,35 +1,10 @@
 name: Build and Push Docker Image to Aliyun
 
-# 触发条件：只有推送到指定分支时触发
+# 触发条件：仅在发布语义化版本 Tag（如 v1.0.0）时触发
 on:
   push:
-    branches:
-      - llm-dev
-    paths-ignore:
-      - '*.md'
-      - '**/*.md'
-      - '*.txt'
-      - '**/*.txt'
-      - '*.jpg'
-      - '*.jpeg'
-      - '*.png'
-      - '*.gif'
-      - '*.svg'
-      - '*.ico'
-      - '**/*.jpg'
-      - '**/*.jpeg'
-      - '**/*.png'
-      - '**/*.gif'
-      - '**/*.svg'
-      - '**/*.ico'
-      - '.gitignore'
-      - '.env.example'
-      - '.vscode/**'
-      - '.idea/**'
-      - 'logs/**'
-      - '*.log'
-      - '**/*.log'
-      - 'LICENSE'
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build-and-push:
@@ -56,12 +31,15 @@ jobs:
         with:
           images: registry.cn-hangzhou.aliyuncs.com/ripper/easygpts  # 替换为你的命名空间和仓库名
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            # 发布 Tag 原样标签：v1.0.0
+            type=ref,event=tag
+            # 额外版本标签：1.0.0（便于回滚时按纯版本号选择）
+            type=semver,pattern={{version}}
+            # 同时维护 latest
+            type=raw,value=latest
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -74,4 +52,4 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo ${{ steps.build-and-push.outputs.digest }}
+        run: echo ${{ steps.build.outputs.digest }}
