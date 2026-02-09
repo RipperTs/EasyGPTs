@@ -6,6 +6,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { TFunction } from 'i18next';
 import { type Node, type Edge } from 'reactflow';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
@@ -80,12 +81,14 @@ export const getEditorVariables = ({
   nodeList,
   edges,
   appDetail,
+  globalVariableOptions,
   t
 }: {
   nodeId: string;
   nodeList: FlowNodeItemType[];
   edges: Edge<any>[];
   appDetail: AppDetailType;
+  globalVariableOptions?: EditorVariablePickerType[];
   t: TFunction;
 }) => {
   const currentNode = nodeList.find((node) => node.nodeId === nodeId);
@@ -115,6 +118,7 @@ export const getEditorVariables = ({
     nodes: nodeList,
     edges: edges,
     chatConfig: appDetail.chatConfig,
+    globalVariableOptions,
     t
   });
 

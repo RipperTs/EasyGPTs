@@ -24,14 +24,17 @@ import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { getWorkflowGlobalVariables } from './utils';
 import { TFunction } from 'next-i18next';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 export const getGlobalVariableNode = ({
   nodes,
   chatConfig,
+  globalVariableOptions,
   t
 }: {
   nodes: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
+  globalVariableOptions?: EditorVariablePickerType[];
   t: TFunction;
 }) => {
   const template: FlowNodeTemplateType = {
@@ -50,7 +53,7 @@ export const getGlobalVariableNode = ({
     outputs: []
   };
 
-  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig });
+  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig, globalVariableOptions });
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,

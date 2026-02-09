@@ -40,6 +40,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
@@ -54,11 +55,12 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig
+      chatConfig: appDetail.chatConfig,
+      globalVariableOptions
     });
 
     return globalVariables;
-  }, [nodeList]);
+  }, [appDetail.chatConfig, globalVariableOptions, nodeList]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;

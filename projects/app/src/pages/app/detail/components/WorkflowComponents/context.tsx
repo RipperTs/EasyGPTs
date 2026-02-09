@@ -6,7 +6,11 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  RuntimeEdgeStatusEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -49,6 +53,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 import { cloneDeep, isEqual } from 'lodash';
+import { getGlobalVariableGroupList } from '@/web/support/globalVariable/api';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -64,6 +70,7 @@ type WorkflowContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
+  globalVariableOptions: EditorVariablePickerType[];
 
   // nodes
   nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -193,6 +200,7 @@ type DebugDataType = {
 
 export const WorkflowContext = createContext<WorkflowContextType>({
   isSaving: false,
+  globalVariableOptions: [],
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
@@ -339,6 +347,21 @@ const WorkflowContextProvider = ({
 
   const { appDetail, setAppDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
   const appId = appDetail._id;
+  const { data: globalVariableGroups = [] } = useRequest2(getGlobalVariableGroupList, {
+    manual: false
+  });
+  const globalVariableOptions = useMemo<EditorVariablePickerType[]>(
+    () =>
+      globalVariableGroups.flatMap((group) =>
+        group.variables.map((item) => ({
+          key: `${group.groupKey}.${item.key}`,
+          label: `${group.name}.${item.key}`,
+          icon: 'core/app/simpleMode/variable',
+          valueType: WorkflowIOValueTypeEnum.string
+        }))
+      ),
+    [globalVariableGroups]
+  );
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -946,6 +969,7 @@ const WorkflowContextProvider = ({
     appId,
     reactFlowWrapper,
     basicNodeTemplates,
+    globalVariableOptions,
     // node
     nodes,
     setNodes,

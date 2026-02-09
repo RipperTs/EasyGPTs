@@ -13,6 +13,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -23,9 +24,10 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       nodeList,
       edges,
       appDetail,
+      globalVariableOptions,
       t
     });
-  }, [nodeList, edges, inputs, t]);
+  }, [appDetail.chatConfig, nodeList, edges, globalVariableOptions, inputs, t]);
 
   const onChange = useCallback(
     (e: string) => {

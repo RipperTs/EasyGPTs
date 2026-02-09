@@ -102,6 +102,7 @@ export const useReference = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
 
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({
@@ -109,6 +110,7 @@ export const useReference = ({
       nodes: nodeList,
       edges: edges,
       chatConfig: appDetail.chatConfig,
+      globalVariableOptions,
       t
     });
 
@@ -144,7 +146,7 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
+  }, [appDetail.chatConfig, edges, globalVariableOptions, nodeId, nodeList, t, valueType]);
 
   const formatValue = useMemo(() => {
     if (

@@ -341,6 +341,7 @@ const ConditionSelect = ({
 }) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
@@ -348,9 +349,10 @@ const ConditionSelect = ({
     return getRefData({
       variable,
       nodeList,
-      chatConfig: appDetail.chatConfig
+      chatConfig: appDetail.chatConfig,
+      globalVariableOptions
     });
-  }, [appDetail.chatConfig, nodeList, variable]);
+  }, [appDetail.chatConfig, globalVariableOptions, nodeList, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;

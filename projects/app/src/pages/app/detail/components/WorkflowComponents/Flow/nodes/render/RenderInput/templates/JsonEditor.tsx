@@ -14,6 +14,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -21,13 +22,14 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig
+      chatConfig: appDetail.chatConfig,
+      globalVariableOptions
     });
 
     const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
 
     return [...globalVariables, ...nodeVariables];
-  }, [inputs, nodeList]);
+  }, [appDetail.chatConfig, globalVariableOptions, inputs, nodeList]);
 
   const update = useCallback(
     (value: string) => {

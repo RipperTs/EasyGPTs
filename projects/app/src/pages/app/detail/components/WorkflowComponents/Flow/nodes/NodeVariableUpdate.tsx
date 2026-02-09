@@ -44,6 +44,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
 
   const variables = useCreation(() => {
     return getEditorVariables({
@@ -51,9 +52,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       nodeList,
       edges,
       appDetail,
+      globalVariableOptions,
       t
     });
-  }, [nodeList, edges, inputs, t]);
+  }, [appDetail.chatConfig, nodeList, edges, globalVariableOptions, inputs, t]);
 
   const updateList = useMemo(
     () =>
@@ -100,7 +102,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           const { valueType } = getRefData({
             variable: updateItem.variable,
             nodeList,
-            chatConfig: appDetail.chatConfig
+            chatConfig: appDetail.chatConfig,
+            globalVariableOptions
           });
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: ReferenceValueProps | string) => {
@@ -263,7 +266,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         })}
       </>
     );
-  }, [appDetail.chatConfig, nodeId, nodeList, onUpdateList, t, updateList, variables]);
+  }, [
+    appDetail.chatConfig,
+    globalVariableOptions,
+    nodeId,
+    nodeList,
+    onUpdateList,
+    t,
+    updateList,
+    variables
+  ]);
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>

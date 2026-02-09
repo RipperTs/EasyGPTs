@@ -167,12 +167,14 @@ export const computedNodeInputReference = ({
   nodes,
   edges,
   chatConfig,
+  globalVariableOptions,
   t
 }: {
   nodeId: string;
   nodes: FlowNodeItemType[];
   edges: Edge[];
   chatConfig: AppChatConfigType;
+  globalVariableOptions?: EditorVariablePickerType[];
   t: TFunction;
 }) => {
   // get current node
@@ -202,7 +204,8 @@ export const computedNodeInputReference = ({
     getGlobalVariableNode({
       nodes,
       t,
-      chatConfig
+      chatConfig,
+      globalVariableOptions
     })
   );
 
@@ -211,11 +214,13 @@ export const computedNodeInputReference = ({
 export const getRefData = ({
   variable,
   nodeList,
-  chatConfig
+  chatConfig,
+  globalVariableOptions
 }: {
   variable?: ReferenceValueProps;
   nodeList: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
+  globalVariableOptions?: EditorVariablePickerType[];
 }) => {
   if (!variable)
     return {
@@ -224,7 +229,11 @@ export const getRefData = ({
     };
 
   const node = nodeList.find((node) => node.nodeId === variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig });
+  const systemVariables = getWorkflowGlobalVariables({
+    nodes: nodeList,
+    chatConfig,
+    globalVariableOptions
+  });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -376,10 +385,12 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
   nodes,
-  chatConfig
+  chatConfig,
+  globalVariableOptions = []
 }: {
   nodes: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
+  globalVariableOptions?: EditorVariablePickerType[];
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
@@ -389,7 +400,7 @@ export const getWorkflowGlobalVariables = ({
     })?.variables || []
   );
 
-  return [...globalVariables, ...workflowSystemVariables];
+  return [...globalVariables, ...globalVariableOptions, ...workflowSystemVariables];
 };
 
 export type CombinedItemType = Partial<FlowNodeInputItemType> & Partial<FlowNodeOutputItemType>;
