@@ -240,6 +240,7 @@ export const iconPaths = {
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
+  'core/workflow/template/terminal': () => import('./icons/core/workflow/template/terminal.svg'),
   'core/workflow/template/lafDispatch': () =>
     import('./icons/core/workflow/template/lafDispatch.svg'),
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),

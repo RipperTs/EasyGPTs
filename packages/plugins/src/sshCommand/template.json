@@ -1,9 +1,9 @@
 {
-  "author": "",
-  "version": "1.0.0",
+  "author": "ripper",
+  "version": "1.0.1",
   "templateType": "tools",
   "name": "SSH命令执行",
-  "avatar": "core/workflow/template/httpRequest",
+  "avatar": "core/workflow/template/terminal",
   "intro": "连接远程 SSH 主机并执行命令，返回 stdout 和 stderr。",
   "showStatus": true,
   "isTool": true,
@@ -24,7 +24,10 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -37,7 +40,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["numberInput", "reference"],
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "number",
             "canEdit": true,
@@ -50,7 +56,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -63,7 +72,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["select", "reference"],
+            "renderTypeList": [
+              "select",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -85,7 +97,10 @@
             ]
           },
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -98,7 +113,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["textarea", "reference"],
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -111,7 +129,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -124,7 +145,10 @@
             "list": []
           },
           {
-            "renderTypeList": ["textarea", "reference"],
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -210,34 +234,49 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "stdout",
             "label": "stdout",
             "description": "命令标准输出",
             "isToolOutput": true,
-            "value": ["httpRequest", "stdout_output"]
+            "value": [
+              "httpRequest",
+              "stdout_output"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "stderr",
             "label": "stderr",
             "description": "命令标准错误输出",
             "isToolOutput": true,
-            "value": ["httpRequest", "stderr_output"]
+            "value": [
+              "httpRequest",
+              "stderr_output"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "boolean",
             "canEdit": true,
             "key": "success",
             "label": "success",
             "description": "是否执行成功",
             "isToolOutput": true,
-            "value": ["httpRequest", "success_output"]
+            "value": [
+              "httpRequest",
+              "success_output"
+            ]
           }
         ],
         "outputs": []
@@ -257,14 +296,18 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": ["addInputParam"],
+            "renderTypeList": [
+              "addInputParam"
+            ],
             "valueType": "dynamic",
             "label": "",
             "required": false
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -272,7 +315,9 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "number",
             "label": "",
             "value": 30,
@@ -282,7 +327,9 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "string",
             "label": "",
             "required": false,
@@ -290,7 +337,9 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -298,7 +347,9 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -306,7 +357,9 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": "{\n  \"host\": \"{{host}}\",\n  \"port\": {{port}},\n  \"username\": \"{{username}}\",\n  \"auth_type\": \"{{auth_type}}\",\n  \"password\": \"{{password}}\",\n  \"private_key\": \"{{private_key}}\",\n  \"passphrase\": \"{{passphrase}}\",\n  \"command\": \"{{command}}\"\n}",
             "label": "",
@@ -314,7 +367,9 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -322,83 +377,125 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "string",
             "value": "json",
             "label": "",
             "required": false
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "host",
             "label": "host",
             "required": true,
-            "value": ["pluginInput", "host"]
+            "value": [
+              "pluginInput",
+              "host"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "number",
             "canEdit": true,
             "key": "port",
             "label": "port",
             "required": true,
-            "value": ["pluginInput", "port"]
+            "value": [
+              "pluginInput",
+              "port"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "username",
             "label": "username",
             "required": true,
-            "value": ["pluginInput", "username"]
+            "value": [
+              "pluginInput",
+              "username"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "auth_type",
             "label": "auth_type",
             "required": true,
-            "value": ["pluginInput", "auth_type"]
+            "value": [
+              "pluginInput",
+              "auth_type"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "password",
             "label": "password",
             "required": false,
-            "value": ["pluginInput", "password"]
+            "value": [
+              "pluginInput",
+              "password"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "private_key",
             "label": "private_key",
             "required": false,
-            "value": ["pluginInput", "private_key"]
+            "value": [
+              "pluginInput",
+              "private_key"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "passphrase",
             "label": "passphrase",
             "required": false,
-            "value": ["pluginInput", "passphrase"]
+            "value": [
+              "pluginInput",
+              "passphrase"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "command",
             "label": "command",
             "required": true,
-            "value": ["pluginInput", "command"]
+            "value": [
+              "pluginInput",
+              "command"
+            ]
           }
         ],
         "outputs": [
