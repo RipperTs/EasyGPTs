@@ -268,6 +268,18 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
       system_databaseTimeout: timeoutInput
     }
   } = props;
+  const maskedNodeInputs = {
+    model,
+    databaseType,
+    host,
+    port,
+    databaseName,
+    dbUser,
+    password: password ? '[REDACTED]' : password,
+    originalSql,
+    maxRetryInput,
+    timeoutInput
+  };
 
   if (!databaseType || !host || !port || !databaseName || !dbUser || !password) {
     const message = 'Database connection config is incomplete';
@@ -278,6 +290,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
       [NodeOutputKeyEnum.error]: { message },
       [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        nodeInputs: maskedNodeInputs,
         errorText: message,
         pluginOutput,
         textOutput: message
@@ -294,6 +307,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
       [NodeOutputKeyEnum.error]: { message },
       [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        nodeInputs: maskedNodeInputs,
         errorText: message,
         pluginOutput,
         textOutput: message
@@ -312,6 +326,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
       [NodeOutputKeyEnum.error]: { message },
       [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        nodeInputs: maskedNodeInputs,
         errorText: message,
         pluginOutput,
         textOutput: message
@@ -369,6 +384,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
         [NodeOutputKeyEnum.databaseQueryResult]: result,
         [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          nodeInputs: maskedNodeInputs,
           totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
           model: modelName,
           tokens: totalTokens,
@@ -422,6 +438,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
           [NodeOutputKeyEnum.error]: errorOutput,
           [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            nodeInputs: maskedNodeInputs,
             totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
             model: modelName,
             tokens: totalTokens,
@@ -501,6 +518,7 @@ export const dispatchDatabaseConnector = async (props: Props): Promise<Response>
     [NodeOutputKeyEnum.error]: finalError,
     [DispatchNodeResponseKeyEnum.toolResponses]: pluginOutput,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      nodeInputs: maskedNodeInputs,
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       tokens: totalTokens,
