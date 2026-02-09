@@ -21,6 +21,20 @@ type RunPluginProps = ModuleDispatchProps<{
 }>;
 type RunPluginResponse = DispatchNodeResultType<{}>;
 
+const SENSITIVE_INPUT_KEYS = new Set(['password', 'private_key', 'passphrase']);
+
+const maskPluginInputs = (inputs: Record<string, any>) => {
+  return Object.keys(inputs).reduce<Record<string, any>>((acc, key) => {
+    const value = inputs[key];
+    if (SENSITIVE_INPUT_KEYS.has(key) && value !== undefined && value !== null && value !== '') {
+      acc[key] = '[REDACTED]';
+      return acc;
+    }
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     node: { pluginId },
@@ -106,6 +120,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
       totalPoints: usagePoints,
+      nodeInputs: maskPluginInputs(data),
       pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === runningAppInfo.teamId
