@@ -12,6 +12,7 @@ const nextConfig = {
   compress: true,
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
+      'cpu-features': false,
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
       snappy: false,
