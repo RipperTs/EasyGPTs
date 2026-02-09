@@ -22,19 +22,18 @@ const MultipleRowSelect = dynamic(
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
 type SelectProps = {
-  value?: ReferenceValueProps;
+  value?: string[];
   placeholder?: string;
-  list: {
-    label: string | React.ReactNode;
-    value: string;
-    children: {
-      label: string;
-      value: string;
-    }[];
-  }[];
+  list: SelectItemType[];
   onSelect: (val: ReferenceValueProps) => void;
   styles?: ButtonProps;
 };
+type SelectItemType = {
+  label: string | React.ReactNode;
+  value: string;
+  children?: SelectItemType[];
+};
+const GLOBAL_VARIABLE_DEFAULT_GROUP = '__default__';
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -103,6 +102,7 @@ export const useReference = ({
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const globalVariableOptions = useContextSelector(WorkflowContext, (v) => v.globalVariableOptions);
+  const globalVariableGroups = useContextSelector(WorkflowContext, (v) => v.globalVariableGroups);
 
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({
@@ -119,6 +119,63 @@ export const useReference = ({
     // 转换为 select 的数据结构
     const list: SelectProps['list'] = sourceNodes
       .map((node) => {
+        const outputList = node.outputs
+          .filter(
+            (output) =>
+              valueType === WorkflowIOValueTypeEnum.any ||
+              output.valueType === WorkflowIOValueTypeEnum.any ||
+              output.valueType === valueType
+          )
+          .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam);
+
+        if (node.nodeId === VARIABLE_NODE_ID) {
+          const groupedItems = globalVariableGroups
+            .map<SelectItemType | null>((group) => {
+              const prefix = `${group.groupKey}.`;
+              const groupOutputList = outputList.filter((output) => output.id.startsWith(prefix));
+              if (groupOutputList.length === 0) return null;
+
+              return {
+                label: group.name,
+                value: group.groupKey,
+                children: groupOutputList.map((output) => ({
+                  label: output.id.slice(prefix.length) || output.id,
+                  value: output.id
+                }))
+              };
+            })
+            .filter((item): item is SelectItemType => !!item);
+
+          const defaultOutputList = outputList.filter(
+            (output) =>
+              !globalVariableGroups.some((group) => output.id.startsWith(`${group.groupKey}.`))
+          );
+          const defaultGroupItem: SelectItemType[] =
+            defaultOutputList.length > 0
+              ? [
+                  {
+                    label: '应用与系统变量',
+                    value: GLOBAL_VARIABLE_DEFAULT_GROUP,
+                    children: defaultOutputList.map((output) => ({
+                      label: t((output.label as any) || ''),
+                      value: output.id
+                    }))
+                  }
+                ]
+              : [];
+
+          return {
+            label: (
+              <Flex alignItems={'center'}>
+                <Avatar src={node.avatar} w={'1.25rem'} borderRadius={'xs'} />
+                <Box ml={1}>{t(node.name as any)}</Box>
+              </Flex>
+            ),
+            value: node.nodeId,
+            children: [...defaultGroupItem, ...groupedItems]
+          };
+        }
+
         return {
           label: (
             <Flex alignItems={'center'}>
@@ -127,26 +184,25 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
-          children: node.outputs
-            .filter(
-              (output) =>
-                valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType
-            )
-            .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
-            .map((output) => {
-              return {
-                label: t((output.label as any) || ''),
-                value: output.id
-              };
-            })
+          children: outputList.map((output) => ({
+            label: t((output.label as any) || ''),
+            value: output.id
+          }))
         };
       })
-      .filter((item) => item.children.length > 0);
+      .filter((item) => (item.children?.length || 0) > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, globalVariableOptions, nodeId, nodeList, t, valueType]);
+  }, [
+    appDetail.chatConfig,
+    edges,
+    globalVariableGroups,
+    globalVariableOptions,
+    nodeId,
+    nodeList,
+    t,
+    valueType
+  ]);
 
   const formatValue = useMemo(() => {
     if (
@@ -155,10 +211,28 @@ export const useReference = ({
       typeof value[0] === 'string' &&
       typeof value[1] === 'string'
     ) {
-      return value as ReferenceValueProps;
+      if (value[0] === VARIABLE_NODE_ID) {
+        const selectedGroup = globalVariableGroups.find((group) =>
+          value[1].startsWith(`${group.groupKey}.`)
+        );
+
+        if (selectedGroup) {
+          return [VARIABLE_NODE_ID, selectedGroup.groupKey, value[1]];
+        }
+
+        const variableNode = referenceList.find((item) => item.value === VARIABLE_NODE_ID);
+        const defaultGroup = variableNode?.children?.find(
+          (item) => item.value === GLOBAL_VARIABLE_DEFAULT_GROUP
+        );
+        if (defaultGroup?.children?.some((item) => item.value === value[1])) {
+          return [VARIABLE_NODE_ID, GLOBAL_VARIABLE_DEFAULT_GROUP, value[1]];
+        }
+      }
+
+      return value as string[];
     }
     return undefined;
-  }, [value]);
+  }, [globalVariableGroups, referenceList, value]);
 
   return {
     referenceList,
@@ -167,18 +241,30 @@ export const useReference = ({
 };
 export const ReferSelector = ({ placeholder, value, list = [], onSelect }: SelectProps) => {
   const selectItemLabel = useMemo(() => {
-    if (!value) {
+    if (!value || value.length === 0) {
       return;
     }
-    const firstColumn = list.find((item) => item.value === value[0]);
-    if (!firstColumn) {
-      return;
+
+    let currentList = list;
+    const labelList: (string | React.ReactNode)[] = [];
+
+    for (const selected of value) {
+      if (!selected) break;
+
+      const selectedItem = currentList.find((item) => item.value === selected);
+      if (!selectedItem) {
+        break;
+      }
+
+      labelList.push(selectedItem.label);
+      currentList = selectedItem.children || [];
     }
-    const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
-    if (!secondColumn) {
-      return;
+
+    if (labelList.length === 0) {
+      return undefined;
     }
-    return [firstColumn, secondColumn];
+
+    return labelList;
   }, [list, value]);
 
   const Render = useMemo(() => {
@@ -187,9 +273,12 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
         label={
           selectItemLabel ? (
             <Flex alignItems={'center'}>
-              {selectItemLabel[0].label}
-              <MyIcon name={'common/rightArrowLight'} mx={1} w={'14px'}></MyIcon>
-              {selectItemLabel[1].label}
+              {selectItemLabel.map((item, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <MyIcon name={'common/rightArrowLight'} mx={1} w={'14px'}></MyIcon>}
+                  {item}
+                </React.Fragment>
+              ))}
             </Flex>
           ) : (
             <Box>{placeholder}</Box>
@@ -198,7 +287,12 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
         value={value as any[]}
         list={list}
         onSelect={(e) => {
-          onSelect(e as ReferenceValueProps);
+          if (!Array.isArray(e) || e.length < 2) return;
+          const nodeId = e[0];
+          const outputId = e[e.length - 1];
+          if (typeof nodeId !== 'string' || typeof outputId !== 'string') return;
+
+          onSelect([nodeId, outputId]);
         }}
       />
     );

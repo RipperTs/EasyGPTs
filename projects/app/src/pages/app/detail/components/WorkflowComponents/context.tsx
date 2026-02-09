@@ -55,6 +55,7 @@ import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSl
 import { cloneDeep, isEqual } from 'lodash';
 import { getGlobalVariableGroupList } from '@/web/support/globalVariable/api';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { TeamGlobalVariableGroupDetailType } from '@fastgpt/global/support/globalVariable/type';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -71,6 +72,7 @@ type WorkflowContextType = {
   filterAppIds?: string[];
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
   globalVariableOptions: EditorVariablePickerType[];
+  globalVariableGroups: TeamGlobalVariableGroupDetailType[];
 
   // nodes
   nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -201,6 +203,7 @@ type DebugDataType = {
 export const WorkflowContext = createContext<WorkflowContextType>({
   isSaving: false,
   globalVariableOptions: [],
+  globalVariableGroups: [],
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
@@ -970,6 +973,7 @@ const WorkflowContextProvider = ({
     reactFlowWrapper,
     basicNodeTemplates,
     globalVariableOptions,
+    globalVariableGroups,
     // node
     nodes,
     setNodes,
