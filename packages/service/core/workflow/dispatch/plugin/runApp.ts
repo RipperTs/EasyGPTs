@@ -17,6 +17,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppLatestVersion } from '../../../app/controller';
+import { getRuntimeGlobalVariables } from '../../../../support/globalVariable/controller';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -53,6 +54,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
+  const globalVariables = await getRuntimeGlobalVariables({
+    teamId: String(appData.teamId),
+    tmbId: String(runningAppInfo.tmbId)
+  });
   const { nodes, edges, chatConfig } = await getAppLatestVersion(pluginId);
 
   // Auto line
@@ -69,6 +74,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   // Rewrite children app variables
   const systemVariables = filterSystemVariables(variables);
   const childrenRunVariables = {
+    ...globalVariables,
     ...systemVariables,
     ...childrenAppVariables,
     histories: chatHistories,

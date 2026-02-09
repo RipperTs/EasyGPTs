@@ -15,6 +15,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { getRuntimeGlobalVariables } from '@fastgpt/service/support/globalVariable/controller';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -30,6 +31,10 @@ export const getScheduleTriggerApp = async () => {
       // random delay 0 ~ 60s
       await delay(Math.floor(Math.random() * 60 * 1000));
       const { user } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
+      const globalVariables = await getRuntimeGlobalVariables({
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      });
 
       try {
         const { flowUsages } = await dispatchWorkFlow({
@@ -44,7 +49,7 @@ export const getScheduleTriggerApp = async () => {
           uid: String(app.tmbId),
           runtimeNodes: storeNodes2RuntimeNodes(app.modules, getWorkflowEntryNodeIds(app.modules)),
           runtimeEdges: initWorkflowEdgeStatus(app.edges),
-          variables: {},
+          variables: globalVariables,
           query: [
             {
               type: ChatItemValueTypeEnum.text,

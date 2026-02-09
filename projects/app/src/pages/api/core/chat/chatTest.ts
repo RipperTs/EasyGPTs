@@ -28,6 +28,7 @@ import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getRuntimeGlobalVariables } from '@fastgpt/service/support/globalVariable/controller';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -79,6 +80,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ]);
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+    const globalVariables = await getRuntimeGlobalVariables({
+      teamId,
+      tmbId
+    });
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 
@@ -116,7 +121,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       user,
       runtimeNodes,
       runtimeEdges: initWorkflowEdgeStatus(edges, chatMessages),
-      variables,
+      variables: {
+        ...globalVariables,
+        ...variables
+      },
       query: removeEmptyUserInput(userInput),
       chatConfig,
       histories: chatMessages,

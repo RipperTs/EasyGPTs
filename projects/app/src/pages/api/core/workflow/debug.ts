@@ -10,6 +10,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getRuntimeGlobalVariables } from '@fastgpt/service/support/globalVariable/controller';
 
 async function handler(
   req: NextApiRequest,
@@ -39,6 +40,11 @@ async function handler(
   // auth balance
   const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
+  const globalVariables = await getRuntimeGlobalVariables({
+    teamId,
+    tmbId
+  });
+
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
     res,
@@ -53,7 +59,10 @@ async function handler(
     user,
     runtimeNodes: nodes,
     runtimeEdges: edges,
-    variables,
+    variables: {
+      ...globalVariables,
+      ...variables
+    },
     query: [],
     chatConfig: defaultApp.chatConfig,
     histories: [],

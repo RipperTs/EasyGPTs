@@ -30,6 +30,7 @@ import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/util
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
+import { getRuntimeGlobalVariables } from '@fastgpt/service/support/globalVariable/controller';
 
 // 简化版 JSON Schema 映射（覆盖常用类型）
 const valueTypeJsonSchemaMap: Record<string, any> = {
@@ -142,6 +143,10 @@ export const callMcpServerTool = async ({
   const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     const isPlugin = app.type === 'plugin';
     const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
+    const globalVariables = await getRuntimeGlobalVariables({
+      teamId: String(app.teamId),
+      tmbId: String(app.tmbId)
+    });
 
     const userQuestion: UserChatItemType = isPlugin
       ? getPluginRunUserQuery(nodes || app.modules, variables)
@@ -157,6 +162,10 @@ export const callMcpServerTool = async ({
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
       variables = {};
     } else {
+      variables = {
+        ...globalVariables,
+        ...variables
+      };
       delete variables.question;
       (variables as any).system_fileUrlList = (variables as any).fileUrlList;
       delete (variables as any).fileUrlList;

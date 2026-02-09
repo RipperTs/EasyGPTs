@@ -20,6 +20,7 @@ const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
 const TeamManagement = dynamic(() => import('./components/Team/TeamManagement'));
 const ChatLogTable = dynamic(() => import('./components/ChatLogTable'));
+const GlobalVariableConfig = dynamic(() => import('./components/GlobalVariableConfig'));
 
 enum TabEnum {
   'info' = 'info',
@@ -31,6 +32,7 @@ enum TabEnum {
   'apikey' = 'apikey',
   'team' = 'team',
   'chatLog' = 'chatLog',
+  'globalVariable' = 'globalVariable',
   'loginout' = 'loginout'
 }
 
@@ -62,6 +64,11 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
       icon: 'common/logLight',
       label: '对话日志',
       value: TabEnum.chatLog
+    },
+    {
+      icon: 'core/modules/variable',
+      label: '全局变量',
+      value: TabEnum.globalVariable
     },
     {
       icon: 'support/account/loginoutLight',
@@ -144,6 +151,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
             {currentTab === TabEnum.team && <TeamManagement />}
             {currentTab === TabEnum.chatLog && <ChatLogTable />}
+            {currentTab === TabEnum.globalVariable && <GlobalVariableConfig />}
           </Box>
         </Flex>
         <ConfirmModal />

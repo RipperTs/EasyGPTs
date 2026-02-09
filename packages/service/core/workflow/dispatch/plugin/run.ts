@@ -14,6 +14,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '../../utils';
+import { getRuntimeGlobalVariables } from '../../../../support/globalVariable/controller';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -40,6 +41,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   });
 
   const plugin = await getPluginRuntimeById(pluginId);
+  const globalVariables = await getRuntimeGlobalVariables({
+    teamId: String(plugin.teamId || ''),
+    tmbId: String(runningAppInfo.tmbId)
+  });
 
   const runtimeNodes = storeNodes2RuntimeNodes(
     plugin.nodes,
@@ -62,6 +67,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     };
   });
   const runtimeVariables = {
+    ...globalVariables,
     ...filterSystemVariables(props.variables),
     appId: String(plugin.id)
   };

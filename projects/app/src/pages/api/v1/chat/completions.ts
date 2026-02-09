@@ -60,6 +60,7 @@ import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runt
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getRuntimeGlobalVariables } from '@fastgpt/service/support/globalVariable/controller';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -213,13 +214,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
 
-    // Get store variables(Api variable precedence)
-    if (chatDetail?.variables) {
-      variables = {
-        ...chatDetail.variables,
-        ...variables
-      };
-    }
+    const globalVariables = await getRuntimeGlobalVariables({
+      teamId: String(teamId),
+      tmbId: String(tmbId)
+    });
+
+    // 优先级：请求变量 > 会话变量 > 团队全局变量
+    variables = {
+      ...globalVariables,
+      ...(chatDetail?.variables || {}),
+      ...variables
+    };
 
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
