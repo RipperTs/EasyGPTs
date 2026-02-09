@@ -235,6 +235,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/extractJson.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
+  'core/workflow/template/dingding': () => import('./icons/core/workflow/template/dingding.svg'),
   'core/workflow/template/shijianshiti': () =>
     import('./icons/core/workflow/template/shijianshiti.svg'),
   'core/workflow/template/httpRequest': () =>

@@ -1,8 +1,8 @@
 {
   "author": "",
   "version": "481",
-  "name": "钉钉 WebHook - FeedCard消息",
-  "avatar": "/imgs/app/avatar/plugin.svg",
+  "name": "FeedCard消息",
+  "avatar": "core/workflow/template/dingding",
   "intro": "发送钉钉 feedCard 消息。",
   "showStatus": true,
   "weight": 10,

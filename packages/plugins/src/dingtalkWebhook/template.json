@@ -2,7 +2,7 @@
   "author": "",
   "version": "481",
   "name": "钉钉机器人 WebHook",
-  "avatar": "/imgs/app/avatar/plugin.svg",
+  "avatar": "core/workflow/template/dingding",
   "intro": "钉钉机器人消息发送，按消息类型拆分为多个子插件。",
   "showStatus": false,
   "weight": 100,

@@ -1,8 +1,8 @@
 {
   "author": "",
   "version": "481",
-  "name": "钉钉 WebHook - 文本消息",
-  "avatar": "/imgs/app/avatar/plugin.svg",
+  "name": "文本消息",
+  "avatar": "core/workflow/template/dingding",
   "intro": "发送钉钉 text 消息。",
   "showStatus": true,
   "weight": 10,
@@ -54,8 +54,8 @@
           },
           {
             "renderTypeList": [
-              "textarea",
-              "reference"
+              "reference",
+              "textarea"
             ],
             "selectedTypeIndex": 0,
             "valueType": "string",
