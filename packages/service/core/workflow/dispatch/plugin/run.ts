@@ -22,14 +22,40 @@ type RunPluginProps = ModuleDispatchProps<{
 type RunPluginResponse = DispatchNodeResultType<{}>;
 
 const SENSITIVE_INPUT_KEYS = new Set(['password', 'private_key', 'passphrase']);
+const DATABASE_PLUGIN_NAMES = new Set([
+  'databaseConnection',
+  'redisConnection',
+  'databaseSchema',
+  'relatedTables',
+  'sqlTranslation'
+]);
 
-const maskPluginInputs = (inputs: Record<string, any>) => {
+const hasInputValue = (value: any) => value !== undefined && value !== null && value !== '';
+
+const isDatabasePlugin = (id: string) => {
+  return Array.from(DATABASE_PLUGIN_NAMES).some((name) => id.endsWith(name));
+};
+
+const maskPluginInputs = ({
+  inputs,
+  maskAll
+}: {
+  inputs: Record<string, any>;
+  maskAll: boolean;
+}) => {
   return Object.keys(inputs).reduce<Record<string, any>>((acc, key) => {
     const value = inputs[key];
-    if (SENSITIVE_INPUT_KEYS.has(key) && value !== undefined && value !== null && value !== '') {
+
+    if (maskAll && hasInputValue(value)) {
       acc[key] = '[REDACTED]';
       return acc;
     }
+
+    if (SENSITIVE_INPUT_KEYS.has(key) && hasInputValue(value)) {
+      acc[key] = '[REDACTED]';
+      return acc;
+    }
+
     acc[key] = value;
     return acc;
   }, {});
@@ -112,6 +138,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   const isError = !!(output?.pluginOutput?.error || terminateToolResponse?.error);
   const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
   const pluginOutput = output?.pluginOutput || terminateToolResponse;
+  const maskedNodeInputs = maskPluginInputs({
+    inputs: data,
+    maskAll: isDatabasePlugin(plugin.id)
+  });
 
   return {
     assistantResponses,
@@ -120,7 +150,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
       totalPoints: usagePoints,
-      nodeInputs: maskPluginInputs(data),
+      nodeInputs: maskedNodeInputs,
       pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === runningAppInfo.teamId
