@@ -1,7 +1,7 @@
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -16,6 +16,25 @@ type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
 };
+
+const FEISHU_POST_CONTENT_EXAMPLE = JSON.stringify(
+  [
+    [
+      {
+        tag: 'text',
+        text: '你的小可爱上线了！'
+      },
+      {
+        tag: 'a',
+        text: '点击查看',
+        href: 'https://sspai.com/u/100gle/updates'
+      }
+    ]
+  ],
+  null,
+  2
+);
+const FEISHU_CARD_BUILDER_URL = 'https://open.feishu.cn/tool/cardbuilder?from=cotentmodule';
 
 const InputLabel = ({ nodeId, input }: Props) => {
   const { t } = useTranslation();
@@ -43,8 +62,28 @@ const InputLabel = ({ nodeId, input }: Props) => {
     [input, nodeId, onChangeNode, renderTypeList]
   );
 
+  const onFillPostContentExample = useCallback(() => {
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: input.key,
+      value: {
+        ...input,
+        value: FEISHU_POST_CONTENT_EXAMPLE
+      }
+    });
+  }, [input, nodeId, onChangeNode]);
+
+  const onOpenCardBuilder = useCallback(() => {
+    window.open(FEISHU_CARD_BUILDER_URL, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const RenderLabel = useMemo(() => {
     const renderType = renderTypeList?.[selectedTypeIndex || 0];
+    const isTextarea =
+      input.renderTypeList[input.selectedTypeIndex ?? 0] === FlowNodeInputTypeEnum.textarea;
+    const showFillExampleBtn = isTextarea && input.key === 'post_content_json';
+    const showCardBuilderBtn = isTextarea && input.key === 'card_json';
 
     return (
       <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
@@ -74,9 +113,31 @@ const InputLabel = ({ nodeId, input }: Props) => {
         )}
 
         {/* Variable picker tip */}
-        {input.renderTypeList[input.selectedTypeIndex ?? 0] === FlowNodeInputTypeEnum.textarea && (
+        {isTextarea && (
           <>
             <Box flex={1} />
+            {showFillExampleBtn && (
+              <Button
+                size={'xs'}
+                variant={'whitePrimary'}
+                ml={2}
+                mr={2}
+                onClick={onFillPostContentExample}
+              >
+                填充示例
+              </Button>
+            )}
+            {showCardBuilderBtn && (
+              <Button
+                size={'xs'}
+                variant={'whitePrimary'}
+                ml={2}
+                mr={2}
+                onClick={onOpenCardBuilder}
+              >
+                卡片搭建工具
+              </Button>
+            )}
             <VariableTip transform={'translateY(2px)'} />
           </>
         )}
@@ -87,6 +148,8 @@ const InputLabel = ({ nodeId, input }: Props) => {
     input.renderTypeList,
     input.selectedTypeIndex,
     label,
+    onOpenCardBuilder,
+    onFillPostContentExample,
     onChangeRenderType,
     renderTypeList,
     required,

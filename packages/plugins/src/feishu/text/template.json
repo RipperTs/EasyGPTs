@@ -1,0 +1,419 @@
+{
+  "author": "",
+  "version": "488",
+  "name": "文本消息",
+  "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
+  "intro": "发送飞书 text 消息。",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "communication",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "配置插件输入参数",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 420,
+          "y": 20
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "hook_url",
+            "label": "Webhook 地址",
+            "description": "飞书机器人 WebHook 完整地址",
+            "required": true,
+            "defaultValue": "",
+            "toolDescription": "飞书机器人 WebHook 完整地址"
+          },
+          {
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "content",
+            "label": "消息内容",
+            "description": "消息正文",
+            "required": true,
+            "defaultValue": "",
+            "toolDescription": "消息正文"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "hook_url",
+            "valueType": "string",
+            "key": "hook_url",
+            "label": "Webhook 地址",
+            "type": "hidden"
+          },
+          {
+            "id": "content",
+            "valueType": "string",
+            "key": "content",
+            "label": "消息内容",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "配置插件输出参数",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1880,
+          "y": 20
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "result",
+            "label": "完整结果",
+            "description": "完整返回结果",
+            "value": [
+              "feishuTextRequest",
+              "httpRawResponse"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "success",
+            "label": "是否成功",
+            "description": "是否发送成功",
+            "value": [
+              "feishuTextRequest",
+              "feishu_success"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "msgtype",
+            "label": "消息类型",
+            "description": "消息类型",
+            "value": [
+              "feishuTextRequest",
+              "feishu_msgtype"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "code",
+            "label": "状态码",
+            "description": "飞书返回状态码",
+            "value": [
+              "feishuTextRequest",
+              "feishu_code"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "msg",
+            "label": "返回信息",
+            "description": "飞书返回信息",
+            "value": [
+              "feishuTextRequest",
+              "feishu_msg"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "error_message",
+            "label": "错误信息",
+            "description": "请求或业务错误信息",
+            "value": [
+              "feishuTextRequest",
+              "feishu_error"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "response",
+            "label": "原始响应",
+            "description": "飞书原始 response 对象",
+            "value": [
+              "feishuTextRequest",
+              "feishu_response"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "feishuTextRequest",
+        "name": "HTTP 请求",
+        "intro": "发送飞书 text 消息。",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1120,
+          "y": -210
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "feishu/text"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n  \"hook_url\": \"{{hook_url}}\",\n  \"content\": \"{{content}}\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "hook_url",
+            "label": "Webhook 地址",
+            "required": true,
+            "value": [
+              "pluginInput",
+              "hook_url"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "content",
+            "label": "消息内容",
+            "required": true,
+            "value": [
+              "pluginInput",
+              "content"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "feishu_success",
+            "type": "dynamic",
+            "key": "result.success",
+            "valueType": "boolean",
+            "label": "是否成功"
+          },
+          {
+            "id": "feishu_msgtype",
+            "type": "dynamic",
+            "key": "result.msgtype",
+            "valueType": "string",
+            "label": "消息类型"
+          },
+          {
+            "id": "feishu_code",
+            "type": "dynamic",
+            "key": "result.response.code",
+            "valueType": "number",
+            "label": "状态码"
+          },
+          {
+            "id": "feishu_msg",
+            "type": "dynamic",
+            "key": "result.response.msg",
+            "valueType": "string",
+            "label": "返回信息"
+          },
+          {
+            "id": "feishu_error",
+            "type": "dynamic",
+            "key": "result.error",
+            "valueType": "string",
+            "label": "错误信息"
+          },
+          {
+            "id": "feishu_response",
+            "type": "dynamic",
+            "key": "result.response",
+            "valueType": "object",
+            "label": "原始响应"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "feishuTextRequest",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "feishuTextRequest-target-left"
+      },
+      {
+        "source": "feishuTextRequest",
+        "target": "pluginOutput",
+        "sourceHandle": "feishuTextRequest-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
