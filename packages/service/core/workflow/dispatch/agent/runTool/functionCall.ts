@@ -33,7 +33,11 @@ import {
   sleep,
   injectWorkflowStartOutputsForToolRun
 } from './utils';
-import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  sanitizeReasoningChatRequestBody
+} from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { throwIfAborted } from '../../utils/abort';
 
@@ -201,22 +205,31 @@ export const runToolWithFunctionCall = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: ChatCompletionCreateParams & { reasoning_effort?: string } = {
-    ...toolModel?.defaultConfig,
-    model: toolModel.model,
-    temperature: computedTemperature({
-      model: toolModel,
-      temperature
-    }),
-    max_tokens,
-    stream,
-    messages: requestMessages,
-    functions,
-    function_call: 'auto'
-  };
+  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...toolModel?.defaultConfig,
+      model: toolModel.model,
+      temperature: computedTemperature({
+        model: toolModel,
+        temperature
+      }),
+      max_tokens,
+      stream,
+      messages: requestMessages,
+      functions,
+      function_call: 'auto'
+    },
+    model: toolModel,
+    reasoningEffort
+  });
 
   if (enableReasoning && reasoningEffort) {
     requestBody.reasoning_effort = reasoningEffort;
+    requestBody = sanitizeReasoningChatRequestBody({
+      requestBody,
+      model: toolModel,
+      reasoningEffort
+    });
   }
 
   // console.log(JSON.stringify(requestBody, null, 2));
@@ -248,16 +261,20 @@ export const runToolWithFunctionCall = async (
         ) as LLMModelItemType[];
         const fallback = candidates[0];
         if (fallback) {
-          requestBody = {
-            ...(fallback?.defaultConfig || {}),
-            model: fallback.model,
-            temperature: computedTemperature({ model: fallback, temperature }),
-            max_tokens,
-            stream,
-            messages: requestMessages,
-            functions,
-            function_call: 'auto'
-          } as any;
+          requestBody = sanitizeReasoningChatRequestBody({
+            requestBody: {
+              ...(fallback?.defaultConfig || {}),
+              model: fallback.model,
+              temperature: computedTemperature({ model: fallback, temperature }),
+              max_tokens,
+              stream,
+              messages: requestMessages,
+              functions,
+              function_call: 'auto'
+            },
+            model: fallback,
+            reasoningEffort
+          }) as any;
           const ai2 = getAIApi({ timeout: 480000 });
           ensureNotAborted();
           return ai2.chat.completions.create(requestBody as any, {

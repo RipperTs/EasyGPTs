@@ -40,7 +40,11 @@ import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
-import { computedMaxToken, computedTemperature } from '../../../ai/utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  sanitizeReasoningChatRequestBody
+} from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
 
 export type ChatProps = ModuleDispatchProps<
@@ -164,18 +168,22 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     })
   ]);
 
-  const requestBody = {
-    ...modelConstantsData?.defaultConfig,
-    model: modelConstantsData.model,
-    temperature: computedTemperature({
-      model: modelConstantsData,
-      temperature
-    }),
-    max_tokens,
-    stream,
-    messages: requestMessages,
-    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
-  };
+  const requestBody = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...modelConstantsData?.defaultConfig,
+      model: modelConstantsData.model,
+      temperature: computedTemperature({
+        model: modelConstantsData,
+        temperature
+      }),
+      max_tokens,
+      stream,
+      messages: requestMessages,
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
+    },
+    model: modelConstantsData,
+    reasoningEffort
+  });
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {
     const ai = getAIApi({

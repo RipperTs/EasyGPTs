@@ -33,17 +33,31 @@ import {
   sleep,
   injectWorkflowStartOutputsForToolRun
 } from './utils';
-import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  sanitizeReasoningChatRequestBody
+} from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type';
 import { throwIfAborted } from '../../utils/abort';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
   toolMsgParams: ChatCompletionToolMessageParam;
+  toolCall: ChatCompletionMessageToolCall;
 }[];
+
+type ToolCallDelta = {
+  index?: number;
+  id?: string;
+  type?: string;
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+};
 
 // 合并多次推理内容，用 '\n' 分隔，最终返回一个整体字符串
 const mergeReasoningText = (prev?: string, curr?: string): string => {
@@ -90,6 +104,22 @@ const getLastUserText = (messages: ChatCompletionMessageParam[]) => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
+const getToolParamEnumValues = (list: unknown): string[] => {
+  if (!Array.isArray(list)) return [];
+
+  return Array.from(
+    new Set(
+      list
+        .map((item) => {
+          if (!isRecord(item) || typeof item.value !== 'string') return;
+          const value = item.value.trim();
+          return value.length > 0 ? value : undefined;
+        })
+        .filter((value): value is string => typeof value === 'string')
+    )
+  );
+};
+
 const stableStringify = (value: unknown): string => {
   if (value === null) return 'null';
   if (typeof value === 'string') return JSON.stringify(value);
@@ -109,6 +139,144 @@ const normalizeToolArgsSignatureFromArgs = (params: {
 }) => {
   const { toolNodeId, args } = params;
   return `${toolNodeId}|${stableStringify(args)}`;
+};
+
+const normalizeToolCalls = ({
+  toolCalls,
+  toolNodes,
+  source
+}: {
+  toolCalls: ChatCompletionMessageToolCall[];
+  toolNodes: ToolNodeItemType[];
+  source: string;
+}): ChatCompletionMessageToolCall[] => {
+  return toolCalls
+    .map((tool) => {
+      const functionName = tool.function?.name?.trim() || '';
+      if (!functionName) {
+        addLog.warn('Ignore tool call without function name', {
+          source,
+          toolCallId: tool.id
+        });
+        return;
+      }
+
+      const toolNode = toolNodes.find((item) => item.nodeId === functionName);
+      if (!toolNode) {
+        addLog.warn('Ignore tool call with unknown function name', {
+          source,
+          toolCallId: tool.id,
+          functionName
+        });
+        return;
+      }
+
+      return {
+        ...tool,
+        id: tool.id || getNanoid(),
+        type: 'function' as const,
+        toolName: toolNode.name,
+        toolAvatar: toolNode.avatar,
+        function: {
+          name: functionName,
+          arguments: typeof tool.function?.arguments === 'string' ? tool.function.arguments : ''
+        }
+      };
+    })
+    .filter(Boolean) as ChatCompletionMessageToolCall[];
+};
+
+const keepSystemAndLastUserMessages = (messages: ChatCompletionMessageParam[]) => {
+  const systemMessages = messages.filter(
+    (item) => item.role === ChatCompletionRequestMessageRoleEnum.System
+  );
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((item) => item.role === ChatCompletionRequestMessageRoleEnum.User);
+
+  return [...systemMessages, ...(lastUserMessage ? [lastUserMessage] : [])];
+};
+
+const isBadResponseStatusCodeError = (error: unknown) => {
+  if (!isRecord(error)) return false;
+  return (
+    error.code === 'bad_response_status_code' ||
+    error.type === 'bad_response_status_code' ||
+    String(error.message || '').includes('bad_response_status_code')
+  );
+};
+
+const buildToolResultSummaryMessages = ({
+  requestMessages,
+  toolsRunResponse
+}: {
+  requestMessages: ChatCompletionMessageParam[];
+  toolsRunResponse: ToolRunResponseType;
+}): ChatCompletionMessageParam[] => {
+  const toolResultText = toolsRunResponse
+    .map((item, index) => {
+      const toolCall = item.toolCall;
+      return [
+        `Tool ${index + 1}: ${toolCall.toolName || toolCall.function.name}`,
+        `Arguments: ${toolCall.function.arguments || '{}'}`,
+        `Result: ${item.toolMsgParams.content || ''}`
+      ].join('\n');
+    })
+    .join('\n\n');
+
+  return [
+    ...keepSystemAndLastUserMessages(requestMessages),
+    {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: `The tools have already been executed. Use the following tool results as authoritative external data and answer the user's latest question in Simplified Chinese.\n\n${toolResultText}`
+    }
+  ];
+};
+
+const sanitizeToolChoiceMessages = ({
+  messages,
+  toolNodes
+}: {
+  messages: ChatCompletionMessageParam[];
+  toolNodes: ToolNodeItemType[];
+}): ChatCompletionMessageParam[] => {
+  const validToolCallIds = new Set<string>();
+
+  return messages
+    .map((item) => {
+      if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant && item.tool_calls) {
+        const toolCalls = normalizeToolCalls({
+          toolCalls: item.tool_calls as ChatCompletionMessageToolCall[],
+          toolNodes,
+          source: 'history'
+        }).map((tool) => {
+          validToolCallIds.add(tool.id);
+          return {
+            id: tool.id,
+            type: tool.type,
+            function: tool.function
+          };
+        });
+
+        if (toolCalls.length === 0) {
+          if (!item.content) return;
+          const { tool_calls, ...rest } = item;
+          return rest;
+        }
+
+        return {
+          ...item,
+          tool_calls: toolCalls
+        };
+      }
+
+      if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+        return validToolCallIds.has(item.tool_call_id) ? item : undefined;
+      }
+
+      return item;
+    })
+    .filter(Boolean) as ChatCompletionMessageParam[];
 };
 
 const validateToolArgs = (params: {
@@ -133,11 +301,7 @@ const validateToolArgs = (params: {
       key: p.key as string,
       required: !!p.required,
       toolDescription: typeof p.toolDescription === 'string' ? p.toolDescription : '',
-      enumValues: Array.isArray(p.list)
-        ? p.list
-            .map((i) => (i && typeof i === 'object' ? (i as { value?: unknown }).value : undefined))
-            .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-        : []
+      enumValues: getToolParamEnumValues(p.list)
     }));
 
   defs.forEach((def) => {
@@ -185,17 +349,13 @@ const callRepairToolArgs = async (params: {
         list?: unknown;
         valueType?: unknown;
       };
-      const enumValues = Array.isArray(rec.list)
-        ? rec.list
-            .map((i) => (i && typeof i === 'object' ? (i as { value?: unknown }).value : undefined))
-            .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-        : undefined;
+      const enumValues = getToolParamEnumValues(rec.list);
       return {
         key: typeof rec.key === 'string' ? rec.key : '',
         required: !!rec.required,
         description: typeof rec.toolDescription === 'string' ? rec.toolDescription : '',
         valueType: typeof rec.valueType === 'string' ? rec.valueType : undefined,
-        ...(enumValues?.length ? { enum: enumValues } : {})
+        ...(enumValues.length ? { enum: enumValues } : {})
       };
     })
   );
@@ -346,9 +506,9 @@ export const runToolWithToolChoice = async (
         ...schema,
         description: p.toolDescription || ''
       };
-      // 如果输入定义了下拉列表，尽量映射为 enum
-      if (Array.isArray(p.list) && p.list.length > 0) {
-        properties[p.key].enum = p.list.map((i) => i.value);
+      const enumValues = getToolParamEnumValues(p.list);
+      if (enumValues.length > 0) {
+        properties[p.key].enum = enumValues;
       }
     });
 
@@ -372,23 +532,12 @@ export const runToolWithToolChoice = async (
     maxToken
   });
   // Filter histories by maxToken
-  const filterMessages = (
-    await filterGPTMessageByMaxContext({
+  const filterMessages = sanitizeToolChoiceMessages({
+    messages: await filterGPTMessageByMaxContext({
       messages,
       maxContext: toolModel.maxContext - (max_tokens || 0) // filter token. not response maxToken
-    })
-  ).map((item) => {
-    if (item.role === 'assistant' && item.tool_calls) {
-      return {
-        ...item,
-        tool_calls: item.tool_calls.map((tool) => ({
-          id: tool.id,
-          type: tool.type,
-          function: tool.function
-        }))
-      };
-    }
-    return item;
+    }),
+    toolNodes
   });
 
   const [requestMessages] = await Promise.all([
@@ -398,22 +547,31 @@ export const runToolWithToolChoice = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: ChatCompletionCreateParams & { reasoning_effort?: string } = {
-    ...toolModel?.defaultConfig,
-    model: toolModel.model,
-    temperature: computedTemperature({
-      model: toolModel,
-      temperature
-    }),
-    max_tokens,
-    stream,
-    messages: requestMessages,
-    tools,
-    tool_choice: 'auto'
-  };
+  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...toolModel?.defaultConfig,
+      model: toolModel.model,
+      temperature: computedTemperature({
+        model: toolModel,
+        temperature
+      }),
+      max_tokens,
+      stream,
+      messages: requestMessages,
+      tools,
+      tool_choice: 'auto'
+    },
+    model: toolModel,
+    reasoningEffort
+  });
 
   if (enableReasoning && reasoningEffort) {
     requestBody.reasoning_effort = reasoningEffort;
+    requestBody = sanitizeReasoningChatRequestBody({
+      requestBody,
+      model: toolModel,
+      reasoningEffort
+    });
   }
 
   // console.log(JSON.stringify(requestBody, null, 2));
@@ -444,16 +602,10 @@ export const runToolWithToolChoice = async (
       }
 
       const result = resp as ChatCompletion;
-      const calls = result.choices?.[0]?.message?.tool_calls || [];
-
-      // 加上name和avatar
-      const toolCalls = calls.map((tool) => {
-        const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
-        return {
-          ...tool,
-          toolName: toolNode?.name || '',
-          toolAvatar: toolNode?.avatar || ''
-        };
+      const toolCalls = normalizeToolCalls({
+        toolCalls: result.choices?.[0]?.message?.tool_calls || [],
+        toolNodes,
+        source: 'completion'
       });
 
       const reasoning = enableReasoning
@@ -558,7 +710,8 @@ export const runToolWithToolChoice = async (
                 });
                 return {
                   toolRunResponse: createEmptyDispatchFlowResponse(),
-                  toolMsgParams
+                  toolMsgParams,
+                  toolCall: tool
                 };
               }
             }
@@ -587,7 +740,8 @@ export const runToolWithToolChoice = async (
             });
             return {
               toolRunResponse: createEmptyDispatchFlowResponse(),
-              toolMsgParams
+              toolMsgParams,
+              toolCall: tool
             };
           }
 
@@ -617,7 +771,8 @@ export const runToolWithToolChoice = async (
             });
             return {
               toolRunResponse: createEmptyDispatchFlowResponse(),
-              toolMsgParams
+              toolMsgParams,
+              toolCall: tool
             };
           }
 
@@ -662,18 +817,20 @@ export const runToolWithToolChoice = async (
 
           return {
             toolRunResponse,
-            toolMsgParams
+            toolMsgParams,
+            toolCall: tool
           };
         })
       )
     ).filter(Boolean) as ToolRunResponseType;
 
+    const executedToolCalls = toolsRunResponse.map((item) => item.toolCall);
     const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
-    if (toolCalls.length > 0 && !res?.closed) {
+    if (executedToolCalls.length > 0 && !res?.closed) {
       // Run the tool, combine its results, and perform another round of AI calls
       const assistantToolMsgParams: ChatCompletionAssistantToolParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        tool_calls: toolCalls
+        tool_calls: executedToolCalls
       };
       /*
         ...
@@ -681,7 +838,7 @@ export const runToolWithToolChoice = async (
         assistant: tool data
       */
       const concatToolMessages = [
-        ...requestMessages,
+        ...keepSystemAndLastUserMessages(requestMessages),
         assistantToolMsgParams
       ] as ChatCompletionMessageParam[];
       const tokens = await countGptMessagesTokens(concatToolMessages, tools);
@@ -751,24 +908,45 @@ export const runToolWithToolChoice = async (
         };
       }
 
-      return runToolWithToolChoice(
-        {
-          ...props,
-          maxRunToolTimes: maxRunToolTimes - 1,
-          messages: completeMessages
-        },
-        {
-          dispatchFlowResponse,
-          totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-          assistantResponses: toolNodeAssistants,
-          runTimes:
-            (response?.runTimes || 0) +
-            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
-          toolResultCache,
-          toolValidationRetry,
-          reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
-        }
-      );
+      const nextResponse = {
+        dispatchFlowResponse,
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        assistantResponses: toolNodeAssistants,
+        runTimes:
+          (response?.runTimes || 0) +
+          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0),
+        toolResultCache,
+        toolValidationRetry,
+        reasoningText: mergeReasoningText(response?.reasoningText, reasoning)
+      };
+
+      try {
+        return await runToolWithToolChoice(
+          {
+            ...props,
+            maxRunToolTimes: maxRunToolTimes - 1,
+            messages: completeMessages
+          },
+          nextResponse
+        );
+      } catch (error) {
+        if (!isBadResponseStatusCodeError(error)) throw error;
+
+        addLog.warn('LLM tool history rejected, retry with text tool summary', {
+          model: toolModel.model
+        });
+        return await runToolWithToolChoice(
+          {
+            ...props,
+            maxRunToolTimes: 1,
+            messages: buildToolResultSummaryMessages({
+              requestMessages,
+              toolsRunResponse
+            })
+          },
+          nextResponse
+        );
+      }
     } else {
       // No tool is invoked, indicating that the process is over
       const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
@@ -813,16 +991,20 @@ export const runToolWithToolChoice = async (
           to: fallback.model
         });
         // 重建请求体，使用降级模型
-        requestBody = {
-          ...(fallback?.defaultConfig || {}),
-          model: fallback.model,
-          temperature: computedTemperature({ model: fallback, temperature }),
-          max_tokens,
-          stream,
-          messages: requestMessages,
-          tools,
-          tool_choice: 'auto'
-        } as any;
+        requestBody = sanitizeReasoningChatRequestBody({
+          requestBody: {
+            ...(fallback?.defaultConfig || {}),
+            model: fallback.model,
+            temperature: computedTemperature({ model: fallback, temperature }),
+            max_tokens,
+            stream,
+            messages: requestMessages,
+            tools,
+            tool_choice: 'auto'
+          },
+          model: fallback,
+          reasoningEffort
+        }) as any;
         try {
           const ai2 = getAIApi({ timeout: 480000 });
           ensureNotAborted();
@@ -845,14 +1027,10 @@ export const runToolWithToolChoice = async (
               });
             } else {
               const result = aiResponse2 as ChatCompletion;
-              const calls = result.choices?.[0]?.message?.tool_calls || [];
-              const toolCalls = calls.map((tool) => {
-                const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
-                return {
-                  ...tool,
-                  toolName: toolNode?.name || '',
-                  toolAvatar: toolNode?.avatar || ''
-                };
+              const toolCalls = normalizeToolCalls({
+                toolCalls: result.choices?.[0]?.message?.tool_calls || [],
+                toolNodes,
+                source: 'fallback-completion'
               });
               const reasoning2 = enableReasoning
                 ? // @ts-ignore
@@ -918,19 +1096,20 @@ export const runToolWithToolChoice = async (
                     }
                   }
                 });
-                return { toolRunResponse, toolMsgParams };
+                return { toolRunResponse, toolMsgParams, toolCall: tool };
               })
             )
           ).filter(Boolean) as ToolRunResponseType;
 
+          const executedToolCalls = toolsRunResponse.map((i) => i.toolCall);
           const flatToolsResponseData = toolsRunResponse.map((i) => i.toolRunResponse).flat();
-          if (toolCalls.length > 0 && !res?.closed) {
+          if (executedToolCalls.length > 0 && !res?.closed) {
             const assistantToolMsgParams: ChatCompletionAssistantToolParam = {
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              tool_calls: toolCalls
+              tool_calls: executedToolCalls
             };
             const concatToolMessages = [
-              ...requestMessages,
+              ...keepSystemAndLastUserMessages(requestMessages),
               assistantToolMsgParams
             ] as ChatCompletionMessageParam[];
             const tokens = await countGptMessagesTokens(concatToolMessages, tools);
@@ -1022,22 +1201,14 @@ async function streamResponse({
 
   let textAnswer = '';
   let reasoning = '';
-  let toolCalls: ChatCompletionMessageToolCall[] = [];
   const toolCallMap = new Map<number, ChatCompletionMessageToolCall>();
+  let lastActiveToolIndex: number | undefined;
   const emittedToolCallIds = new Set<string>();
 
-  type ToolCallDelta = {
-    index?: number;
-    id?: string;
-    type?: string;
-    function?: {
-      name?: string;
-      arguments?: string;
-    };
-  };
-
   const getToolIndex = (delta: ToolCallDelta) =>
-    typeof delta.index === 'number' && Number.isFinite(delta.index) ? delta.index : 0;
+    typeof delta.index === 'number' && Number.isFinite(delta.index)
+      ? delta.index
+      : lastActiveToolIndex ?? 0;
 
   const tryEmitToolCall = (toolCall: ChatCompletionMessageToolCall) => {
     if (emittedToolCallIds.has(toolCall.id)) return;
@@ -1052,6 +1223,7 @@ async function streamResponse({
     toolCall.toolAvatar = toolNode.avatar;
 
     workflowStreamResponse?.({
+      write,
       event: SseResponseEventEnum.toolCall,
       data: {
         tool: {
@@ -1106,28 +1278,40 @@ async function streamResponse({
       const deltas = responseChoice.tool_calls as unknown as ToolCallDelta[];
 
       for (const delta of deltas) {
-        const idx = getToolIndex(delta);
+        let idx = getToolIndex(delta);
 
         const namePart = delta.function?.name || '';
         const argPart = delta.function?.arguments || '';
 
-        const existing = toolCallMap.get(idx);
+        let existing = toolCallMap.get(idx);
+        if (!existing && !namePart && argPart && lastActiveToolIndex !== undefined) {
+          const activeToolCall = toolCallMap.get(lastActiveToolIndex);
+          if (activeToolCall?.function?.name) {
+            idx = lastActiveToolIndex;
+            existing = activeToolCall;
+          }
+        }
+
         if (!existing) {
           const toolId = getNanoid();
           const newToolCall: ChatCompletionMessageToolCall = {
-            id: toolId,
+            id: delta.id || toolId,
             type: 'function',
             function: {
               name: namePart,
               arguments: argPart
             }
           };
-          toolCalls.push(newToolCall);
           toolCallMap.set(idx, newToolCall);
+          if (namePart) lastActiveToolIndex = idx;
           tryEmitToolCall(newToolCall);
         } else {
           if (namePart) {
             existing.function.name = `${existing.function.name || ''}${namePart}`;
+            lastActiveToolIndex = idx;
+          }
+          if (delta.id && !existing.id) {
+            existing.id = delta.id;
           }
           if (argPart) {
             existing.function.arguments = `${existing.function.arguments || ''}${argPart}`;
@@ -1154,6 +1338,14 @@ async function streamResponse({
       }
     }
   }
+
+  const toolCalls = normalizeToolCalls({
+    toolCalls: Array.from(toolCallMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([, tool]) => tool),
+    toolNodes,
+    source: 'stream'
+  });
 
   if (!textAnswer && toolCalls.length === 0 && !reasoning) {
     return Promise.reject('LLM api response empty');

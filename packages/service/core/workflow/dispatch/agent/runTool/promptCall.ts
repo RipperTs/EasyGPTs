@@ -31,7 +31,11 @@ import {
   sleep,
   injectWorkflowStartOutputsForToolRun
 } from './utils';
-import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  sanitizeReasoningChatRequestBody
+} from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 import { throwIfAborted } from '../../utils/abort';
 
@@ -133,20 +137,29 @@ export const runToolWithPromptCall = async (
       origin: requestOrigin
     })
   ]);
-  const requestBody: Record<string, any> = {
-    ...toolModel?.defaultConfig,
-    model: toolModel.model,
-    temperature: computedTemperature({
-      model: toolModel,
-      temperature
-    }),
-    max_tokens,
-    stream,
-    messages: requestMessages
-  };
+  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...toolModel?.defaultConfig,
+      model: toolModel.model,
+      temperature: computedTemperature({
+        model: toolModel,
+        temperature
+      }),
+      max_tokens,
+      stream,
+      messages: requestMessages
+    },
+    model: toolModel,
+    reasoningEffort
+  });
 
   if (enableReasoning && reasoningEffort) {
     requestBody.reasoning_effort = reasoningEffort;
+    requestBody = sanitizeReasoningChatRequestBody({
+      requestBody,
+      model: toolModel,
+      reasoningEffort
+    });
   }
 
   // console.log(JSON.stringify(requestBody, null, 2));

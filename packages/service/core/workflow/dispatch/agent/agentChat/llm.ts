@@ -2,7 +2,11 @@ import type { ChatCompletion, ChatCompletionMessageParam } from '@fastgpt/global
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getAIApi } from '../../../../ai/config';
 import { getLLMModel } from '../../../../ai/model';
-import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  sanitizeReasoningChatRequestBody
+} from '../../../../ai/utils';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { extractFirstJsonValue, getRecord } from './utils';
 import json5 from 'json5';
@@ -46,15 +50,21 @@ export const callChatCompletionText = async (params: {
   if (!model) return { text: '', tokens: 0, reasoningText: '' };
 
   const ai = getAIApi({ timeout });
-  const requestBody: Record<string, unknown> = {
-    ...model.defaultConfig,
-    model: model.model,
-    temperature: computedTemperature({ model, temperature }),
-    ...(typeof maxToken === 'number' ? { max_tokens: computedMaxToken({ model, maxToken }) } : {}),
-    stream: false,
-    messages,
-    ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
-  };
+  const requestBody = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: computedTemperature({ model, temperature }),
+      ...(typeof maxToken === 'number'
+        ? { max_tokens: computedMaxToken({ model, maxToken }) }
+        : {}),
+      stream: false,
+      messages,
+      ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
+    },
+    model,
+    reasoningEffort
+  });
 
   const resp = (await ai.chat.completions.create(
     requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
@@ -98,15 +108,21 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
   if (!model) return { json: null, tokens: 0, reasoningText: '', rawText: '' };
 
   const ai = getAIApi({ timeout });
-  const requestBody: Record<string, unknown> = {
-    ...model.defaultConfig,
-    model: model.model,
-    temperature: computedTemperature({ model, temperature }),
-    ...(typeof maxToken === 'number' ? { max_tokens: computedMaxToken({ model, maxToken }) } : {}),
-    stream: false,
-    messages,
-    ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
-  };
+  const requestBody = sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...model.defaultConfig,
+      model: model.model,
+      temperature: computedTemperature({ model, temperature }),
+      ...(typeof maxToken === 'number'
+        ? { max_tokens: computedMaxToken({ model, maxToken }) }
+        : {}),
+      stream: false,
+      messages,
+      ...(enableReasoning && reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
+    },
+    model,
+    reasoningEffort
+  });
 
   const resp = (await ai.chat.completions.create(
     requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],

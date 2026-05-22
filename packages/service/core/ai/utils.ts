@@ -28,3 +28,35 @@ export const computedTemperature = ({
 
   return temperature;
 };
+
+export const sanitizeReasoningChatRequestBody = <T extends Record<string, unknown>>({
+  requestBody,
+  model,
+  reasoningEffort
+}: {
+  requestBody: T;
+  model: LLMModelItemType;
+  reasoningEffort?: string;
+}): T => {
+  const nextBody = { ...requestBody };
+  if (
+    'reasoning_effort' in nextBody &&
+    (typeof nextBody.reasoning_effort !== 'string' || !nextBody.reasoning_effort.trim())
+  ) {
+    delete nextBody.reasoning_effort;
+  }
+
+  const requestReasoningEffort =
+    typeof nextBody.reasoning_effort === 'string' && nextBody.reasoning_effort.trim()
+      ? nextBody.reasoning_effort
+      : reasoningEffort;
+
+  if (!model.reasoning || !requestReasoningEffort) return nextBody as T;
+
+  delete nextBody.temperature;
+  delete nextBody.top_p;
+  delete nextBody.presence_penalty;
+  delete nextBody.frequency_penalty;
+
+  return nextBody;
+};
