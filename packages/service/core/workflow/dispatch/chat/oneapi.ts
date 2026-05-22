@@ -43,6 +43,8 @@ import { addLog } from '../../../../common/system/log';
 import {
   computedMaxToken,
   computedTemperature,
+  createThinkTagStreamParser,
+  splitThinkTagContent,
   sanitizeReasoningChatRequestBody
 } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
@@ -213,11 +215,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         };
       } else {
         const unStreamResponse = response as ChatCompletion;
-        const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-        const reasoning = aiChatReasoning
+        const parsed = splitThinkTagContent(unStreamResponse.choices?.[0]?.message?.content || '');
+        const reasoningByField = aiChatReasoning
           ? // @ts-ignore
             unStreamResponse.choices?.[0]?.message?.reasoning_content || ''
           : '';
+        const answer = parsed.text;
+        const reasoning = [reasoningByField, parsed.reasoning].filter(Boolean).join('\n');
 
         if (stream) {
           // Some models do not support streaming
@@ -402,26 +406,45 @@ async function streamResponse({
   });
   let answer = '';
   let reasoning = '';
+  const thinkTagParser = createThinkTagStreamParser();
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
       break;
     }
 
-    const content = part.choices?.[0]?.delta?.content || '';
-    answer += content;
+    const parsed = thinkTagParser.push(part.choices?.[0]?.delta?.content || '');
+    answer += parsed.text;
 
-    const reasoningContent = aiChatReasoning
+    const reasoningByField = aiChatReasoning
       ? part.choices?.[0]?.delta?.reasoning_content || ''
       : '';
+    const reasoningContent = [reasoningByField, parsed.reasoning].filter(Boolean).join('');
     reasoning += reasoningContent;
 
+    if (parsed.text || reasoningContent) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: parsed.text,
+          reasoning_content: reasoningContent,
+          model
+        })
+      });
+    }
+  }
+
+  const rest = thinkTagParser.flush();
+  answer += rest.text;
+  reasoning += rest.reasoning;
+  if (rest.text || rest.reasoning) {
     workflowStreamResponse?.({
       write,
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
-        text: content,
-        reasoning_content: reasoningContent,
+        text: rest.text,
+        reasoning_content: rest.reasoning,
         model
       })
     });

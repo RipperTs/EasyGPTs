@@ -5,6 +5,7 @@ import { getLLMModel } from '../../../../ai/model';
 import {
   computedMaxToken,
   computedTemperature,
+  splitThinkTagContent,
   sanitizeReasoningChatRequestBody
 } from '../../../../ai/utils';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
@@ -71,7 +72,8 @@ export const callChatCompletionText = async (params: {
     abortSignal ? { signal: abortSignal } : undefined
   )) as unknown as ChatCompletion;
 
-  const text = (resp.choices?.[0]?.message?.content || '').trim();
+  const parsedContent = splitThinkTagContent(resp.choices?.[0]?.message?.content || '');
+  const text = parsedContent.text.trim();
   const assistantMsg: ChatCompletionMessageParam = {
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
     content: text
@@ -79,7 +81,9 @@ export const callChatCompletionText = async (params: {
   const tokens =
     resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
 
-  const reasoningText = getReasoningContent({ enableReasoning, resp });
+  const reasoningText = [getReasoningContent({ enableReasoning, resp }), parsedContent.reasoning]
+    .filter(Boolean)
+    .join('\n');
 
   return { text, tokens, reasoningText };
 };
@@ -129,7 +133,8 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
     abortSignal ? { signal: abortSignal } : undefined
   )) as unknown as ChatCompletion;
 
-  const rawText = resp.choices?.[0]?.message?.content || '';
+  const parsedContent = splitThinkTagContent(resp.choices?.[0]?.message?.content || '');
+  const rawText = parsedContent.text;
   const assistantMsg: ChatCompletionMessageParam = {
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
     content: rawText
@@ -137,7 +142,9 @@ export const callChatCompletionJson = async <T extends Record<string, unknown>>(
   const tokens =
     resp.usage?.total_tokens ?? (await countGptMessagesTokens(messages.concat(assistantMsg)));
 
-  const reasoningText = getReasoningContent({ enableReasoning, resp });
+  const reasoningText = [getReasoningContent({ enableReasoning, resp }), parsedContent.reasoning]
+    .filter(Boolean)
+    .join('\n');
 
   const jsonStr = extractFirstJsonValue(rawText) || rawText.trim();
   try {

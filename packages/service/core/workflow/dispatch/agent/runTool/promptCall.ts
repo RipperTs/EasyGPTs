@@ -34,6 +34,8 @@ import {
 import {
   computedMaxToken,
   computedTemperature,
+  createThinkTagStreamParser,
+  splitThinkTagContent,
   sanitizeReasoningChatRequestBody
 } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
@@ -185,13 +187,14 @@ export const runToolWithPromptCall = async (
     }
 
     const result = resp as ChatCompletion;
-    const answer = result.choices?.[0]?.message?.content || '';
-    const reasoning = enableReasoning
+    const parsedAnswer = splitThinkTagContent(result.choices?.[0]?.message?.content || '');
+    const reasoningByField = enableReasoning
       ? // @ts-ignore
         result.choices?.[0]?.message?.reasoning_content || ''
       : '';
+    const reasoning = [reasoningByField, parsedAnswer.reasoning].filter(Boolean).join('\n');
 
-    return { answer, reasoning };
+    return { answer: parsedAnswer.text, reasoning };
   };
 
   const { answer, reasoning } = await (async () => {
@@ -431,6 +434,7 @@ async function streamResponse({
   let startResponseWrite = false;
   let textAnswer = '';
   let reasoning = '';
+  const thinkTagParser = createThinkTagStreamParser();
 
   for await (const part of stream) {
     if (res.closed) {
@@ -442,22 +446,25 @@ async function streamResponse({
     // console.log(responseChoice, '---===');
 
     // Extract reasoning content first (it may come separately from content)
-    const reasoningContent = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    const parsed = thinkTagParser.push(responseChoice?.content || '');
+    const reasoningByField = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    const reasoningContent = [reasoningByField, parsed.reasoning].filter(Boolean).join('');
     reasoning += reasoningContent;
 
     if (responseChoice?.content) {
-      const content = responseChoice?.content || '';
-      textAnswer += content;
+      textAnswer += parsed.text;
 
       if (startResponseWrite) {
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: content,
-            reasoning_content: reasoningContent
-          })
-        });
+        if (parsed.text || reasoningContent) {
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: parsed.text,
+              reasoning_content: reasoningContent
+            })
+          });
+        }
       } else if (textAnswer.length >= 3) {
         textAnswer = textAnswer.trim();
         if (textAnswer.startsWith('0')) {
@@ -485,6 +492,20 @@ async function streamResponse({
         })
       });
     }
+  }
+
+  const rest = thinkTagParser.flush();
+  textAnswer += rest.text;
+  reasoning += rest.reasoning;
+  if (startResponseWrite && (rest.text || rest.reasoning)) {
+    workflowStreamResponse?.({
+      write,
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({
+        text: rest.text,
+        reasoning_content: rest.reasoning
+      })
+    });
   }
 
   if (!textAnswer && !reasoning) {

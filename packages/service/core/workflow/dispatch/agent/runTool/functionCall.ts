@@ -36,6 +36,8 @@ import {
 import {
   computedMaxToken,
   computedTemperature,
+  createThinkTagStreamParser,
+  splitThinkTagContent,
   sanitizeReasoningChatRequestBody
 } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
@@ -313,13 +315,15 @@ export const runToolWithFunctionCall = async (
         ]
       : [];
 
-    const reasoning = enableReasoning
+    const parsedAnswer = splitThinkTagContent(result.choices?.[0]?.message?.content || '');
+    const reasoningByField = enableReasoning
       ? // @ts-ignore
         result.choices?.[0]?.message?.reasoning_content || ''
       : '';
+    const reasoning = [reasoningByField, parsedAnswer.reasoning].filter(Boolean).join('\n');
 
     return {
-      answer: result.choices?.[0]?.message?.content || '',
+      answer: parsedAnswer.text,
       functionCalls: toolCalls,
       reasoning: reasoning
     };
@@ -618,6 +622,7 @@ async function streamResponse({
   let reasoning = '';
   let functionCalls: ChatCompletionMessageFunctionCall[] = [];
   let functionId = getNanoid();
+  const thinkTagParser = createThinkTagStreamParser();
 
   for await (const part of stream) {
     if (res.closed) {
@@ -628,21 +633,24 @@ async function streamResponse({
     const responseChoice = part.choices?.[0]?.delta;
 
     // Extract reasoning content first (it may come separately from content or function_call)
-    const reasoningContent = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    const parsed = thinkTagParser.push(responseChoice?.content || '');
+    const reasoningByField = enableReasoning ? responseChoice?.reasoning_content || '' : '';
+    const reasoningContent = [reasoningByField, parsed.reasoning].filter(Boolean).join('');
     reasoning += reasoningContent;
 
-    if (responseChoice.content) {
-      const content = responseChoice?.content || '';
-      textAnswer += content;
+    if (responseChoice?.content) {
+      textAnswer += parsed.text;
 
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: content,
-          reasoning_content: reasoningContent
-        })
-      });
+      if (parsed.text || reasoningContent) {
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: parsed.text,
+            reasoning_content: reasoningContent
+          })
+        });
+      }
     } else if (reasoningContent) {
       // Send reasoning content even when there's no text content
       workflowStreamResponse?.({
@@ -653,7 +661,7 @@ async function streamResponse({
           reasoning_content: reasoningContent
         })
       });
-    } else if (responseChoice.function_call) {
+    } else if (responseChoice?.function_call) {
       const functionCall: {
         arguments: string;
         name?: string;
@@ -716,6 +724,20 @@ async function streamResponse({
         });
       }
     }
+  }
+
+  const rest = thinkTagParser.flush();
+  textAnswer += rest.text;
+  reasoning += rest.reasoning;
+  if (rest.text || rest.reasoning) {
+    workflowStreamResponse?.({
+      write,
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({
+        text: rest.text,
+        reasoning_content: rest.reasoning
+      })
+    });
   }
 
   if (!textAnswer && functionCalls.length === 0 && !reasoning) {
