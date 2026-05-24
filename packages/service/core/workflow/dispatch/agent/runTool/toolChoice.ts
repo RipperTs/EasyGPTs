@@ -216,22 +216,40 @@ const getToolMessageText = (content: ChatCompletionToolMessageParam['content']) 
   }
 };
 
-const TOOL_RESULT_SUMMARY_CHAR_LIMIT = 8000;
+const TOOL_HISTORY_FALLBACK_RESULT_CHAR_LIMIT = 8000;
 const TOOL_RESULT_TOO_LARGE_PLACEHOLDER =
   '工具返回内容超出上下文预算，已省略原始内容。请基于工具名称、参数和可用上下文回答；如果信息不足，请说明无法确定。';
 
-const formatToolResultSummaryText = (content: ChatCompletionToolMessageParam['content']) => {
+const formatToolHistoryFallbackResult = (content: ChatCompletionToolMessageParam['content']) => {
   const text = getToolMessageText(content);
-  if (text.length <= TOOL_RESULT_SUMMARY_CHAR_LIMIT) return text;
+  if (text.length <= TOOL_HISTORY_FALLBACK_RESULT_CHAR_LIMIT) return text;
 
   return `工具返回内容过长，已截断。以下保留开头和结尾片段：\n${sliceStrStartEnd(
     text,
-    TOOL_RESULT_SUMMARY_CHAR_LIMIT / 2,
-    TOOL_RESULT_SUMMARY_CHAR_LIMIT / 2
+    TOOL_HISTORY_FALLBACK_RESULT_CHAR_LIMIT / 2,
+    TOOL_HISTORY_FALLBACK_RESULT_CHAR_LIMIT / 2
   )}`;
 };
 
-const buildToolResultSummaryMessages = ({
+const stripToolProtocolMessages = (
+  messages: ChatCompletionMessageParam[]
+): ChatCompletionMessageParam[] => {
+  return messages
+    .map((message) => {
+      if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) return;
+
+      if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant && message.tool_calls) {
+        if (!message.content) return;
+        const { tool_calls, ...rest } = message;
+        return rest;
+      }
+
+      return message;
+    })
+    .filter(Boolean) as ChatCompletionMessageParam[];
+};
+
+const buildToolHistoryFallbackMessages = ({
   requestMessages,
   toolsRunResponse
 }: {
@@ -244,14 +262,15 @@ const buildToolResultSummaryMessages = ({
       return [
         `Tool ${index + 1}: ${toolCall.toolName || toolCall.function.name}`,
         `Arguments: ${toolCall.function.arguments || '{}'}`,
-        `Result: ${formatToolResultSummaryText(item.toolMsgParams.content)}`
+        `Result: ${formatToolHistoryFallbackResult(item.toolMsgParams.content)}`
       ].join('\n');
     })
     .join('\n\n');
 
+  const fallbackMessages = stripToolProtocolMessages(requestMessages);
   const lastUserIndex = (() => {
-    for (let i = requestMessages.length - 1; i >= 0; i--) {
-      if (requestMessages[i]?.role === ChatCompletionRequestMessageRoleEnum.User) return i;
+    for (let i = fallbackMessages.length - 1; i >= 0; i--) {
+      if (fallbackMessages[i]?.role === ChatCompletionRequestMessageRoleEnum.User) return i;
     }
     return -1;
   })();
@@ -261,16 +280,16 @@ const buildToolResultSummaryMessages = ({
     content: `The tools have already been executed. Use the following tool results as authoritative external data and answer the user's latest question in Simplified Chinese.\n\n${toolResultText}`
   };
 
-  if (lastUserIndex < 0) return [...requestMessages, summaryMessage];
+  if (lastUserIndex < 0) return [...fallbackMessages, summaryMessage];
 
-  const lastUserMessage = requestMessages[lastUserIndex];
+  const lastUserMessage = fallbackMessages[lastUserIndex];
   return [
-    ...requestMessages.slice(0, lastUserIndex),
+    ...fallbackMessages.slice(0, lastUserIndex),
     {
       ...lastUserMessage,
       content: `${getMessageText(lastUserMessage)}\n\n${summaryMessage.content}`.trim()
     },
-    ...requestMessages.slice(lastUserIndex + 1)
+    ...fallbackMessages.slice(lastUserIndex + 1)
   ];
 };
 
@@ -434,7 +453,7 @@ const filterToolChoiceMessagesByMaxContext = async ({
   return [...systemMessages, ...selectedBlocks.flat()];
 };
 
-const callToolResultFinalAnswer = async ({
+const callToolHistoryFallbackFinalAnswer = async ({
   toolModel,
   requestMessages,
   toolsRunResponse,
@@ -453,7 +472,7 @@ const callToolResultFinalAnswer = async ({
   enableReasoning: boolean;
   abortSignal?: AbortSignal;
 }) => {
-  const messages = buildToolResultSummaryMessages({
+  const messages = buildToolHistoryFallbackMessages({
     requestMessages,
     toolsRunResponse
   });
@@ -1135,10 +1154,10 @@ export const runToolWithToolChoice = async (
       } catch (error) {
         if (!isBadResponseStatusCodeError(error)) throw error;
 
-        addLog.warn('LLM tool history rejected, synthesize answer with text tool summary', {
+        addLog.warn('LLM tool history rejected, use text-only fallback to synthesize answer', {
           model: toolModel.model
         });
-        const finalAnswer = await callToolResultFinalAnswer({
+        const finalAnswer = await callToolHistoryFallbackFinalAnswer({
           toolModel,
           requestMessages,
           toolsRunResponse,
