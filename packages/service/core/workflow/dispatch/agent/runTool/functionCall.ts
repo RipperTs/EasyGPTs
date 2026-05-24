@@ -34,11 +34,10 @@ import {
   injectWorkflowStartOutputsForToolRun
 } from './utils';
 import {
+  buildChatCompletionRequestBody,
   computedMaxToken,
-  computedTemperature,
   createThinkTagStreamParser,
-  splitThinkTagContent,
-  sanitizeReasoningChatRequestBody
+  splitThinkTagContent
 } from '../../../../ai/utils';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { throwIfAborted } from '../../utils/abort';
@@ -207,32 +206,18 @@ export const runToolWithFunctionCall = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
-    requestBody: {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: computedTemperature({
-        model: toolModel,
-        temperature
-      }),
-      max_tokens,
-      stream,
-      messages: requestMessages,
+  let requestBody = buildChatCompletionRequestBody({
+    model: toolModel,
+    messages: requestMessages,
+    temperature,
+    maxToken,
+    stream,
+    reasoningEffort: enableReasoning ? reasoningEffort : undefined,
+    extraBody: {
       functions,
       function_call: 'auto'
-    },
-    model: toolModel,
-    reasoningEffort
+    }
   });
-
-  if (enableReasoning && reasoningEffort) {
-    requestBody.reasoning_effort = reasoningEffort;
-    requestBody = sanitizeReasoningChatRequestBody({
-      requestBody,
-      model: toolModel,
-      reasoningEffort
-    });
-  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
@@ -263,20 +248,18 @@ export const runToolWithFunctionCall = async (
         ) as LLMModelItemType[];
         const fallback = candidates[0];
         if (fallback) {
-          requestBody = sanitizeReasoningChatRequestBody({
-            requestBody: {
-              ...(fallback?.defaultConfig || {}),
-              model: fallback.model,
-              temperature: computedTemperature({ model: fallback, temperature }),
-              max_tokens,
-              stream,
-              messages: requestMessages,
+          requestBody = buildChatCompletionRequestBody({
+            model: fallback,
+            messages: requestMessages,
+            temperature,
+            maxToken,
+            stream,
+            reasoningEffort: enableReasoning ? reasoningEffort : undefined,
+            extraBody: {
               functions,
               function_call: 'auto'
-            },
-            model: fallback,
-            reasoningEffort
-          }) as any;
+            }
+          });
           const ai2 = getAIApi({ timeout: 480000 });
           ensureNotAborted();
           return ai2.chat.completions.create(requestBody as any, {

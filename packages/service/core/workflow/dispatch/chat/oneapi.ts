@@ -7,6 +7,7 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { getAIApi } from '../../../ai/config';
 import type {
   ChatCompletion,
+  ChatCompletionCreateParams,
   ChatCompletionMessageParam,
   StreamChatType
 } from '@fastgpt/global/core/ai/type.d';
@@ -41,11 +42,10 @@ import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
 import {
+  buildChatCompletionRequestBody,
   computedMaxToken,
-  computedTemperature,
   createThinkTagStreamParser,
-  splitThinkTagContent,
-  sanitizeReasoningChatRequestBody
+  splitThinkTagContent
 } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
 
@@ -170,20 +170,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     })
   ]);
 
-  const requestBody = sanitizeReasoningChatRequestBody({
-    requestBody: {
-      ...modelConstantsData?.defaultConfig,
-      model: modelConstantsData.model,
-      temperature: computedTemperature({
-        model: modelConstantsData,
-        temperature
-      }),
-      max_tokens,
-      stream,
-      messages: requestMessages,
-      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
-    },
+  const requestBody = buildChatCompletionRequestBody({
     model: modelConstantsData,
+    messages: requestMessages,
+    temperature,
+    maxToken,
+    stream,
     reasoningEffort
   });
   // console.log(JSON.stringify(requestBody, null, 2), '===');
@@ -192,11 +184,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userKey: user.openaiAccount,
       timeout: 480000
     });
-    const response = await ai.chat.completions.create(requestBody, {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
+    const response = await ai.chat.completions.create(
+      requestBody as unknown as ChatCompletionCreateParams,
+      {
+        headers: {
+          Accept: 'application/json, text/plain, */*'
+        }
       }
-    });
+    );
 
     const { answerText, reasoningText } = await (async () => {
       if (res && stream) {

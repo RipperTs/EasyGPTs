@@ -1,4 +1,5 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
 export const computedMaxToken = ({
   maxToken,
@@ -29,6 +30,28 @@ export const computedTemperature = ({
   return temperature;
 };
 
+const validReasoningEfforts = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const removeUndefinedValues = <T extends Record<string, unknown>>(data: T): T => {
+  return Object.entries(data).reduce<Record<string, unknown>>((result, [key, value]) => {
+    if (value !== undefined) result[key] = value;
+    return result;
+  }, {}) as T;
+};
+
+const normalizeReasoningEffort = (value?: string) => {
+  const effort = value?.trim();
+  return effort && validReasoningEfforts.has(effort) ? effort : undefined;
+};
+
+const isOpenAIReasoningModel = (modelName: string) => {
+  const normalized = modelName.trim().toLowerCase();
+  return /^(o\d|o\d-|o\d\.|o[134](?:-|$)|gpt-5(?:[.-]|$))/.test(normalized);
+};
+
 export const sanitizeReasoningChatRequestBody = <T extends Record<string, unknown>>({
   requestBody,
   model,
@@ -38,27 +61,73 @@ export const sanitizeReasoningChatRequestBody = <T extends Record<string, unknow
   model: LLMModelItemType;
   reasoningEffort?: string;
 }): T => {
-  const nextBody = { ...requestBody };
-  if (
-    'reasoning_effort' in nextBody &&
-    (typeof nextBody.reasoning_effort !== 'string' || !nextBody.reasoning_effort.trim())
-  ) {
-    delete nextBody.reasoning_effort;
+  const nextBody: Record<string, unknown> = { ...requestBody };
+  const requestReasoningEffort = normalizeReasoningEffort(
+    typeof nextBody.reasoning_effort === 'string' ? nextBody.reasoning_effort : reasoningEffort
+  );
+
+  delete nextBody.reasoning_effort;
+  if (model.reasoning && requestReasoningEffort) {
+    nextBody.reasoning_effort = requestReasoningEffort;
   }
 
-  const requestReasoningEffort =
-    typeof nextBody.reasoning_effort === 'string' && nextBody.reasoning_effort.trim()
-      ? nextBody.reasoning_effort
-      : reasoningEffort;
+  const useOpenAIReasoningCompatibility = model.reasoning && isOpenAIReasoningModel(model.model);
 
-  if (!model.reasoning || !requestReasoningEffort) return nextBody as T;
+  if (!model.reasoning || (!requestReasoningEffort && !useOpenAIReasoningCompatibility)) {
+    return removeUndefinedValues(nextBody) as T;
+  }
 
   delete nextBody.temperature;
   delete nextBody.top_p;
   delete nextBody.presence_penalty;
   delete nextBody.frequency_penalty;
 
-  return nextBody;
+  if (useOpenAIReasoningCompatibility) {
+    const maxCompletionTokens = nextBody.max_tokens ?? nextBody.max_completion_tokens;
+    delete nextBody.max_tokens;
+    if (typeof maxCompletionTokens === 'number') {
+      nextBody.max_completion_tokens = maxCompletionTokens;
+    }
+  }
+
+  return removeUndefinedValues(nextBody) as T;
+};
+
+export const buildChatCompletionRequestBody = ({
+  model,
+  messages,
+  temperature,
+  maxToken,
+  stream,
+  reasoningEffort,
+  extraBody = {}
+}: {
+  model: LLMModelItemType;
+  messages: ChatCompletionMessageParam[];
+  temperature?: number;
+  maxToken?: number;
+  stream: boolean;
+  reasoningEffort?: string;
+  extraBody?: Record<string, unknown>;
+}) => {
+  const defaultConfig = isRecord(model.defaultConfig) ? model.defaultConfig : {};
+  const computedMaxTokens =
+    typeof maxToken === 'number' ? computedMaxToken({ model, maxToken }) : undefined;
+
+  return sanitizeReasoningChatRequestBody({
+    requestBody: {
+      ...defaultConfig,
+      model: model.model,
+      temperature:
+        typeof temperature === 'number' ? computedTemperature({ model, temperature }) : undefined,
+      ...(typeof computedMaxTokens === 'number' ? { max_tokens: computedMaxTokens } : {}),
+      stream,
+      messages,
+      ...extraBody
+    },
+    model,
+    reasoningEffort
+  });
 };
 
 export type ThinkTagParseResult = {

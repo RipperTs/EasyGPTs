@@ -32,11 +32,10 @@ import {
   injectWorkflowStartOutputsForToolRun
 } from './utils';
 import {
+  buildChatCompletionRequestBody,
   computedMaxToken,
-  computedTemperature,
   createThinkTagStreamParser,
-  splitThinkTagContent,
-  sanitizeReasoningChatRequestBody
+  splitThinkTagContent
 } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 import { throwIfAborted } from '../../utils/abort';
@@ -139,30 +138,14 @@ export const runToolWithPromptCall = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
-    requestBody: {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: computedTemperature({
-        model: toolModel,
-        temperature
-      }),
-      max_tokens,
-      stream,
-      messages: requestMessages
-    },
+  const requestBody = buildChatCompletionRequestBody({
     model: toolModel,
-    reasoningEffort
+    messages: requestMessages,
+    temperature,
+    maxToken,
+    stream,
+    reasoningEffort: enableReasoning ? reasoningEffort : undefined
   });
-
-  if (enableReasoning && reasoningEffort) {
-    requestBody.reasoning_effort = reasoningEffort;
-    requestBody = sanitizeReasoningChatRequestBody({
-      requestBody,
-      model: toolModel,
-      reasoningEffort
-    });
-  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */

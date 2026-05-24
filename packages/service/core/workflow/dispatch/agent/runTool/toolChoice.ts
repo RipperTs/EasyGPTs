@@ -1,6 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../../../../ai/config';
-import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
+import { loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
   ChatCompletionMessageToolCall,
@@ -34,11 +34,10 @@ import {
   injectWorkflowStartOutputsForToolRun
 } from './utils';
 import {
+  buildChatCompletionRequestBody,
   computedMaxToken,
-  computedTemperature,
   createThinkTagStreamParser,
-  splitThinkTagContent,
-  sanitizeReasoningChatRequestBody
+  splitThinkTagContent
 } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
@@ -188,17 +187,6 @@ const normalizeToolCalls = ({
     .filter(Boolean) as ChatCompletionMessageToolCall[];
 };
 
-const keepSystemAndLastUserMessages = (messages: ChatCompletionMessageParam[]) => {
-  const systemMessages = messages.filter(
-    (item) => item.role === ChatCompletionRequestMessageRoleEnum.System
-  );
-  const lastUserMessage = [...messages]
-    .reverse()
-    .find((item) => item.role === ChatCompletionRequestMessageRoleEnum.User);
-
-  return [...systemMessages, ...(lastUserMessage ? [lastUserMessage] : [])];
-};
-
 const isBadResponseStatusCodeError = (error: unknown) => {
   if (!isRecord(error)) return false;
   return (
@@ -206,6 +194,41 @@ const isBadResponseStatusCodeError = (error: unknown) => {
     error.type === 'bad_response_status_code' ||
     String(error.message || '').includes('bad_response_status_code')
   );
+};
+
+const getMessageText = (message: ChatCompletionMessageParam) => {
+  const content = message.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map((item) => (item.type === 'text' ? item.text : ''))
+    .filter(Boolean)
+    .join('\n');
+};
+
+const getToolMessageText = (content: ChatCompletionToolMessageParam['content']) => {
+  if (typeof content === 'string') return content;
+  try {
+    return JSON.stringify(content);
+  } catch {
+    return String(content || '');
+  }
+};
+
+const TOOL_RESULT_SUMMARY_CHAR_LIMIT = 8000;
+const TOOL_RESULT_TOO_LARGE_PLACEHOLDER =
+  '工具返回内容超出上下文预算，已省略原始内容。请基于工具名称、参数和可用上下文回答；如果信息不足，请说明无法确定。';
+
+const formatToolResultSummaryText = (content: ChatCompletionToolMessageParam['content']) => {
+  const text = getToolMessageText(content);
+  if (text.length <= TOOL_RESULT_SUMMARY_CHAR_LIMIT) return text;
+
+  return `工具返回内容过长，已截断。以下保留开头和结尾片段：\n${sliceStrStartEnd(
+    text,
+    TOOL_RESULT_SUMMARY_CHAR_LIMIT / 2,
+    TOOL_RESULT_SUMMARY_CHAR_LIMIT / 2
+  )}`;
 };
 
 const buildToolResultSummaryMessages = ({
@@ -221,17 +244,33 @@ const buildToolResultSummaryMessages = ({
       return [
         `Tool ${index + 1}: ${toolCall.toolName || toolCall.function.name}`,
         `Arguments: ${toolCall.function.arguments || '{}'}`,
-        `Result: ${item.toolMsgParams.content || ''}`
+        `Result: ${formatToolResultSummaryText(item.toolMsgParams.content)}`
       ].join('\n');
     })
     .join('\n\n');
 
-  return [
-    ...keepSystemAndLastUserMessages(requestMessages),
-    {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: `The tools have already been executed. Use the following tool results as authoritative external data and answer the user's latest question in Simplified Chinese.\n\n${toolResultText}`
+  const lastUserIndex = (() => {
+    for (let i = requestMessages.length - 1; i >= 0; i--) {
+      if (requestMessages[i]?.role === ChatCompletionRequestMessageRoleEnum.User) return i;
     }
+    return -1;
+  })();
+
+  const summaryMessage: ChatCompletionMessageParam = {
+    role: ChatCompletionRequestMessageRoleEnum.User,
+    content: `The tools have already been executed. Use the following tool results as authoritative external data and answer the user's latest question in Simplified Chinese.\n\n${toolResultText}`
+  };
+
+  if (lastUserIndex < 0) return [...requestMessages, summaryMessage];
+
+  const lastUserMessage = requestMessages[lastUserIndex];
+  return [
+    ...requestMessages.slice(0, lastUserIndex),
+    {
+      ...lastUserMessage,
+      content: `${getMessageText(lastUserMessage)}\n\n${summaryMessage.content}`.trim()
+    },
+    ...requestMessages.slice(lastUserIndex + 1)
   ];
 };
 
@@ -279,6 +318,183 @@ const sanitizeToolChoiceMessages = ({
       return item;
     })
     .filter(Boolean) as ChatCompletionMessageParam[];
+};
+
+const compactToolMessageContent = (
+  content: ChatCompletionToolMessageParam['content'],
+  limit: number
+) => {
+  const text = getToolMessageText(content);
+  if (text.length <= limit) return content;
+
+  const halfLimit = Math.max(100, Math.floor(limit / 2));
+  return `工具返回内容过长，已截断。以下保留开头和结尾片段：\n${sliceStrStartEnd(
+    text,
+    halfLimit,
+    halfLimit
+  )}`;
+};
+
+const compactToolChoiceBlockByBudget = async ({
+  block,
+  maxTokens
+}: {
+  block: ChatCompletionMessageParam[];
+  maxTokens: number;
+}) => {
+  const limits = [12000, 6000, 3000, 1500, 800, 400];
+
+  for (const limit of limits) {
+    const compactBlock = block.map((message) => {
+      if (message.role !== ChatCompletionRequestMessageRoleEnum.Tool) return message;
+
+      return {
+        ...message,
+        content: compactToolMessageContent(message.content, limit)
+      };
+    });
+
+    if ((await countGptMessagesTokens(compactBlock)) <= maxTokens) return compactBlock;
+  }
+
+  return block.map((message) => {
+    if (message.role !== ChatCompletionRequestMessageRoleEnum.Tool) return message;
+
+    return {
+      ...message,
+      content: TOOL_RESULT_TOO_LARGE_PLACEHOLDER
+    };
+  });
+};
+
+const filterToolChoiceMessagesByMaxContext = async ({
+  messages,
+  maxContext,
+  tools
+}: {
+  messages: ChatCompletionMessageParam[];
+  maxContext: number;
+  tools: ChatCompletionTool[];
+}) => {
+  if (!Array.isArray(messages) || messages.length < 4) return messages;
+
+  const chatStartIndex = messages.findIndex(
+    (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
+  );
+  const systemMessages =
+    chatStartIndex < 0 ? messages : messages.slice(0, Math.max(chatStartIndex, 0));
+  const chatMessages = chatStartIndex < 0 ? [] : messages.slice(chatStartIndex);
+
+  const systemAndToolsTokens = await countGptMessagesTokens(systemMessages, tools);
+  let remainingContext = maxContext - systemAndToolsTokens;
+  const blocks: ChatCompletionMessageParam[][] = [];
+
+  for (let i = 0; i < chatMessages.length; ) {
+    const current = chatMessages[i];
+
+    if (current?.role === ChatCompletionRequestMessageRoleEnum.User) {
+      const block: ChatCompletionMessageParam[] = [current];
+      i += 1;
+
+      while (i < chatMessages.length) {
+        const next = chatMessages[i];
+        if (next?.role === ChatCompletionRequestMessageRoleEnum.User) break;
+        block.push(next);
+        i += 1;
+      }
+
+      blocks.push(block);
+      continue;
+    }
+
+    blocks.push([current]);
+    i += 1;
+  }
+
+  const selectedBlocks: ChatCompletionMessageParam[][] = [];
+
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const block = blocks[i];
+    const tokens = await countGptMessagesTokens(block);
+    remainingContext -= tokens;
+
+    if (remainingContext < 0 && selectedBlocks.length === 0) {
+      const compactBlock = await compactToolChoiceBlockByBudget({
+        block,
+        maxTokens: Math.max(maxContext - systemAndToolsTokens, 0)
+      });
+      selectedBlocks.unshift(compactBlock);
+      break;
+    }
+
+    if (remainingContext < 0) break;
+    selectedBlocks.unshift(block);
+  }
+
+  return [...systemMessages, ...selectedBlocks.flat()];
+};
+
+const callToolResultFinalAnswer = async ({
+  toolModel,
+  requestMessages,
+  toolsRunResponse,
+  temperature,
+  maxToken,
+  reasoningEffort,
+  enableReasoning,
+  abortSignal
+}: {
+  toolModel: LLMModelItemType;
+  requestMessages: ChatCompletionMessageParam[];
+  toolsRunResponse: ToolRunResponseType;
+  temperature: number;
+  maxToken: number;
+  reasoningEffort?: string;
+  enableReasoning: boolean;
+  abortSignal?: AbortSignal;
+}) => {
+  const messages = buildToolResultSummaryMessages({
+    requestMessages,
+    toolsRunResponse
+  });
+  const max_tokens = computedMaxToken({ model: toolModel, maxToken });
+  const filterMessages = await filterToolChoiceMessagesByMaxContext({
+    messages,
+    maxContext: toolModel.maxContext - (max_tokens || 0),
+    tools: []
+  });
+  const ai = getAIApi({ timeout: 480000 });
+  const requestBody = buildChatCompletionRequestBody({
+    model: toolModel,
+    messages: filterMessages,
+    temperature,
+    maxToken,
+    stream: false,
+    reasoningEffort: enableReasoning ? reasoningEffort : undefined
+  });
+  const resp = (await ai.chat.completions.create(
+    requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
+    abortSignal ? { signal: abortSignal } : undefined
+  )) as unknown as ChatCompletion;
+
+  const parsedAnswer = splitThinkTagContent(resp.choices?.[0]?.message?.content || '');
+  const reasoningByField = enableReasoning
+    ? // @ts-ignore
+      resp.choices?.[0]?.message?.reasoning_content || ''
+    : '';
+
+  return {
+    answer: parsedAnswer.text,
+    reasoning: [reasoningByField, parsedAnswer.reasoning].filter(Boolean).join('\n'),
+    tokens:
+      resp.usage?.total_tokens ??
+      (await countGptMessagesTokens(
+        filterMessages.concat({
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: parsedAnswer.text
+        })
+      ))
+  };
 };
 
 const validateToolArgs = (params: {
@@ -393,17 +609,13 @@ ${errors.map((e) => `- ${e}`).join('\n')}
 
   try {
     const ai = getAIApi({ timeout: 60000 });
-    const requestBody: Record<string, unknown> = {
-      ...(toolModel.defaultConfig || {}),
-      model: toolModel.model,
-      temperature: computedTemperature({
-        model: toolModel,
-        temperature: Math.min(0.2, temperature)
-      }),
-      max_tokens: 350,
-      stream: false,
-      messages: repairMessages
-    };
+    const requestBody = buildChatCompletionRequestBody({
+      model: toolModel,
+      messages: repairMessages,
+      temperature: Math.min(0.2, temperature),
+      maxToken: 350,
+      stream: false
+    });
     const resp = (await ai.chat.completions.create(
       requestBody as unknown as Parameters<typeof ai.chat.completions.create>[0],
       abortSignal ? { signal: abortSignal } : undefined
@@ -535,9 +747,10 @@ export const runToolWithToolChoice = async (
   });
   // Filter histories by maxToken
   const filterMessages = sanitizeToolChoiceMessages({
-    messages: await filterGPTMessageByMaxContext({
+    messages: await filterToolChoiceMessagesByMaxContext({
       messages,
-      maxContext: toolModel.maxContext - (max_tokens || 0) // filter token. not response maxToken
+      maxContext: toolModel.maxContext - (max_tokens || 0), // filter token. not response maxToken
+      tools
     }),
     toolNodes
   });
@@ -549,32 +762,18 @@ export const runToolWithToolChoice = async (
       origin: requestOrigin
     })
   ]);
-  let requestBody: Record<string, unknown> = sanitizeReasoningChatRequestBody({
-    requestBody: {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: computedTemperature({
-        model: toolModel,
-        temperature
-      }),
-      max_tokens,
-      stream,
-      messages: requestMessages,
+  let requestBody = buildChatCompletionRequestBody({
+    model: toolModel,
+    messages: requestMessages,
+    temperature,
+    maxToken,
+    stream,
+    reasoningEffort: enableReasoning ? reasoningEffort : undefined,
+    extraBody: {
       tools,
       tool_choice: 'auto'
-    },
-    model: toolModel,
-    reasoningEffort
+    }
   });
-
-  if (enableReasoning && reasoningEffort) {
-    requestBody.reasoning_effort = reasoningEffort;
-    requestBody = sanitizeReasoningChatRequestBody({
-      requestBody,
-      model: toolModel,
-      reasoningEffort
-    });
-  }
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
@@ -842,7 +1041,7 @@ export const runToolWithToolChoice = async (
         assistant: tool data
       */
       const concatToolMessages = [
-        ...keepSystemAndLastUserMessages(requestMessages),
+        ...requestMessages,
         assistantToolMsgParams
       ] as ChatCompletionMessageParam[];
       const tokens = await countGptMessagesTokens(concatToolMessages, tools);
@@ -936,20 +1135,36 @@ export const runToolWithToolChoice = async (
       } catch (error) {
         if (!isBadResponseStatusCodeError(error)) throw error;
 
-        addLog.warn('LLM tool history rejected, retry with text tool summary', {
+        addLog.warn('LLM tool history rejected, synthesize answer with text tool summary', {
           model: toolModel.model
         });
-        return await runToolWithToolChoice(
-          {
-            ...props,
-            maxRunToolTimes: 1,
-            messages: buildToolResultSummaryMessages({
-              requestMessages,
-              toolsRunResponse
-            })
-          },
-          nextResponse
-        );
+        const finalAnswer = await callToolResultFinalAnswer({
+          toolModel,
+          requestMessages,
+          toolsRunResponse,
+          temperature,
+          maxToken,
+          reasoningEffort,
+          enableReasoning,
+          abortSignal
+        });
+        const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: finalAnswer.answer
+        };
+        const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
+
+        return {
+          ...nextResponse,
+          totalTokens: nextResponse.totalTokens + finalAnswer.tokens,
+          completeMessages: completeMessages.concat(gptAssistantResponse),
+          assistantResponses: [
+            ...nextResponse.assistantResponses,
+            ...(toolNodeAssistant?.value || [])
+          ],
+          runTimes: nextResponse.runTimes + 1,
+          reasoningText: mergeReasoningText(nextResponse.reasoningText, finalAnswer.reasoning)
+        };
       }
     } else {
       // No tool is invoked, indicating that the process is over
@@ -995,20 +1210,18 @@ export const runToolWithToolChoice = async (
           to: fallback.model
         });
         // 重建请求体，使用降级模型
-        requestBody = sanitizeReasoningChatRequestBody({
-          requestBody: {
-            ...(fallback?.defaultConfig || {}),
-            model: fallback.model,
-            temperature: computedTemperature({ model: fallback, temperature }),
-            max_tokens,
-            stream,
-            messages: requestMessages,
+        requestBody = buildChatCompletionRequestBody({
+          model: fallback,
+          messages: requestMessages,
+          temperature,
+          maxToken,
+          stream,
+          reasoningEffort: enableReasoning ? reasoningEffort : undefined,
+          extraBody: {
             tools,
             tool_choice: 'auto'
-          },
-          model: fallback,
-          reasoningEffort
-        }) as any;
+          }
+        });
         try {
           const ai2 = getAIApi({ timeout: 480000 });
           ensureNotAborted();
@@ -1119,7 +1332,7 @@ export const runToolWithToolChoice = async (
               tool_calls: executedToolCalls
             };
             const concatToolMessages = [
-              ...keepSystemAndLastUserMessages(requestMessages),
+              ...requestMessages,
               assistantToolMsgParams
             ] as ChatCompletionMessageParam[];
             const tokens = await countGptMessagesTokens(concatToolMessages, tools);
