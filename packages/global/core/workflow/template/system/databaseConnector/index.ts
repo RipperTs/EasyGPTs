@@ -22,7 +22,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/datasource',
   name: '数据库查询',
-  intro: '配置 MySQL / PostgreSQL 连接并执行 SQL，支持通过AI自动分析错误并修复错误 SQL。',
+  intro: '配置 MySQL / PostgreSQL / Oracle 连接并执行 SQL，支持通过AI自动分析错误并修复错误 SQL。',
   showStatus: true,
   isTool: true,
   version: '481',
@@ -36,7 +36,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.select],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '数据库类型',
-      description: '选择要连接的数据库类型，目前支持 MySQL 和 PostgreSQL。',
+      description: '选择要连接的数据库类型，目前支持 MySQL、PostgreSQL 和 Oracle。',
       list: [
         {
           label: 'MySQL',
@@ -45,6 +45,10 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
         {
           label: 'PostgreSQL',
           value: 'PostgreSQL'
+        },
+        {
+          label: 'Oracle',
+          value: 'Oracle'
         }
       ],
       required: true
@@ -62,7 +66,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '端口',
-      description: '数据库连接端口，例如 MySQL 默认 3306，PostgreSQL 默认 5432。',
+      description: '数据库连接端口，例如 MySQL 默认 3306，PostgreSQL 默认 5432，Oracle 默认 1521。',
       required: true
     },
     {
@@ -70,7 +74,7 @@ export const DatabaseConnectorModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '数据库名称',
-      description: '要连接的数据库名称（schema）。',
+      description: '要连接的数据库名称。Oracle 请填写 service name。',
       required: true
     },
     {

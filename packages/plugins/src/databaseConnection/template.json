@@ -3,7 +3,7 @@
   "version": "4811",
   "name": "数据源配置 (旧版)",
   "avatar": "core/workflow/template/datasource",
-  "intro": "可连接常用数据库，并执行sql (支持MySQL、PostgreSQL)",
+  "intro": "可连接常用数据库，并执行sql (支持MySQL、PostgreSQL、Microsoft SQL Server、Oracle)",
   "showStatus": true,
   "weight": 10,
 
@@ -48,6 +48,10 @@
               {
                 "label": "Microsoft SQL Server",
                 "value": "Microsoft SQL Server"
+              },
+              {
+                "label": "Oracle",
+                "value": "Oracle"
               }
             ],
             "required": true

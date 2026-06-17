@@ -114,6 +114,9 @@ importers:
       nodemailer:
         specifier: ^6.10.0
         version: 6.10.0
+      oracledb:
+        specifier: ^7.0.0
+        version: 7.0.0
       pg:
         specifier: ^8.10.0
         version: 8.12.0
@@ -241,6 +244,9 @@ importers:
       node-xlsx:
         specifier: ^0.24.0
         version: 0.24.0
+      oracledb:
+        specifier: ^7.0.0
+        version: 7.0.0
       papaparse:
         specifier: 5.4.1
         version: 5.4.1
@@ -540,6 +546,9 @@ importers:
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
+      oracledb:
+        specifier: ^7.0.0
+        version: 7.0.0
       pg:
         specifier: ^8.10.0
         version: 8.12.0
@@ -6310,6 +6319,10 @@ packages:
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
+
+  oracledb@7.0.0:
+    resolution: {integrity: sha512-aPt1oB++zOQ0QsuRLlSbQjydTOg1RTMmfnShoEfETfgiZ0uzmCptHfK/pNLXovl6FVnFoevxX8yfrEme4ksbXg==}
+    engines: {node: '>=14.17'}
 
   p-limit@3.1.0:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
@@ -14967,6 +14980,8 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
       word-wrap: 1.2.5
+
+  oracledb@7.0.0: {}
 
   p-limit@3.1.0:
     dependencies:

@@ -70,6 +70,7 @@
     "zustand": "^4.3.5",
     "mysql2": "^3.11.3",
     "mssql": "^11.0.1",
+    "oracledb": "^7.0.0",
     "pg": "^8.10.0"
   },
   "devDependencies": {

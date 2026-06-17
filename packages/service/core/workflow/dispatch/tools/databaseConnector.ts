@@ -1,5 +1,6 @@
 import { Client as PgClient } from 'pg';
 import mysql from 'mysql2/promise';
+import oracledb from 'oracledb';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
@@ -51,6 +52,50 @@ type QueryConfig = {
   timeoutMs: number;
 };
 
+type SupportedDatabaseType = 'postgres' | 'mysql' | 'oracle';
+type OracleExecuteResult = {
+  rows?: unknown[];
+  rowsAffected?: number;
+};
+
+const getDatabaseType = (databaseType: string): SupportedDatabaseType | undefined => {
+  const type = databaseType.toLowerCase();
+
+  if (type.includes('postgres')) return 'postgres';
+  if (type.includes('mysql')) return 'mysql';
+  if (type.includes('oracle')) return 'oracle';
+};
+
+const getDefaultPort = (databaseType: SupportedDatabaseType): number => {
+  const defaultPortMap: Record<SupportedDatabaseType, number> = {
+    postgres: 5432,
+    mysql: 3306,
+    oracle: 1521
+  };
+
+  return defaultPortMap[databaseType];
+};
+
+const buildOracleConnectString = ({
+  host,
+  port,
+  databaseName
+}: {
+  host: string;
+  port: number;
+  databaseName: string;
+}) => `${host}:${port}/${databaseName}`;
+
+const formatOracleExecuteResult = (result: OracleExecuteResult): unknown => {
+  if (Array.isArray(result.rows)) {
+    return result.rows;
+  }
+
+  return {
+    rowsAffected: result.rowsAffected ?? 0
+  };
+};
+
 const promiseWithTimeout = async <T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -88,16 +133,15 @@ const executeQuery = async ({
   sql,
   timeoutMs
 }: QueryConfig): Promise<unknown> => {
+  const resolvedDatabaseType = getDatabaseType(databaseType);
+  if (!resolvedDatabaseType) {
+    throw new Error(`Unsupported database type: ${databaseType}`);
+  }
+
   const portNumber = Number.parseInt(String(port), 10);
-  const safePort = Number.isNaN(portNumber)
-    ? databaseType.toLowerCase().includes('postgres')
-      ? 5432
-      : 3306
-    : portNumber;
+  const safePort = Number.isNaN(portNumber) ? getDefaultPort(resolvedDatabaseType) : portNumber;
 
-  const type = databaseType.toLowerCase();
-
-  if (type.includes('postgres')) {
+  if (resolvedDatabaseType === 'postgres') {
     const client = new PgClient({
       host,
       port: safePort,
@@ -118,7 +162,7 @@ const executeQuery = async ({
     }
   }
 
-  if (type.includes('mysql')) {
+  if (resolvedDatabaseType === 'mysql') {
     const connection = await mysql.createConnection({
       host,
       port: safePort,
@@ -139,7 +183,38 @@ const executeQuery = async ({
     }
   }
 
-  throw new Error(`Unsupported database type: ${databaseType}`);
+  const connection = await oracledb.getConnection({
+    user,
+    password,
+    connectString: buildOracleConnectString({
+      host,
+      port: safePort,
+      databaseName
+    })
+  });
+
+  let closeConnectionPromise: Promise<void> | undefined;
+
+  try {
+    const result = await promiseWithTimeout(
+      connection.execute(sql, [], {
+        autoCommit: true,
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      }),
+      timeoutMs,
+      () => {
+        closeConnectionPromise = connection.close({ drop: true }).catch(() => {});
+      }
+    );
+
+    return formatOracleExecuteResult(result);
+  } finally {
+    if (closeConnectionPromise) {
+      await closeConnectionPromise;
+    } else {
+      await connection.close().catch(() => {});
+    }
+  }
 };
 
 const buildFixSqlMessages = ({

@@ -1,5 +1,6 @@
 import { Client as PgClient } from 'pg'; // PostgreSQL 客户端
 import mysql from 'mysql2/promise'; // MySQL 客户端
+import oracledb from 'oracledb';
 // @ts-ignore
 import mssql from 'mssql'; // SQL Server 客户端
 
@@ -14,8 +15,29 @@ type Props = {
 };
 
 type Response = Promise<{
-  result: any; // 根据你的 SQL 查询结果类型调整
+  result: unknown;
 }>;
+
+type OracleExecuteResult = {
+  rows?: unknown[];
+  rowsAffected?: number;
+};
+
+const formatOracleExecuteResult = (res: OracleExecuteResult): unknown => {
+  if (Array.isArray(res.rows)) {
+    return res.rows;
+  }
+
+  return {
+    rowsAffected: res.rowsAffected ?? 0
+  };
+};
+
+const getOraclePort = (port: string): number => {
+  const portNumber = parseInt(port, 10);
+
+  return Number.isNaN(portNumber) ? 1521 : portNumber;
+};
 
 const main = async ({
   databaseType,
@@ -67,6 +89,25 @@ const main = async ({
       });
       result = await pool.query(sql);
       await pool.close();
+    } else if (databaseType === 'Oracle') {
+      const connection = await oracledb.getConnection({
+        user,
+        password,
+        connectString: `${host}:${getOraclePort(port)}/${databaseName}`
+      });
+
+      try {
+        const res = await connection.execute(sql, [], {
+          autoCommit: true,
+          outFormat: oracledb.OUT_FORMAT_OBJECT
+        });
+
+        result = formatOracleExecuteResult(res);
+      } finally {
+        await connection.close().catch(() => {});
+      }
+    } else {
+      throw new Error(`Unsupported database type: ${databaseType}`);
     }
     return {
       result
