@@ -5,12 +5,14 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { authTeamByTeamId } from '@fastgpt/service/support/permission/user/auth';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum
 } from '@fastgpt/global/support/user/team/constant';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -26,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const member = await MongoTeamMember.findOne({
       _id: tmbId,
-      status: { $ne: TeamMemberStatusEnum.leave }
+      status: TeamMemberStatusEnum.active
     }).lean();
     if (!member) {
       return jsonRes(res, {
@@ -36,33 +38,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (member.role === TeamMemberRoleEnum.owner) {
       return jsonRes(res, {
-        code: 400,
-        error: '不能移除团队所有者'
+        code: 403,
+        error: '不能重置团队所有者权限'
       });
     }
 
     const teamId = String(member.teamId);
-    const [{ userId, permission: operatorPermission }, targetMember] = await Promise.all([
+    const [{ permission: operatorPermission }, targetMember] = await Promise.all([
       authTeamByTeamId({ req, teamId, per: ManagePermissionVal }),
       getTmbInfoByTmbId({ tmbId })
     ]);
-
-    if (String(member.userId) === userId) {
-      return jsonRes(res, {
-        code: 400,
-        error: '不能移除自己'
-      });
-    }
     if (!operatorPermission.isOwner && targetMember.permission.hasManagePer) {
       return jsonRes(res, {
         code: 403,
-        error: '只有团队所有者可以移除管理员'
+        error: '只有团队所有者可以管理管理员权限'
       });
     }
 
-    await mongoSessionRun(async (session) => {
-      await MongoResourcePermission.deleteMany({ teamId, tmbId }, { session });
-      await MongoTeamMember.deleteOne({ _id: tmbId }, { session });
+    await MongoResourcePermission.deleteOne({
+      teamId,
+      tmbId,
+      resourceType: PerResourceTypeEnum.team
     });
 
     return jsonRes(res, {

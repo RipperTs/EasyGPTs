@@ -3,49 +3,65 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  TeamMemberRoleEnum,
+  TeamMemberStatusEnum
+} from '@fastgpt/global/support/user/team/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
 
-    // 获取当前用户信息
     const { userId } = await parseHeaderCert({
       req,
       authToken: true
     });
-
-    // 获取查询参数
     const { status = TeamMemberStatusEnum.active } = req.query as { status?: string };
 
-    // 获取用户所在的团队成员记录
     const teamMembers = await MongoTeamMember.find({
       userId,
       status
     }).lean();
-
-    // 获取团队信息
     const teamIds = teamMembers.map((member) => member.teamId);
-    const teams = await MongoTeam.find({
-      _id: { $in: teamIds }
-    }).lean();
+    const tmbIds = teamMembers.map((member) => member._id);
+    const [teams, resourcePermissions] = await Promise.all([
+      MongoTeam.find({ _id: { $in: teamIds } }).lean(),
+      MongoResourcePermission.find({
+        teamId: { $in: teamIds },
+        tmbId: { $in: tmbIds },
+        resourceType: PerResourceTypeEnum.team
+      }).lean()
+    ]);
 
-    // 组合数据
-    const result = teamMembers.map((member) => {
-      const team = teams.find((team) => String(team._id) === String(member.teamId));
+    const teamMap = new Map(teams.map((team) => [String(team._id), team]));
+    const permissionMap = new Map(
+      resourcePermissions.map((item) => [String(item.tmbId), item.permission])
+    );
+    const result = teamMembers.flatMap((member) => {
+      const team = teamMap.get(String(member.teamId));
+      if (!team) return [];
 
       return {
+        userId: String(member.userId),
         teamId: String(member.teamId),
-        teamName: team?.name || '',
-        avatar: team?.avatar || '',
-        role: member.role,
-        status: member.status,
+        teamName: team.name,
+        memberName: member.name,
+        avatar: team.avatar,
+        balance: team.balance,
         tmbId: String(member._id),
+        teamDomain: team.teamDomain,
+        role: member.role === TeamMemberRoleEnum.owner ? TeamMemberRoleEnum.owner : undefined,
+        status: member.status,
+        defaultTeam: member.defaultTeam,
+        lafAccount: team.lafAccount,
+        notificationAccount: team.notificationAccount,
         permission: new TeamPermission({
-          per: 0,
-          isOwner: member.role === 'owner' // 根据role字段设置isOwner
+          per: permissionMap.get(String(member._id)) ?? team.defaultPermission,
+          isOwner: member.role === TeamMemberRoleEnum.owner
         })
       };
     });

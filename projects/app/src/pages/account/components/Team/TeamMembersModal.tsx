@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -23,20 +23,31 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Select,
   useDisclosure,
   Spinner
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getTeamMembers, postInviteTeamMember, delRemoveMember } from '@/web/support/user/team/api';
-import { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type.d';
+import {
+  delRemoveMember,
+  getTeamMembers,
+  updateMemberPermission
+} from '@/web/support/user/team/api';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import {
+  ManagePermissionVal,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { searchUsers } from '@/web/support/user/api';
-import { debounce } from 'lodash';
 import dynamic from 'next/dynamic';
 
-const InviteMemberModal = dynamic(() => import('./InviteMemberModal'));
+const InviteMemberModal = dynamic(
+  () => import('@/components/support/user/team/TeamManageModal/components/InviteModal')
+);
 
 type TeamMembersModalProps = {
   isOpen: boolean;
@@ -45,18 +56,14 @@ type TeamMembersModalProps = {
 };
 
 const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
-  const { t } = useTranslation();
   const toast = useToast();
   const [searchText, setSearchText] = useState('');
-
-  // 邀请成员模态框
   const {
     isOpen: isInviteModalOpen,
     onOpen: onInviteModalOpen,
     onClose: onInviteModalClose
   } = useDisclosure();
 
-  // 获取团队成员列表
   const {
     data: members = [],
     loading: loadingMembers,
@@ -65,19 +72,14 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
     refreshDeps: [team.teamId],
     manual: false
   });
-
-  // 过滤团队成员
   const filteredMembers = members.filter(
     (member) =>
       searchText === '' || member.memberName.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  // 删除成员确认
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确定要移除该成员吗？'
   });
-
-  // 删除成员
   const { mutate: removeMember, isLoading: isRemoving } = useRequest({
     mutationFn: async (tmbId: string) => {
       await delRemoveMember(tmbId);
@@ -90,21 +92,22 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
     },
     errorToast: '移除失败'
   });
+  const { mutate: updatePermission, isLoading: isUpdatingPermission } = useRequest({
+    mutationFn: ({ tmbId, permission }: { tmbId: string; permission: PermissionValueType }) =>
+      updateMemberPermission({ tmbIds: [tmbId], permission }),
+    onSuccess: refreshMembers,
+    successToast: '权限修改成功',
+    errorToast: '权限修改失败'
+  });
 
-  // 处理搜索
-  const handleSearch = useCallback(
-    debounce((value: string) => {
-      setSearchText(value);
-    }, 300),
-    []
-  );
+  const showActions = team.permission.hasManagePer;
+  const columnCount = showActions ? 5 : 4;
 
-  console.log('team', team);
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="4xl">
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>{'团队成员' + ' - ' + team.teamName}</ModalHeader>
+        <ModalHeader>{`团队成员 - ${team.teamName}`}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <Flex justifyContent="space-between" mb={4}>
@@ -112,9 +115,13 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
               <InputLeftElement>
                 <MyIcon name="common/searchLight" w="16px" />
               </InputLeftElement>
-              <Input placeholder="搜索成员" onChange={(e) => handleSearch(e.target.value)} />
+              <Input
+                placeholder="搜索成员"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+              />
             </InputGroup>
-            {team.permission.isOwner && (
+            {showActions && (
               <Button
                 leftIcon={<MyIcon name="common/addLight" w="16px" />}
                 size="sm"
@@ -130,15 +137,16 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
               <Thead>
                 <Tr>
                   <Th>成员名称</Th>
-                  <Th>角色</Th>
+                  <Th>身份</Th>
+                  <Th>权限</Th>
                   <Th>状态</Th>
-                  {team.permission.isOwner && <Th>操作</Th>}
+                  {showActions && <Th>操作</Th>}
                 </Tr>
               </Thead>
               <Tbody>
                 {loadingMembers ? (
                   <Tr>
-                    <Td colSpan={team.permission.isOwner ? 4 : 3} textAlign="center" py={4}>
+                    <Td colSpan={columnCount} textAlign="center" py={4}>
                       <Flex justify="center" align="center">
                         <Spinner size="sm" color="primary.500" mr={2} />
                         <Text>加载中...</Text>
@@ -147,38 +155,88 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
                   </Tr>
                 ) : filteredMembers.length === 0 ? (
                   <Tr>
-                    <Td colSpan={team.permission.isOwner ? 4 : 3} textAlign="center" py={4}>
+                    <Td colSpan={columnCount} textAlign="center" py={4}>
                       <Text>暂无成员</Text>
                     </Td>
                   </Tr>
                 ) : (
-                  filteredMembers.map((member) => (
-                    <Tr key={member.tmbId}>
-                      <Td>
-                        <Flex alignItems="center">
-                          <Avatar size="sm" name={member.memberName} src={member.avatar} mr={2} />
-                          <Text>{member.memberName}</Text>
-                        </Flex>
-                      </Td>
-                      <Td>{member.role}</Td>
-                      <Td>{member.status}</Td>
-                      {team.permission.isOwner && (
+                  filteredMembers.map((member) => {
+                    const permissionValue = member.permission.hasManagePer
+                      ? ManagePermissionVal
+                      : member.permission.hasWritePer
+                        ? WritePermissionVal
+                        : ReadPermissionVal;
+                    const permissionLabel = member.permission.hasManagePer
+                      ? '管理'
+                      : member.permission.hasWritePer
+                        ? '可写'
+                        : '只读';
+                    const canRemoveMember =
+                      showActions &&
+                      !member.permission.isOwner &&
+                      member.tmbId !== team.tmbId &&
+                      (team.permission.isOwner || !member.permission.hasManagePer);
+                    const canUpdatePermission =
+                      canRemoveMember && member.status === TeamMemberStatusEnum.active;
+
+                    return (
+                      <Tr key={member.tmbId}>
                         <Td>
-                          {member.role !== 'owner' && (
-                            <IconButton
-                              aria-label="Remove Member"
-                              icon={<MyIcon name="delete" w="16px" />}
+                          <Flex alignItems="center">
+                            <Avatar size="sm" name={member.memberName} src={member.avatar} mr={2} />
+                            <Text>{member.memberName}</Text>
+                          </Flex>
+                        </Td>
+                        <Td>
+                          {member.permission.isOwner
+                            ? '所有者'
+                            : member.permission.hasManagePer
+                              ? '管理员'
+                              : '成员'}
+                        </Td>
+                        <Td>
+                          {canUpdatePermission ? (
+                            <Select
                               size="sm"
-                              variant="ghost"
-                              colorScheme="red"
-                              isLoading={isRemoving}
-                              onClick={openConfirm(() => removeMember(member.tmbId))}
-                            />
+                              w="120px"
+                              value={permissionValue}
+                              isDisabled={isUpdatingPermission}
+                              onChange={(event) =>
+                                updatePermission({
+                                  tmbId: member.tmbId,
+                                  permission: Number(event.target.value)
+                                })
+                              }
+                            >
+                              <option value={ReadPermissionVal}>只读</option>
+                              <option value={WritePermissionVal}>可写</option>
+                              {team.permission.isOwner && (
+                                <option value={ManagePermissionVal}>管理</option>
+                              )}
+                            </Select>
+                          ) : (
+                            <Text>{member.permission.isOwner ? '全部权限' : permissionLabel}</Text>
                           )}
                         </Td>
-                      )}
-                    </Tr>
-                  ))
+                        <Td>{member.status}</Td>
+                        {showActions && (
+                          <Td>
+                            {canRemoveMember && (
+                              <IconButton
+                                aria-label="移除成员"
+                                icon={<MyIcon name="delete" w="16px" />}
+                                size="sm"
+                                variant="ghost"
+                                colorScheme="red"
+                                isLoading={isRemoving}
+                                onClick={openConfirm(() => removeMember(member.tmbId))}
+                              />
+                            )}
+                          </Td>
+                        )}
+                      </Tr>
+                    );
+                  })
                 )}
               </Tbody>
             </Table>
@@ -191,15 +249,12 @@ const TeamMembersModal = ({ isOpen, onClose, team }: TeamMembersModalProps) => {
         </ModalFooter>
         <ConfirmModal />
 
-        {/* 邀请成员模态框 */}
         {isInviteModalOpen && (
           <InviteMemberModal
-            isOpen={isInviteModalOpen}
-            onClose={() => {
-              onInviteModalClose();
-              refreshMembers();
-            }}
             teamId={team.teamId}
+            operatorPermission={team.permission}
+            onSuccess={refreshMembers}
+            onClose={onInviteModalClose}
           />
         )}
       </ModalContent>

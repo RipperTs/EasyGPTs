@@ -193,7 +193,13 @@ const TeamManagement = () => {
                     )}
                   </Flex>
                 </Td>
-                <Td>{team.role}</Td>
+                <Td>
+                  {team.permission.isOwner
+                    ? '所有者'
+                    : team.permission.hasManagePer
+                      ? '管理员'
+                      : '成员'}
+                </Td>
                 <Td>{team.status}</Td>
                 <Td>
                   <HStack spacing={2}>

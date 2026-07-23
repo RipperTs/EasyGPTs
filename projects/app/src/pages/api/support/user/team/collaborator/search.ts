@@ -5,13 +5,15 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { authTeamByTeamId } from '@fastgpt/service/support/permission/user/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
 
     // 获取当前用户信息和团队ID
-    const { userId, teamId: currentTeamId } = await parseHeaderCert({
+    const { teamId: currentTeamId } = await parseHeaderCert({
       req,
       authToken: true
     });
@@ -28,6 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: []
       });
     }
+
+    const { userId } = await authTeamByTeamId({
+      req,
+      teamId,
+      per: ReadPermissionVal
+    });
 
     // 获取团队成员的用户ID列表
     const teamMembers = await MongoTeamMember.find({

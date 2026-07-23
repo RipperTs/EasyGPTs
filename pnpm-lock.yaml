@@ -217,6 +217,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      katex:
+        specifier: 0.16.11
+        version: 0.16.11
       lodash:
         specifier: ^4.17.21
         version: 4.17.21

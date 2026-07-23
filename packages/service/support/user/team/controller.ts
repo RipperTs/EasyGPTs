@@ -1,5 +1,10 @@
-import { TeamTmbItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
-import { ClientSession, Types } from '../../../common/mongo';
+import type {
+  TeamMemberSchema,
+  TeamTmbItemType,
+  TeamMemberWithTeamSchema
+} from '@fastgpt/global/support/user/team/type';
+import type { ClientSession, FilterQuery } from '../../../common/mongo';
+import { Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
@@ -12,7 +17,7 @@ import { getResourcePermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
-async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
+async function getTeamMember(match: FilterQuery<TeamMemberSchema>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
   if (!tmb) {
     return Promise.reject('member not exist');
@@ -33,7 +38,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     balance: tmb.teamId.balance,
     tmbId: String(tmb._id),
     teamDomain: tmb.teamId?.teamDomain,
-    role: tmb.role,
+    role: tmb.role === TeamMemberRoleEnum.owner ? TeamMemberRoleEnum.owner : undefined,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
     lafAccount: tmb.teamId.lafAccount,
@@ -52,6 +57,24 @@ export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
   return getTeamMember({
     _id: new Types.ObjectId(String(tmbId)),
     status: notLeaveStatus
+  });
+}
+
+export async function getTmbInfoByUserIdAndTeamId({
+  userId,
+  teamId
+}: {
+  userId: string;
+  teamId: string;
+}) {
+  if (!userId || !teamId) {
+    return Promise.reject('userId and teamId are required');
+  }
+
+  return getTeamMember({
+    userId: new Types.ObjectId(userId),
+    teamId: new Types.ObjectId(teamId),
+    status: TeamMemberStatusEnum.active
   });
 }
 

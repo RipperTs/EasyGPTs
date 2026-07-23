@@ -1,105 +1,159 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type {
+  InviteMemberProps,
+  InviteMemberResponse
+} from '@fastgpt/global/support/user/team/controller';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { authTeamByTeamId } from '@fastgpt/service/support/permission/user/auth';
 import {
-  TeamMemberRoleEnum,
-  TeamMemberStatusEnum
-} from '@fastgpt/global/support/user/team/constant';
+  ManagePermissionVal,
+  PerResourceTypeEnum,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+
+const TEAM_PERMISSION_VALUES = [ReadPermissionVal, WritePermissionVal, ManagePermissionVal];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
 
-    // 获取当前用户信息
-    const { userId, teamId: currentTeamId } = await parseHeaderCert({
+    const { teamId, usernames, permission } = req.body as InviteMemberProps;
+    const normalizedUsernames = [
+      ...new Set(usernames?.map((username) => username.trim()).filter(Boolean))
+    ];
+
+    if (
+      !teamId ||
+      normalizedUsernames.length === 0 ||
+      !TEAM_PERMISSION_VALUES.includes(permission)
+    ) {
+      return jsonRes(res, {
+        code: 400,
+        error: '团队、用户或权限参数无效'
+      });
+    }
+
+    const { permission: operatorPermission } = await authTeamByTeamId({
       req,
-      authToken: true
-    });
-
-    // 获取请求体
-    const {
-      teamId = currentTeamId,
-      userId: invitedUserId,
-      usernames
-    } = req.body as {
-      teamId?: string;
-      userId?: string;
-      usernames?: string[];
-    };
-
-    console.log('邀请成员请求体:', req.body);
-
-    if (!teamId) {
-      return jsonRes(res, {
-        code: 400,
-        error: '团队ID不能为空'
-      });
-    }
-
-    // 如果提供了usernames，则使用第一个username对应的用户ID
-    let finalUserId = invitedUserId;
-    if (!finalUserId && usernames && usernames.length > 0) {
-      // 这里应该根据username查找用户ID，但为了简化，我们假设usernames[0]就是用户ID
-      finalUserId = usernames[0];
-    }
-
-    if (!finalUserId) {
-      return jsonRes(res, {
-        code: 400,
-        error: '被邀请用户ID不能为空'
-      });
-    }
-
-    // 检查当前用户是否是团队所有者
-    const currentMember = await MongoTeamMember.findOne({
       teamId,
-      userId,
-      role: TeamMemberRoleEnum.owner
+      per: ManagePermissionVal
     });
 
-    if (!currentMember) {
+    if (permission === ManagePermissionVal && !operatorPermission.isOwner) {
       return jsonRes(res, {
         code: 403,
-        error: '只有团队所有者才能邀请成员'
+        error: '只有团队所有者可以授予管理权限'
       });
     }
 
-    // 检查被邀请用户是否已经是团队成员
-    const existMember = await MongoTeamMember.findOne({
+    const users = await MongoUser.find({
+      username: { $in: normalizedUsernames }
+    })
+      .select('_id username')
+      .lean();
+    const userIds = users.map((user) => user._id);
+    const existingMembers = await MongoTeamMember.find({
       teamId,
-      userId: finalUserId
+      userId: { $in: userIds }
+    }).lean();
+
+    const activeUserIds = new Set(
+      existingMembers
+        .filter((member) => member.status !== TeamMemberStatusEnum.leave)
+        .map((member) => String(member.userId))
+    );
+    const inviteUsers = users.filter((user) => !activeUserIds.has(String(user._id)));
+
+    await mongoSessionRun(async (session) => {
+      const invitedTmbIds: string[] = [];
+      for (const user of inviteUsers) {
+        const leftMember = existingMembers.find(
+          (member) =>
+            String(member.userId) === String(user._id) &&
+            member.status === TeamMemberStatusEnum.leave
+        );
+
+        if (leftMember) {
+          await MongoTeamMember.updateOne(
+            { _id: leftMember._id },
+            {
+              $set: {
+                name: user.username,
+                status: TeamMemberStatusEnum.active,
+                defaultTeam: false
+              },
+              $unset: { role: 1 }
+            },
+            { session }
+          );
+          invitedTmbIds.push(String(leftMember._id));
+          continue;
+        }
+
+        const [member] = await MongoTeamMember.create(
+          [
+            {
+              teamId,
+              userId: user._id,
+              name: user.username,
+              status: TeamMemberStatusEnum.active,
+              defaultTeam: false,
+              createTime: new Date()
+            }
+          ],
+          { session }
+        );
+        invitedTmbIds.push(String(member._id));
+      }
+
+      if (invitedTmbIds.length === 0) return;
+
+      await MongoResourcePermission.deleteMany(
+        {
+          teamId,
+          tmbId: { $in: invitedTmbIds },
+          resourceType: PerResourceTypeEnum.team
+        },
+        { session }
+      );
+      await MongoResourcePermission.insertMany(
+        invitedTmbIds.map((tmbId) => ({
+          teamId,
+          tmbId,
+          resourceType: PerResourceTypeEnum.team,
+          permission
+        })),
+        { session }
+      );
     });
 
-    if (existMember) {
-      return jsonRes(res, {
-        code: 400,
-        error: '该用户已经是团队成员'
-      });
-    }
-
-    // 获取用户名
-    let memberName = '';
-    if (usernames && usernames.length > 0) {
-      memberName = usernames[0]; // 使用usernames[0]作为用户名
-    }
-
-    // 创建团队成员
-    const member = await MongoTeamMember.create({
-      teamId,
-      userId: finalUserId,
-      name: memberName, // 使用获取到的用户名
-      role: TeamMemberRoleEnum.owner === 'owner' ? 'member' : 'member',
-      status: TeamMemberStatusEnum.active,
-      defaultTeam: false
-    });
+    const userMap = new Map(users.map((user) => [user.username, user]));
+    const result: InviteMemberResponse = {
+      invite: inviteUsers.map((user) => ({
+        username: user.username,
+        userId: String(user._id)
+      })),
+      inValid: normalizedUsernames
+        .filter((username) => !userMap.has(username))
+        .map((username) => ({ username, userId: '' })),
+      inTeam: users
+        .filter((user) => activeUserIds.has(String(user._id)))
+        .map((user) => ({
+          username: user.username,
+          userId: String(user._id)
+        }))
+    };
 
     return jsonRes(res, {
       code: 200,
-      data: {
-        tmbId: String(member._id)
-      }
+      data: result
     });
   } catch (error) {
     return jsonRes(res, {

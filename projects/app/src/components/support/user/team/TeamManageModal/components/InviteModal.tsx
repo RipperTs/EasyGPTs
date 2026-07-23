@@ -15,13 +15,16 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { useI18n } from '@/web/context/I18n';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 const InviteModal = ({
   teamId,
+  operatorPermission,
   onClose,
   onSuccess
 }: {
   teamId: string;
+  operatorPermission?: TeamPermission;
   onClose: () => void;
   onSuccess: () => void;
 }) => {
@@ -46,7 +49,7 @@ const InviteModal = ({
         description: userT('permission.Write tip'),
         value: WritePermissionVal
       },
-      ...(userInfo?.team?.permission.isOwner
+      ...((operatorPermission ?? userInfo?.team?.permission)?.isOwner
         ? [
             {
               label: userT('permission.Manage'),
@@ -56,9 +59,9 @@ const InviteModal = ({
           ]
         : [])
     ],
-    [userInfo?.team?.permission.isOwner, userT]
+    [operatorPermission, userInfo?.team?.permission, userT]
   );
-  const [selectedInviteType, setSelectInviteType] = useState(inviteTypes[0].value);
+  const [selectedInviteType, setSelectInviteType] = useState(WritePermissionVal);
 
   const { mutate: onInvite, isLoading } = useRequest({
     mutationFn: () => {

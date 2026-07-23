@@ -37,7 +37,7 @@ export type TeamMemberSchema = {
   userId: string;
   createTime: Date;
   name: string;
-  role: `${TeamMemberRoleEnum}`;
+  role?: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   defaultTeam: boolean;
 };
@@ -62,7 +62,7 @@ export type TeamTmbItemType = {
   tmbId: string;
   teamDomain: string;
   defaultTeam: boolean;
-  role: `${TeamMemberRoleEnum}`;
+  role?: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   lafAccount?: LafAccountType;
   notificationAccount?: string;
@@ -75,7 +75,7 @@ export type TeamMemberItemType = {
   teamId: string;
   memberName: string;
   avatar: string;
-  role: `${TeamMemberRoleEnum}`;
+  role?: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   permission: TeamPermission;
 };

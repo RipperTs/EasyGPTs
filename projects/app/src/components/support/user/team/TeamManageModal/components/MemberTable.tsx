@@ -3,6 +3,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   Box,
   HStack,
+  IconButton,
   MenuButton,
   Table,
   TableContainer,
@@ -14,6 +15,7 @@ import {
 } from '@chakra-ui/react';
 import {
   TeamMemberRoleEnum,
+  TeamMemberStatusEnum,
   TeamMemberStatusMap
 } from '@fastgpt/global/support/user/team/constant';
 import { useTranslation } from 'next-i18next';
@@ -51,29 +53,45 @@ function MemberTable() {
             </Tr>
           </Thead>
           <Tbody>
-            {members.map((item) => (
-              <Tr key={item.userId} overflow={'unset'}>
-                <Td>
-                  <HStack>
-                    <Avatar src={item.avatar} w={['18px', '22px']} />
-                    <Box maxW={'150px'} className={'textEllipsis'}>
-                      {item.memberName}
-                    </Box>
-                  </HStack>
-                </Td>
-                <Td>
-                  <PermissionTags
-                    permission={item.permission}
-                    permissionList={TeamPermissionList}
-                  />
-                </Td>
-                <Td color={TeamMemberStatusMap[item.status].color}>
-                  {t(TeamMemberStatusMap[item.status]?.label || ('' as any))}
-                </Td>
-                <Td>
-                  {userInfo?.team.permission.hasManagePer &&
-                    item.role !== TeamMemberRoleEnum.owner &&
-                    item.tmbId !== userInfo?.team.tmbId && (
+            {members.map((item) => {
+              const canRemoveMember =
+                !!userInfo?.team.permission.hasManagePer &&
+                item.role !== TeamMemberRoleEnum.owner &&
+                (userInfo.team.permission.isOwner || !item.permission.hasManagePer) &&
+                item.tmbId !== userInfo.team.tmbId;
+              const canUpdatePermission =
+                canRemoveMember && item.status === TeamMemberStatusEnum.active;
+              const onRemoveMember = () => {
+                openRemoveMember(
+                  () => delRemoveMember(item.tmbId).then(refetchMembers),
+                  undefined,
+                  t('user.team.Remove Member Confirm Tip', {
+                    username: item.memberName
+                  })
+                )();
+              };
+
+              return (
+                <Tr key={item.tmbId} overflow={'unset'}>
+                  <Td>
+                    <HStack>
+                      <Avatar src={item.avatar} w={['18px', '22px']} />
+                      <Box maxW={'150px'} className={'textEllipsis'}>
+                        {item.memberName}
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td>
+                    <PermissionTags
+                      permission={item.permission}
+                      permissionList={TeamPermissionList}
+                    />
+                  </Td>
+                  <Td color={TeamMemberStatusMap[item.status].color}>
+                    {t(TeamMemberStatusMap[item.status]?.label || ('' as any))}
+                  </Td>
+                  <Td>
+                    {canUpdatePermission ? (
                       <PermissionSelect
                         value={item.permission.value}
                         Button={
@@ -95,20 +113,22 @@ function MemberTable() {
                             permission
                           });
                         }}
-                        onDelete={() => {
-                          openRemoveMember(
-                            () => delRemoveMember(item.tmbId).then(refetchMembers),
-                            undefined,
-                            t('user.team.Remove Member Confirm Tip', {
-                              username: item.memberName
-                            })
-                          )();
-                        }}
+                        onDelete={onRemoveMember}
                       />
-                    )}
-                </Td>
-              </Tr>
-            ))}
+                    ) : canRemoveMember ? (
+                      <IconButton
+                        aria-label={t('common:common.Delete')}
+                        icon={<MyIcon name={'delete'} w="1rem" />}
+                        size="sm"
+                        variant="ghost"
+                        colorScheme="red"
+                        onClick={onRemoveMember}
+                      />
+                    ) : null}
+                  </Td>
+                </Tr>
+              );
+            })}
           </Tbody>
         </Table>
 
