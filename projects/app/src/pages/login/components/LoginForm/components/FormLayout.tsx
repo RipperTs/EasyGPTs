@@ -74,8 +74,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex alignItems={'center'}>
         <Flex
-          w={['48px', '56px']}
-          h={['48px', '56px']}
+          w={['40px', '48px']}
+          h={['40px', '48px']}
           bg={'myGray.25'}
           borderRadius={'xl'}
           borderWidth={'1.5px'}
@@ -83,9 +83,9 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           alignItems={'center'}
           justifyContent={'center'}
         >
-          <Image src={LOGO_ICON} w={['24px', '28px']} alt={'icon'} />
+          <Image src={LOGO_ICON} w={['28px']} alt={'icon'} />
         </Flex>
-        <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
+        <Box ml={3} fontSize={'xl'} fontWeight={'bold'}>
           {feConfigs?.systemTitle}
         </Box>
       </Flex>
