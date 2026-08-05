@@ -12,6 +12,8 @@ import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { initAllConfigs } from '@fastgpt/service/core/model/controller';
 
+const DEFAULT_SYSTEM_TITLE = 'LLM应用开发平台';
+
 export const readConfigData = (name: string) => {
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -66,7 +68,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: '/docs',
   openAPIDocUrl: '/openapi',
   systemPluginCourseUrl: '/wiki',
-  systemTitle: 'LLM应用开发平台',
+  systemTitle: DEFAULT_SYSTEM_TITLE,
   concatMd: '',
   limit: {
     exportDatasetLimitMinutes: 0,
@@ -79,6 +81,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   const xgtSsoAuthUrl = process.env.XGT_SSO_AUTH_URL?.trim();
+  const systemTitle = process.env.SYSTEM_NAME?.trim();
 
   // load config - 仅加载非模型相关的配置
   const [dbModelConfig, fileConfig] = await Promise.all([
@@ -93,6 +96,8 @@ export async function initSystemConfig() {
     feConfigs: {
       ...defaultFeConfigs,
       ...fileRes?.feConfigs, // 仅保留前端配置使用文件
+      systemTitle:
+        systemTitle || fileRes?.feConfigs?.systemTitle?.trim() || DEFAULT_SYSTEM_TITLE,
       isPlus: !!FastGPTProUrl,
       ...(xgtSsoAuthUrl ? { xgtSsoAuthUrl } : {})
     },

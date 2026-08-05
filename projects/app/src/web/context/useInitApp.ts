@@ -6,20 +6,22 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 
+const DEFAULT_SYSTEM_TITLE = 'LLM应用开发平台';
+
 // 初始化上下文数据
 export const useInitApp = () => {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
-  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
+  const [title, setTitle] = useState(DEFAULT_SYSTEM_TITLE);
 
   const initFetch = useMemoizedFn(async () => {
     const {
       feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData();
 
-    setTitle(systemTitle || 'EasyGPTs');
+    setTitle(systemTitle?.trim() || DEFAULT_SYSTEM_TITLE);
     setScripts(scripts || []);
     setInitd();
   });
