@@ -28,6 +28,7 @@ import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
 import { dispatchDatasetSearch } from './dataset/search';
+import { dispatchWeKnoraSearch } from './dataset/weknoraSearch';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
@@ -81,6 +82,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
   [FlowNodeTypeEnum.agentChat]: dispatchAgentChat,
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.weknoraSearch]: dispatchWeKnoraSearch,
   [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,

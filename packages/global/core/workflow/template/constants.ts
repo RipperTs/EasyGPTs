@@ -4,6 +4,7 @@ import { EmptyNode } from './system/emptyNode';
 import { WorkflowStart } from './system/workflowStart';
 import { AiChatModule } from './system/aiChat';
 import { DatasetSearchModule } from './system/datasetSearch';
+import { WeKnoraSearchModule } from './system/weknoraSearch';
 import { DatasetConcatModule } from './system/datasetConcat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
 import { ClassifyQuestionModule } from './system/classifyQuestion/index';
@@ -42,6 +43,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   TextEditorNode,
   AssignedAnswerModule,
   DatasetSearchModule,
+  WeKnoraSearchModule,
   DatasetConcatModule,
   ToolModule,
   AgentChatModule,

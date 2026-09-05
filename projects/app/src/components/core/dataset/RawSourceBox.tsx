@@ -6,16 +6,20 @@ import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollect
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 type Props = BoxProps & {
   sourceName?: string;
   collectionId: string;
   sourceId?: string;
+  sourceType?: SearchDataResponseItemType['sourceType'];
   canView?: boolean;
 };
 
 const RawSourceBox = ({
   sourceId,
+  sourceType,
   collectionId,
   sourceName = '',
   canView = true,
@@ -24,14 +28,17 @@ const RawSourceBox = ({
   const { t } = useTranslation();
   const { fileT } = useI18n();
 
-  const canPreview = !!sourceId && canView;
+  const isWeKnora = sourceType === 'weknora';
+  const canPreview = !!sourceId && canView && (!isWeKnora || strIsLink(sourceId));
 
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
   const read = getCollectionSourceAndOpen(collectionId);
 
   return (
     <MyTooltip
-      label={canPreview ? fileT('click_to_view_raw_source') : ''}
+      label={
+        canPreview ? (isWeKnora ? '在 WeKnora 查看来源' : fileT('click_to_view_raw_source')) : ''
+      }
       shouldWrapChildren={false}
     >
       <Box
@@ -43,7 +50,9 @@ const RawSourceBox = ({
           ? {
               cursor: 'pointer',
               textDecoration: 'underline',
-              onClick: read
+              onClick: isWeKnora
+                ? () => window.open(sourceId, '_blank', 'noopener,noreferrer')
+                : read
             }
           : {})}
         {...props}

@@ -43,6 +43,7 @@ const ResponseTags = ({
       collectionId: string;
       sourceId?: string;
       sourceName: string;
+      sourceType?: SearchDataResponseItemType['sourceType'];
     };
   }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
@@ -76,6 +77,7 @@ const ResponseTags = ({
       .map((item) => ({
         sourceName: item.sourceName,
         sourceId: item.sourceId,
+        sourceType: item.sourceType,
         icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         canReadQuote: showDetail || strIsLink(item.sourceId),
         collectionId: item.collectionId
@@ -149,6 +151,7 @@ const ResponseTags = ({
                         metadata: {
                           collectionId: item.collectionId,
                           sourceId: item.sourceId,
+                          sourceType: item.sourceType,
                           sourceName: item.sourceName
                         }
                       });

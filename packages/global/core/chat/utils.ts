@@ -84,7 +84,9 @@ export const filterPublicNodeResponseData = ({
   const filterModuleTypeList: any[] = [
     FlowNodeTypeEnum.pluginModule,
     FlowNodeTypeEnum.datasetSearchNode,
+    FlowNodeTypeEnum.weknoraSearch,
     FlowNodeTypeEnum.tools,
+    FlowNodeTypeEnum.agentChat,
     FlowNodeTypeEnum.pluginOutput
   ];
 

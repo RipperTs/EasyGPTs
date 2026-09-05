@@ -369,10 +369,16 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
 
   cloneNodes.forEach((node) => {
     // selected dataset
-    if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      node.flowNodeType === FlowNodeTypeEnum.weknoraSearch
+    ) {
       node.inputs.forEach((input) => {
         if (input.key === NodeInputKeyEnum.datasetSelectList) {
           input.value = [];
+        }
+        if (input.key === NodeInputKeyEnum.weknoraConnectionId) {
+          input.value = '';
         }
       });
     }

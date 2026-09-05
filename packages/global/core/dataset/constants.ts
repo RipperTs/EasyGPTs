@@ -157,9 +157,15 @@ export enum SearchScoreTypeEnum {
   embedding = 'embedding',
   fullText = 'fullText',
   reRank = 'reRank',
-  rrf = 'rrf'
+  rrf = 'rrf',
+  weknora = 'weknora'
 }
 export const SearchScoreTypeMap = {
+  [SearchScoreTypeEnum.weknora]: {
+    label: 'WeKnora 检索得分',
+    desc: '外部检索的原始得分，不代表 0～1 的相似度',
+    showScore: false
+  },
   [SearchScoreTypeEnum.embedding]: {
     label: 'core.dataset.search.score.embedding',
     desc: 'core.dataset.search.score.embedding desc',
@@ -180,7 +186,7 @@ export const SearchScoreTypeMap = {
     desc: 'core.dataset.search.score.rrf desc',
     showScore: false
   }
-};
+} as const;
 
 export const CustomCollectionIcon = 'common/linkBlue';
 export const LinkCollectionIcon = 'common/linkBlue';

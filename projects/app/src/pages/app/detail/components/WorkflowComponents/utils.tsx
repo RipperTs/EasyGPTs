@@ -65,10 +65,16 @@ export const uiWorkflow2StoreWorkflow = ({
 export const filterExportModules = (modules: StoreNodeItemType[]) => {
   modules.forEach((module) => {
     // dataset - remove select dataset value
-    if (module.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+    if (
+      module.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      module.flowNodeType === FlowNodeTypeEnum.weknoraSearch
+    ) {
       module.inputs.forEach((item) => {
         if (item.key === NodeInputKeyEnum.datasetSelectList) {
           item.value = [];
+        }
+        if (item.key === NodeInputKeyEnum.weknoraConnectionId) {
+          item.value = '';
         }
       });
     }

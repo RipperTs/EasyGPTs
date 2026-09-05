@@ -38,6 +38,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
+const WeKnoraSettings = dynamic(() => import('@/components/core/app/WeKnoraSettings'));
 const ToolSelectModal = dynamic(() => import('./components/ToolSelectModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
@@ -284,6 +285,15 @@ const EditForm = ({
               </MyTooltip>
             ))}
           </Grid>
+        </Box>
+
+        <Box {...BoxStyles}>
+          <FormLabel mb={3}>WeKnoraX知识库</FormLabel>
+          <WeKnoraSettings
+            appId={appDetail._id}
+            value={appForm.weknora}
+            onChange={(weknora) => setAppForm((state) => ({ ...state, weknora }))}
+          />
         </Box>
 
         {/* tool choice */}

@@ -20,6 +20,7 @@ const QuoteModal = ({
     collectionId: string;
     sourceId?: string;
     sourceName: string;
+    sourceType?: SearchDataResponseItemType['sourceType'];
   };
 }) => {
   const { t } = useTranslation();

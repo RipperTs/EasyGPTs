@@ -18,21 +18,23 @@ export function transformPreviewHistories(histories: ChatItemType[]) {
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined) return historyItem;
-  const flatResData: ChatHistoryItemResType[] =
-    historyItem.responseData
-      ?.map((item) => {
-        if (item.pluginDetail || item.toolDetail) {
-          return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-        }
-        return item;
-      })
-      .flat() || [];
+  const flattenResponses = (items: ChatHistoryItemResType[]): ChatHistoryItemResType[] =>
+    items.flatMap((item) => [
+      item,
+      ...flattenResponses(item.pluginDetail || []),
+      ...flattenResponses(item.toolDetail || [])
+    ]);
+  const flatResData = flattenResponses(historyItem.responseData || []);
 
   return {
     ...historyItem,
     llmModuleAccount: flatResData.filter(isLLMNode).length,
     totalQuoteList: flatResData
-      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
+      .filter(
+        (item) =>
+          item.moduleType === FlowNodeTypeEnum.datasetSearchNode ||
+          item.moduleType === FlowNodeTypeEnum.weknoraSearch
+      )
       .map((item) => item.quoteList)
       .flat()
       .filter(Boolean) as SearchDataResponseItemType[],

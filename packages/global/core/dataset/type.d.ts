@@ -219,6 +219,7 @@ export type SearchDataResponseItemType = Omit<
   DatasetDataItemType,
   'teamId' | 'indexes' | 'isOwner' | 'canWrite'
 > & {
+  sourceType?: 'weknora';
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   // score: number;
 };

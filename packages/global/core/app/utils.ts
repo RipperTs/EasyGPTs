@@ -5,9 +5,11 @@ import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
 import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import { getDefaultWeKnoraSearchSettings, getWeKnoraSettingsFromInputs } from '../dataset/weknora';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
+    weknora: getDefaultWeKnoraSearchSettings(),
     aiSettings: {
       model: 'gpt-4o-mini',
       systemPrompt: '',
@@ -108,6 +110,8 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionBg
       );
+    } else if (node.flowNodeType === FlowNodeTypeEnum.weknoraSearch) {
+      defaultAppForm.weknora = getWeKnoraSettingsFromInputs(node.inputs);
     } else if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
       if (!node.pluginId) return;
 

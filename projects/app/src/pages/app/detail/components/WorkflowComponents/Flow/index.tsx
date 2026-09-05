@@ -35,6 +35,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.readFiles]: NodeSimple,
   [FlowNodeTypeEnum.databaseConnector]: NodeSimple,
   [FlowNodeTypeEnum.datasetSearchNode]: NodeSimple,
+  [FlowNodeTypeEnum.weknoraSearch]: NodeSimple,
   [FlowNodeTypeEnum.datasetConcatNode]: dynamic(() => import('./nodes/NodeDatasetConcat')),
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./nodes/NodeAnswer')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./nodes/NodeCQNode')),
