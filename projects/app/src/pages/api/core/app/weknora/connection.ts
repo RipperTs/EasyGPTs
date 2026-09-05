@@ -62,13 +62,24 @@ async function handler(
     throw new Error('API Key 不能为空');
   }
   if (apiKey === undefined && !connectionId) throw new Error('请填写 API Key');
-  const savedKey =
-    apiKey === undefined
-      ? (await getWeKnoraConnection({ appId, teamId, connectionId: connectionId! })).apiKey
-      : apiKey.trim();
+  const normalizedApiUrl = normalizeUrl(apiUrl, 'Base URL');
+  let connectionApiKey: string;
+  if (apiKey === undefined) {
+    const savedConnection = await getWeKnoraConnection({
+      appId,
+      teamId,
+      connectionId: connectionId!
+    });
+    if (savedConnection.apiUrl !== normalizedApiUrl) {
+      throw new Error('修改 Base URL 后，请重新填写 API Key');
+    }
+    connectionApiKey = savedConnection.apiKey;
+  } else {
+    connectionApiKey = apiKey.trim();
+  }
   const config = {
-    apiUrl: normalizeUrl(apiUrl, 'Base URL'),
-    apiKey: savedKey,
+    apiUrl: normalizedApiUrl,
+    apiKey: connectionApiKey,
     tenantId,
     webUrl: webUrl ? normalizeUrl(webUrl, 'WeKnora 网页地址') : ''
   };

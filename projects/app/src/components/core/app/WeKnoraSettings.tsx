@@ -17,6 +17,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  getDefaultWeKnoraSearchSettings,
   getWeKnoraSearchModes,
   type WeKnoraConnectionConfig,
   type WeKnoraConnectionInfo,
@@ -116,12 +117,16 @@ const WeKnoraSettingsModal = ({
         apiKey: connection.apiKey || undefined
       });
       const scopeChanged =
-        !!savedConnection &&
-        (savedConnection.apiUrl !== result.apiUrl || savedConnection.tenantId !== result.tenantId);
+        !savedConnection ||
+        !!connection.apiKey ||
+        savedConnection.apiUrl !== result.apiUrl ||
+        savedConnection.tenantId !== result.tenantId;
       setDraft((state) => ({
         ...state,
         weknoraConnectionId: result.connectionId,
-        datasets: scopeChanged ? [] : state.datasets
+        datasets: scopeChanged ? [] : state.datasets,
+        weknoraKnowledgeIds: scopeChanged ? [] : state.weknoraKnowledgeIds,
+        weknoraTagIds: scopeChanged ? [] : state.weknoraTagIds
       }));
       setSavedConnection(result);
       setConnection({
@@ -192,7 +197,7 @@ const WeKnoraSettingsModal = ({
                 autoComplete="new-password"
                 value={connection.apiKey}
                 isDisabled={loading}
-                placeholder={savedConnection ? '已保存；留空保持当前密钥' : '请输入 API Key'}
+                placeholder={savedConnection ? '地址不变时，留空保持已保存密钥' : '请输入 API Key'}
                 onChange={(event) => updateConnection('apiKey', event.target.value)}
               />
             </FormControl>
@@ -354,6 +359,16 @@ const WeKnoraSettings = (props: Props) => {
         <Button size="sm" variant="outline" onClick={onOpen}>
           配置连接与知识库
         </Button>
+        {(props.value.weknoraConnectionId || props.value.datasets.length > 0) && (
+          <Button
+            size="sm"
+            variant="link"
+            colorScheme="red"
+            onClick={() => props.onChange(getDefaultWeKnoraSearchSettings())}
+          >
+            移除配置
+          </Button>
+        )}
         <Box fontSize="sm" color="myGray.600">
           {props.value.weknoraConnectionId
             ? `已选择 ${props.value.datasets.length} 个知识库`
