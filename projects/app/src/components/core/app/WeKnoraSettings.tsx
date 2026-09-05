@@ -30,6 +30,7 @@ import {
 import {
   getWeKnoraConnectionInfo,
   getWeKnoraKnowledgeBases,
+  validateWeKnoraConnection,
   saveWeKnoraConnection
 } from '@/web/core/dataset/weknora';
 import WeKnoraParamsModal from './WeKnoraParamsModal';
@@ -99,12 +100,19 @@ export const WeKnoraSettingsModal = ({
     webUrl: ''
   });
   const [savedConnection, setSavedConnection] = useState<WeKnoraConnectionInfo>();
+  const [validatedConnection, setValidatedConnection] = useState<WeKnoraConnectionConfig>();
   const [datasets, setDatasets] = useState<WeKnoraKnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
-  const [connected, setConnected] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingConnection, setEditingConnection] = useState(!value.weknoraConnectionId);
   const [error, setError] = useState('');
   const paramsModal = useDisclosure();
+  const busy = loading || saving;
+  const connected =
+    !!validatedConnection &&
+    connection.apiUrl === validatedConnection.apiUrl &&
+    connection.apiKey === validatedConnection.apiKey &&
+    connection.webUrl === validatedConnection.webUrl;
 
   useEffect(() => {
     if (!value.weknoraConnectionId) return;
@@ -119,7 +127,7 @@ export const WeKnoraSettingsModal = ({
         const list = await getWeKnoraKnowledgeBases(appId, value.weknoraConnectionId);
         if (!active) return;
         setDatasets(list);
-        setConnected(true);
+        setValidatedConnection({ apiUrl: info.apiUrl, webUrl: info.webUrl, apiKey: '' });
       } catch (error) {
         if (active) {
           setError(getErrText(error));
@@ -150,34 +158,38 @@ export const WeKnoraSettingsModal = ({
       }
       return { ...state, apiUrl: input, webUrl };
     });
-    setConnected(false);
     setError('');
   };
   const connect = async () => {
     setLoading(true);
     setError('');
     try {
-      const result = await saveWeKnoraConnection({
+      const result = await validateWeKnoraConnection({
         appId,
         connectionId: savedConnection?.connectionId,
         ...connection,
         apiKey: connection.apiKey || undefined
       });
       const scopeChanged =
-        !savedConnection || !!connection.apiKey || savedConnection.apiUrl !== result.apiUrl;
+        !validatedConnection ||
+        validatedConnection.apiUrl !== result.apiUrl ||
+        validatedConnection.apiKey !== connection.apiKey.trim();
       setDraft((state) => ({
         ...state,
-        weknoraConnectionId: result.connectionId,
         datasets: scopeChanged ? [] : state.datasets
       }));
-      setSavedConnection(result);
-      setConnection({ apiUrl: result.apiUrl, webUrl: result.webUrl, apiKey: '' });
+      const validatedConfig = {
+        apiUrl: result.apiUrl,
+        webUrl: result.webUrl,
+        apiKey: connection.apiKey.trim()
+      };
+      setConnection(validatedConfig);
+      setValidatedConnection(validatedConfig);
       setDatasets(result.datasets);
-      setConnected(true);
       setEditingConnection(false);
     } catch (error) {
       setError(getErrText(error));
-      setConnected(false);
+      setValidatedConnection(undefined);
     } finally {
       setLoading(false);
     }
@@ -190,27 +202,49 @@ export const WeKnoraSettingsModal = ({
         : state.datasets.filter((item) => item.datasetId !== id)
     }));
   };
-  const apply = () => {
-    if (!connected || missingDatasets.length > 0) return;
+  const apply = async () => {
+    if (busy || !connected || missingDatasets.length > 0) return;
     if (draft.datasets.length === 0) {
       return toast({ status: 'warning', title: '请至少选择一个知识库' });
     }
     if (!Number.isFinite(draft.limit) || draft.limit < 100 || draft.limit > maxTokens) {
       return toast({ status: 'warning', title: `引用长度必须在 100～${maxTokens} Token 之间` });
     }
-    onChange({
-      weknoraConnectionId: draft.weknoraConnectionId,
-      datasets: draft.datasets,
-      limit: draft.limit
-    });
-    onClose();
+    setSaving(true);
+    setError('');
+    try {
+      let confirmedConnection = savedConnection;
+      if (
+        !confirmedConnection ||
+        connection.apiKey ||
+        connection.apiUrl !== confirmedConnection.apiUrl ||
+        connection.webUrl !== confirmedConnection.webUrl
+      ) {
+        confirmedConnection = await saveWeKnoraConnection({
+          appId,
+          connectionId: confirmedConnection?.connectionId,
+          ...connection,
+          apiKey: connection.apiKey || undefined
+        });
+      }
+      onChange({
+        weknoraConnectionId: confirmedConnection.connectionId,
+        datasets: draft.datasets,
+        limit: draft.limit
+      });
+      onClose();
+    } catch (error) {
+      setError(getErrText(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
       <MyModal
         isOpen
-        onClose={onClose}
+        onClose={saving ? undefined : onClose}
         title={'选择 WeKnoraX 知识库'}
         iconSrc={'core/dataset/weknora'}
         w={['94vw', '640px']}
@@ -235,11 +269,11 @@ export const WeKnoraSettingsModal = ({
                     </Box>
                   )}
                 </Flex>
-                {savedConnection && (
+                {(savedConnection || validatedConnection) && (
                   <Button
                     size={'xs'}
                     variant={'transparentBase'}
-                    isDisabled={loading}
+                    isDisabled={busy}
                     onClick={() => setEditingConnection((state) => !state)}
                   >
                     {editingConnection ? '收起' : '编辑连接'}
@@ -262,7 +296,7 @@ export const WeKnoraSettingsModal = ({
                         size={'sm'}
                         borderRadius={'md'}
                         value={connection.apiUrl}
-                        isDisabled={loading}
+                        isDisabled={busy}
                         placeholder={'https://weknora.example.com/api/v1'}
                         onChange={(event) => updateConnection('apiUrl', event.target.value)}
                       />
@@ -277,7 +311,7 @@ export const WeKnoraSettingsModal = ({
                         type={'password'}
                         autoComplete={'new-password'}
                         value={connection.apiKey}
-                        isDisabled={loading}
+                        isDisabled={busy}
                         placeholder={
                           savedConnection ? '地址不变时，留空保持密钥' : '请输入 API Key'
                         }
@@ -296,7 +330,7 @@ export const WeKnoraSettingsModal = ({
                       size={'sm'}
                       borderRadius={'md'}
                       value={connection.webUrl}
-                      isDisabled={loading}
+                      isDisabled={busy}
                       placeholder={'根据 Base URL 自动填写，可手动修改'}
                       onChange={(event) => updateConnection('webUrl', event.target.value)}
                     />
@@ -307,7 +341,10 @@ export const WeKnoraSettingsModal = ({
                       isLoading={loading}
                       onClick={connect}
                       isDisabled={
-                        !appId || !connection.apiUrl || (!connection.apiKey && !savedConnection)
+                        saving ||
+                        !appId ||
+                        !connection.apiUrl ||
+                        (!connection.apiKey && !savedConnection)
                       }
                     >
                       连接并加载知识库
@@ -358,6 +395,7 @@ export const WeKnoraSettingsModal = ({
                         <Checkbox
                           key={dataset.id}
                           isChecked={checked}
+                          isDisabled={saving}
                           onChange={(event) => selectDataset(dataset.id, event.target.checked)}
                           p={3}
                           borderWidth={'1px'}
@@ -391,6 +429,7 @@ export const WeKnoraSettingsModal = ({
                     <Checkbox
                       key={item.datasetId}
                       isChecked
+                      isDisabled={saving}
                       mt={3}
                       onChange={() => selectDataset(item.datasetId, false)}
                     >
@@ -426,17 +465,26 @@ export const WeKnoraSettingsModal = ({
                   最多 {draft.limit} Token
                 </Box>
               </Box>
-              <Button size={'sm'} variant={'transparentBase'} onClick={paramsModal.onOpen}>
+              <Button
+                size={'sm'}
+                variant={'transparentBase'}
+                isDisabled={saving}
+                onClick={paramsModal.onOpen}
+              >
                 设置
               </Button>
             </Flex>
           </Stack>
         </ModalBody>
         <ModalFooter px={[4, 6]} gap={3} borderTopWidth={'1px'} borderColor={'borderColor.low'}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} isDisabled={saving} onClick={onClose}>
             取消
           </Button>
-          <Button isDisabled={loading || !connected || missingDatasets.length > 0} onClick={apply}>
+          <Button
+            isLoading={saving}
+            isDisabled={loading || !connected || missingDatasets.length > 0}
+            onClick={apply}
+          >
             确定
           </Button>
         </ModalFooter>

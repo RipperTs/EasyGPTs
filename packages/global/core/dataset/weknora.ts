@@ -11,13 +11,13 @@ export type WeKnoraConnectionInfo = Omit<WeKnoraConnectionConfig, 'apiKey'> & {
   connectionId: string;
 };
 
-export type SaveWeKnoraConnectionParams = Omit<WeKnoraConnectionConfig, 'apiKey'> & {
+export type WeKnoraConnectionParams = Omit<WeKnoraConnectionConfig, 'apiKey'> & {
   appId: string;
   connectionId?: string;
   apiKey?: string;
 };
 
-export type SaveWeKnoraConnectionResponse = WeKnoraConnectionInfo & {
+export type ValidateWeKnoraConnectionResponse = Omit<WeKnoraConnectionConfig, 'apiKey'> & {
   datasets: WeKnoraKnowledgeBase[];
 };
 
