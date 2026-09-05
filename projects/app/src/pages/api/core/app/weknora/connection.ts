@@ -36,7 +36,8 @@ async function handler(
 ) {
   if (req.method !== 'GET' && req.method !== 'POST') throw new Error('不支持的请求方法');
   const appId = req.method === 'GET' ? req.query.appId : req.body.appId;
-  const { app, teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const teamId = String(app.teamId);
 
   if (req.method === 'GET') {
     const connection = await getWeKnoraConnection({

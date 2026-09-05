@@ -26,10 +26,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // Auth owner (folder owner, can delete all apps in the folder)
-  const { teamId } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
 
   await onDelOneApp({
-    teamId,
+    teamId: String(app.teamId),
     appId
   });
 }

@@ -8,8 +8,12 @@ import { listWeKnoraKnowledgeBases } from '@fastgpt/service/core/dataset/weknora
 async function handler(req: ApiRequestProps<undefined, { appId: string; connectionId: string }>) {
   if (req.method !== 'GET') throw new Error('不支持的请求方法');
   const { appId, connectionId } = req.query;
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
-  const connection = await getWeKnoraConnection({ appId, teamId, connectionId });
+  const { app } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const connection = await getWeKnoraConnection({
+    appId,
+    teamId: String(app.teamId),
+    connectionId
+  });
   return listWeKnoraKnowledgeBases(connection);
 }
 
