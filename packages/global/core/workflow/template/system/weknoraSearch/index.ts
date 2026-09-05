@@ -23,16 +23,17 @@ export const WeKnoraSearchModule: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: 'core/dataset/externalDataset',
-  name: 'WeKnoraX知识库',
-  intro: '配置 WeKnora 服务并检索知识库，输出可用于 AI 对话和知识库搜索合并的引用。',
+  avatar: 'core/dataset/weknora',
+  name: 'WeKnoraX 知识库',
+  intro:
+    '使用 WeKnoraX 的完整知识搜索，按服务端配置完成检索和重排，返回可用于 AI 对话的知识库引用。',
   showStatus: true,
   isTool: true,
   version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetSelectList,
-      renderTypeList: [FlowNodeInputTypeEnum.selectWeKnoraDataset, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.selectWeKnoraDataset],
       label: '外部知识库',
       valueType: WorkflowIOValueTypeEnum.selectDataset,
       value: [],

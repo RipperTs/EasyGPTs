@@ -11,7 +11,6 @@ const schema = new Schema({
   teamId: { type: Schema.Types.ObjectId, required: true },
   apiUrl: { type: String, required: true },
   apiKey: { type: String, required: true, select: false },
-  tenantId: { type: String, default: '' },
   webUrl: { type: String, default: '' }
 });
 
@@ -29,7 +28,7 @@ export const getWeKnoraConnection = async ({
   appId: string;
   teamId: string;
 }): Promise<WeKnoraConnectionConfig> => {
-  if (!connectionId) throw new Error('请配置 WeKnora 连接');
+  if (!connectionId) throw new Error('请配置 WeKnoraX 连接');
   const connection = await MongoWeKnoraConnection.findOne({
     _id: connectionId,
     appId,
@@ -37,11 +36,10 @@ export const getWeKnoraConnection = async ({
   })
     .select('+apiKey')
     .lean();
-  if (!connection) throw new Error('WeKnora 连接不存在或不属于当前应用');
+  if (!connection) throw new Error('WeKnoraX 连接不存在或不属于当前应用');
   return {
     apiUrl: connection.apiUrl,
     apiKey: connection.apiKey,
-    tenantId: connection.tenantId,
     webUrl: connection.webUrl
   };
 };
@@ -76,7 +74,7 @@ export const copyWeKnoraConnections = async ({
     }
     const sourceConnectionId: unknown = connectionInput.value;
     if (typeof sourceConnectionId !== 'string') {
-      throw new Error('WeKnora 连接 ID 格式错误');
+      throw new Error('WeKnoraX 连接 ID 格式错误');
     }
 
     let targetConnectionId = connectionIds.get(sourceConnectionId);

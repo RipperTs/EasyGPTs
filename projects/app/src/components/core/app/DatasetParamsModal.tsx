@@ -53,14 +53,12 @@ const DatasetParamsModal = ({
   similarity,
   usingReRank,
   maxTokens = 3000,
-  allowedSearchModes,
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   onClose,
   onSuccess
 }: DatasetParamsProps & {
-  allowedSearchModes?: DatasetSearchModeEnum[];
   onClose: () => void;
   onSuccess: (e: DatasetParamsProps) => void;
 }) => {
@@ -98,11 +96,9 @@ const DatasetParamsModal = ({
   const searchModeWatch = watch('searchMode');
 
   const searchModeList = useMemo(() => {
-    const list = Object.values(DatasetSearchModeMap).filter(
-      (item) => !allowedSearchModes || allowedSearchModes.includes(item.value)
-    );
+    const list = Object.values(DatasetSearchModeMap);
     return list;
-  }, [allowedSearchModes]);
+  }, []);
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;

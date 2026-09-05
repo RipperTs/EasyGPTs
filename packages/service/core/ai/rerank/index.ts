@@ -14,7 +14,6 @@ type ReRankCallResult = { id: string; score?: number }[];
 type ReRankRequest = {
   query: string;
   documents: { id: string; text: string }[];
-  signal?: AbortSignal;
 };
 
 const getConfiguredReRankModel = async () => {
@@ -30,14 +29,14 @@ const getConfiguredReRankModel = async () => {
 };
 
 const callReRank = async (
-  { query, documents, signal }: ReRankRequest,
+  { query, documents }: ReRankRequest,
   model: Awaited<ReturnType<typeof getConfiguredReRankModel>>
 ): Promise<{ id: string; score: number }[]> => {
   const start = Date.now();
   const data = await POST<PostReRankResponse>(
     model.requestUrl,
     { model: model.model, query, documents: documents.map((doc) => doc.text) },
-    { headers: { Authorization: `Bearer ${model.apiKey}` }, timeout: 30000, signal }
+    { headers: { Authorization: `Bearer ${model.apiKey}` }, timeout: 30000 }
   );
   if (!Array.isArray(data.results) || data.results.length === 0) {
     throw new Error('重排服务未返回有效结果');
@@ -54,20 +53,6 @@ const callReRank = async (
   });
   addLog.info('ReRank finish:', { time: Date.now() - start });
   return results;
-};
-
-export const requestReRank = async (props: ReRankRequest) => {
-  const model = await getConfiguredReRankModel();
-  try {
-    const results = await callReRank(props, model);
-    return results.sort((a, b) => b.score - a.score);
-  } catch (error) {
-    const message =
-      error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-        ? error.message
-        : '重排服务请求失败';
-    throw new Error(model.apiKey ? message.replaceAll(model.apiKey, '***') : message);
-  }
 };
 
 export async function reRankRecall({

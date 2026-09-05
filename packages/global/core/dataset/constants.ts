@@ -162,8 +162,8 @@ export enum SearchScoreTypeEnum {
 }
 export const SearchScoreTypeMap = {
   [SearchScoreTypeEnum.weknora]: {
-    label: 'WeKnora 检索得分',
-    desc: '外部检索的原始得分，不代表 0～1 的相似度',
+    label: 'WeKnoraX 检索得分',
+    desc: 'WeKnoraX 返回的最终检索得分，排序由服务端决定',
     showScore: false
   },
   [SearchScoreTypeEnum.embedding]: {

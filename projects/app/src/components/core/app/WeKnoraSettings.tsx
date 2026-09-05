@@ -1,46 +1,93 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
   Checkbox,
+  Collapse,
   Flex,
   FormControl,
   FormLabel,
+  Grid,
   Input,
   ModalBody,
   ModalFooter,
+  Spinner,
   Stack,
-  Textarea,
-  useDisclosure
+  useDisclosure,
+  useTheme
 } from '@chakra-ui/react';
+import { useQuery } from '@tanstack/react-query';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
-  getDefaultWeKnoraSearchSettings,
-  getWeKnoraSearchModes,
   type WeKnoraConnectionConfig,
   type WeKnoraConnectionInfo,
   type WeKnoraKnowledgeBase,
   type WeKnoraSearchSettings
 } from '@fastgpt/global/core/dataset/weknora';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   getWeKnoraConnectionInfo,
   getWeKnoraKnowledgeBases,
   saveWeKnoraConnection
 } from '@/web/core/dataset/weknora';
-import DatasetParamsModal from './DatasetParamsModal';
+import WeKnoraParamsModal from './WeKnoraParamsModal';
+
+const WeKnoraLoading = () => (
+  <Flex
+    role={'status'}
+    aria-live={'polite'}
+    alignItems={'center'}
+    justifyContent={'center'}
+    gap={4}
+    px={4}
+    py={6}
+    bg={'myGray.50'}
+    borderWidth={'1px'}
+    borderColor={'borderColor.low'}
+    borderRadius={'md'}
+  >
+    <Flex
+      position={'relative'}
+      alignItems={'center'}
+      justifyContent={'center'}
+      boxSize={'44px'}
+      flexShrink={0}
+    >
+      <Spinner
+        position={'absolute'}
+        boxSize={'44px'}
+        thickness={'2px'}
+        speed={'0.8s'}
+        emptyColor={'myGray.100'}
+        color={'primary.500'}
+        aria-hidden
+      />
+      <MyIcon name={'core/dataset/weknora'} w={'24px'} />
+    </Flex>
+    <Box>
+      <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+        正在加载知识库
+      </Box>
+      <Box mt={1} fontSize={'xs'} color={'myGray.500'} lineHeight={'1.6'}>
+        正在从 WeKnoraX 获取列表，请稍候
+      </Box>
+    </Box>
+  </Flex>
+);
 
 type Props = {
   appId: string;
   value: WeKnoraSearchSettings;
+  maxTokens?: number;
   onChange: (value: WeKnoraSearchSettings) => void;
 };
 
-const WeKnoraSettingsModal = ({
+export const WeKnoraSettingsModal = ({
   appId,
   value,
+  maxTokens = 16000,
   onChange,
   onClose
 }: Props & { onClose: () => void }) => {
@@ -49,13 +96,13 @@ const WeKnoraSettingsModal = ({
   const [connection, setConnection] = useState<WeKnoraConnectionConfig>({
     apiUrl: '',
     apiKey: '',
-    tenantId: '',
     webUrl: ''
   });
   const [savedConnection, setSavedConnection] = useState<WeKnoraConnectionInfo>();
   const [datasets, setDatasets] = useState<WeKnoraKnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [editingConnection, setEditingConnection] = useState(!value.weknoraConnectionId);
   const [error, setError] = useState('');
   const paramsModal = useDisclosure();
 
@@ -68,18 +115,16 @@ const WeKnoraSettingsModal = ({
         const info = await getWeKnoraConnectionInfo(appId, value.weknoraConnectionId);
         if (!active) return;
         setSavedConnection(info);
-        setConnection({
-          apiUrl: info.apiUrl,
-          tenantId: info.tenantId,
-          webUrl: info.webUrl,
-          apiKey: ''
-        });
+        setConnection({ apiUrl: info.apiUrl, webUrl: info.webUrl, apiKey: '' });
         const list = await getWeKnoraKnowledgeBases(appId, value.weknoraConnectionId);
         if (!active) return;
         setDatasets(list);
         setConnected(true);
       } catch (error) {
-        if (active) setError(getErrText(error));
+        if (active) {
+          setError(getErrText(error));
+          setEditingConnection(true);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -90,19 +135,21 @@ const WeKnoraSettingsModal = ({
     };
   }, [appId, value.weknoraConnectionId]);
 
-  const selectedDatasets = useMemo(
-    () =>
-      datasets.filter((dataset) => draft.datasets.some((item) => item.datasetId === dataset.id)),
-    [datasets, draft.datasets]
-  );
-  const allowedModes = useMemo(() => getWeKnoraSearchModes(selectedDatasets), [selectedDatasets]);
-  const modeAllowed = allowedModes.includes(draft.searchMode as DatasetSearchModeEnum);
   const missingDatasets = draft.datasets.filter(
     (item) => !datasets.some((dataset) => dataset.id === item.datasetId)
   );
-
   const updateConnection = (key: keyof WeKnoraConnectionConfig, input: string) => {
-    setConnection((state) => ({ ...state, [key]: input }));
+    setConnection((state) => {
+      if (key !== 'apiUrl') return { ...state, [key]: input };
+      let webUrl = '';
+      try {
+        const url = new URL(input);
+        if (url.protocol === 'http:' || url.protocol === 'https:') webUrl = url.origin;
+      } catch {
+        // The URL may be incomplete while typing; connection submission validates it.
+      }
+      return { ...state, apiUrl: input, webUrl };
+    });
     setConnected(false);
     setError('');
   };
@@ -117,26 +164,17 @@ const WeKnoraSettingsModal = ({
         apiKey: connection.apiKey || undefined
       });
       const scopeChanged =
-        !savedConnection ||
-        !!connection.apiKey ||
-        savedConnection.apiUrl !== result.apiUrl ||
-        savedConnection.tenantId !== result.tenantId;
+        !savedConnection || !!connection.apiKey || savedConnection.apiUrl !== result.apiUrl;
       setDraft((state) => ({
         ...state,
         weknoraConnectionId: result.connectionId,
-        datasets: scopeChanged ? [] : state.datasets,
-        weknoraKnowledgeIds: scopeChanged ? [] : state.weknoraKnowledgeIds,
-        weknoraTagIds: scopeChanged ? [] : state.weknoraTagIds
+        datasets: scopeChanged ? [] : state.datasets
       }));
       setSavedConnection(result);
-      setConnection({
-        apiUrl: result.apiUrl,
-        tenantId: result.tenantId,
-        webUrl: result.webUrl,
-        apiKey: ''
-      });
+      setConnection({ apiUrl: result.apiUrl, webUrl: result.webUrl, apiKey: '' });
       setDatasets(result.datasets);
       setConnected(true);
+      setEditingConnection(false);
     } catch (error) {
       setError(getErrText(error));
       setConnected(false);
@@ -153,198 +191,262 @@ const WeKnoraSettingsModal = ({
     }));
   };
   const apply = () => {
-    if (!connected || missingDatasets.length > 0 || !modeAllowed) return;
-    if (
-      !Number.isInteger(draft.weknoraMatchCount) ||
-      draft.weknoraMatchCount < 1 ||
-      draft.weknoraMatchCount > 200
-    ) {
-      return toast({ status: 'warning', title: '每库召回数量必须是 1～200 的整数' });
+    if (!connected || missingDatasets.length > 0) return;
+    if (draft.datasets.length === 0) {
+      return toast({ status: 'warning', title: '请至少选择一个知识库' });
     }
-    if (
-      draft.datasets.length > 0 &&
-      draft.datasetSearchUsingExtensionQuery &&
-      !draft.datasetSearchExtensionModel
-    ) {
-      return toast({ status: 'warning', title: '请在检索参数中选择问题优化模型，或关闭问题优化' });
+    if (!Number.isFinite(draft.limit) || draft.limit < 100 || draft.limit > maxTokens) {
+      return toast({ status: 'warning', title: `引用长度必须在 100～${maxTokens} Token 之间` });
     }
     onChange({
-      ...draft,
-      weknoraKnowledgeIds: draft.weknoraKnowledgeIds.map((id) => id.trim()).filter(Boolean),
-      weknoraTagIds: draft.weknoraTagIds.map((id) => id.trim()).filter(Boolean)
+      weknoraConnectionId: draft.weknoraConnectionId,
+      datasets: draft.datasets,
+      limit: draft.limit
     });
     onClose();
   };
 
   return (
     <>
-      <MyModal isOpen onClose={onClose} title="WeKnoraX知识库" w={['94vw', '640px']}>
-        <ModalBody>
-          <Stack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Base URL</FormLabel>
-              <Input
-                value={connection.apiUrl}
-                isDisabled={loading}
-                placeholder="例如：https://weknora.example.com/api/v1"
-                onChange={(event) => updateConnection('apiUrl', event.target.value)}
-              />
-            </FormControl>
-            <FormControl isRequired={!savedConnection}>
-              <FormLabel>API Key</FormLabel>
-              <Input
-                type="password"
-                autoComplete="new-password"
-                value={connection.apiKey}
-                isDisabled={loading}
-                placeholder={savedConnection ? '地址不变时，留空保持已保存密钥' : '请输入 API Key'}
-                onChange={(event) => updateConnection('apiKey', event.target.value)}
-              />
-            </FormControl>
-            <FormControl>
-              <FormLabel>空间 ID（平台 API Key 必填）</FormLabel>
-              <Input
-                value={connection.tenantId}
-                isDisabled={loading}
-                onChange={(event) => updateConnection('tenantId', event.target.value)}
-              />
-            </FormControl>
-            <FormControl>
-              <FormLabel>WeKnora 网页地址（选填，用于查看来源）</FormLabel>
-              <Input
-                value={connection.webUrl}
-                isDisabled={loading}
-                placeholder="例如：https://weknora.example.com"
-                onChange={(event) => updateConnection('webUrl', event.target.value)}
-              />
-            </FormControl>
-            <Button
-              isLoading={loading}
-              onClick={connect}
-              isDisabled={!appId || !connection.apiUrl || (!connection.apiKey && !savedConnection)}
-            >
-              连接并加载知识库
-            </Button>
+      <MyModal
+        isOpen
+        onClose={onClose}
+        title={'选择 WeKnoraX 知识库'}
+        iconSrc={'core/dataset/weknora'}
+        w={['94vw', '640px']}
+        maxW={['94vw', '640px']}
+      >
+        <ModalBody px={[4, 6]} py={5} fontSize={'sm'} color={'myGray.900'}>
+          <Stack spacing={5}>
+            <Box borderWidth={'1px'} borderColor={'borderColor.low'} borderRadius={'lg'} p={4}>
+              <Flex alignItems={'center'} justifyContent={'space-between'} gap={3}>
+                <Flex alignItems={'center'} gap={2}>
+                  <Box fontWeight={'medium'}>连接设置</Box>
+                  {connected && (
+                    <Box
+                      px={2}
+                      py={0.5}
+                      borderRadius={'sm'}
+                      bg={'green.50'}
+                      color={'green.600'}
+                      fontSize={'xs'}
+                    >
+                      已连接
+                    </Box>
+                  )}
+                </Flex>
+                {savedConnection && (
+                  <Button
+                    size={'xs'}
+                    variant={'transparentBase'}
+                    isDisabled={loading}
+                    onClick={() => setEditingConnection((state) => !state)}
+                  >
+                    {editingConnection ? '收起' : '编辑连接'}
+                  </Button>
+                )}
+              </Flex>
+              {!editingConnection && (
+                <Box mt={2} fontSize={'xs'} color={'myGray.500'} wordBreak={'break-all'}>
+                  {connection.apiUrl || '正在读取连接…'}
+                </Box>
+              )}
+              <Collapse in={editingConnection}>
+                <Stack spacing={4} mt={4}>
+                  <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+                    <FormControl isRequired>
+                      <FormLabel fontSize={'sm'} fontWeight={'normal'} mb={2}>
+                        Base URL
+                      </FormLabel>
+                      <Input
+                        size={'sm'}
+                        borderRadius={'md'}
+                        value={connection.apiUrl}
+                        isDisabled={loading}
+                        placeholder={'https://weknora.example.com/api/v1'}
+                        onChange={(event) => updateConnection('apiUrl', event.target.value)}
+                      />
+                    </FormControl>
+                    <FormControl isRequired={!savedConnection}>
+                      <FormLabel fontSize={'sm'} fontWeight={'normal'} mb={2}>
+                        API Key
+                      </FormLabel>
+                      <Input
+                        size={'sm'}
+                        borderRadius={'md'}
+                        type={'password'}
+                        autoComplete={'new-password'}
+                        value={connection.apiKey}
+                        isDisabled={loading}
+                        placeholder={
+                          savedConnection ? '地址不变时，留空保持密钥' : '请输入 API Key'
+                        }
+                        onChange={(event) => updateConnection('apiKey', event.target.value)}
+                      />
+                    </FormControl>
+                  </Grid>
+                  <FormControl>
+                    <FormLabel fontSize={'sm'} fontWeight={'normal'} mb={2}>
+                      来源网页地址
+                      <Box as={'span'} ml={1} color={'myGray.500'}>
+                        （选填）
+                      </Box>
+                    </FormLabel>
+                    <Input
+                      size={'sm'}
+                      borderRadius={'md'}
+                      value={connection.webUrl}
+                      isDisabled={loading}
+                      placeholder={'根据 Base URL 自动填写，可手动修改'}
+                      onChange={(event) => updateConnection('webUrl', event.target.value)}
+                    />
+                  </FormControl>
+                  <Flex justifyContent={'flex-end'}>
+                    <Button
+                      size={'sm'}
+                      isLoading={loading}
+                      onClick={connect}
+                      isDisabled={
+                        !appId || !connection.apiUrl || (!connection.apiKey && !savedConnection)
+                      }
+                    >
+                      连接并加载知识库
+                    </Button>
+                  </Flex>
+                </Stack>
+              </Collapse>
+            </Box>
             {error && (
-              <Box color="red.600" fontSize="sm">
+              <Box
+                color={'red.600'}
+                bg={'red.50'}
+                borderRadius={'md'}
+                p={3}
+                wordBreak={'break-word'}
+              >
                 {error}
               </Box>
             )}
-            {connected && (
-              <>
-                <FormLabel mb={0}>选择知识库</FormLabel>
-                {datasets.length === 0 && <Box color="myGray.500">当前连接没有可访问的知识库</Box>}
-                {datasets.map((dataset) => (
-                  <Checkbox
-                    key={dataset.id}
-                    isChecked={draft.datasets.some((item) => item.datasetId === dataset.id)}
-                    isDisabled={
-                      getWeKnoraSearchModes([dataset]).length === 0 &&
-                      !draft.datasets.some((item) => item.datasetId === dataset.id)
-                    }
-                    onChange={(event) => selectDataset(dataset.id, event.target.checked)}
-                  >
-                    {dataset.name}
-                    {dataset.type === 'faq' ? '（FAQ）' : ''}
-                    {getWeKnoraSearchModes([dataset]).length === 0
-                      ? '（未启用可用的检索索引）'
-                      : ''}
-                  </Checkbox>
-                ))}
-                {missingDatasets.map((item) => (
-                  <Checkbox
-                    key={item.datasetId}
-                    isChecked
-                    onChange={() => selectDataset(item.datasetId, false)}
-                  >
-                    {item.datasetId}（已不可访问，请取消选择）
-                  </Checkbox>
-                ))}
-                <Flex justify="space-between" align="center">
-                  <FormLabel mb={0}>检索参数</FormLabel>
-                  <Button size="sm" variant="outline" onClick={paramsModal.onOpen}>
-                    设置
-                  </Button>
-                </Flex>
-                {!modeAllowed && (
-                  <Box color="red.600" fontSize="sm">
-                    所选知识库不支持当前检索模式，请调整知识库或检索参数
+            <Box>
+              <Flex alignItems={'center'} justifyContent={'space-between'} mb={3}>
+                <Box fontWeight={'medium'}>选择知识库</Box>
+                {connected && (
+                  <Box fontSize={'xs'} color={'myGray.500'}>
+                    已选择 {draft.datasets.length} 个
                   </Box>
                 )}
-                <FormControl>
-                  <FormLabel>每库召回数量</FormLabel>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={200}
-                    value={draft.weknoraMatchCount}
-                    onChange={(event) =>
-                      setDraft((state) => ({
-                        ...state,
-                        weknoraMatchCount: Number(event.target.value)
-                      }))
-                    }
-                  />
-                </FormControl>
-                <FormControl>
-                  <FormLabel>限定知识 ID（选填，每行一个）</FormLabel>
-                  <Textarea
-                    value={draft.weknoraKnowledgeIds.join('\n')}
-                    onChange={(event) =>
-                      setDraft((state) => ({
-                        ...state,
-                        weknoraKnowledgeIds: event.target.value.split('\n')
-                      }))
-                    }
-                  />
-                </FormControl>
-                <FormControl>
-                  <FormLabel>限定标签 ID（选填，每行一个）</FormLabel>
-                  <Textarea
-                    value={draft.weknoraTagIds.join('\n')}
-                    onChange={(event) =>
-                      setDraft((state) => ({
-                        ...state,
-                        weknoraTagIds: event.target.value.split('\n')
-                      }))
-                    }
-                  />
-                </FormControl>
-              </>
-            )}
+              </Flex>
+              {loading ? (
+                <WeKnoraLoading />
+              ) : connected ? (
+                <>
+                  {datasets.length === 0 && (
+                    <Box
+                      py={6}
+                      textAlign={'center'}
+                      bg={'myGray.50'}
+                      borderRadius={'md'}
+                      color={'myGray.500'}
+                    >
+                      当前连接没有可访问的知识库
+                    </Box>
+                  )}
+                  <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={3}>
+                    {datasets.map((dataset) => {
+                      const checked = draft.datasets.some((item) => item.datasetId === dataset.id);
+                      return (
+                        <Checkbox
+                          key={dataset.id}
+                          isChecked={checked}
+                          onChange={(event) => selectDataset(dataset.id, event.target.checked)}
+                          p={3}
+                          borderWidth={'1px'}
+                          borderColor={checked ? 'primary.300' : 'borderColor.low'}
+                          borderRadius={'md'}
+                          bg={checked ? 'primary.50' : 'white'}
+                          _hover={{ borderColor: 'primary.300' }}
+                          sx={{ '.chakra-checkbox__label': { flex: 1, minWidth: 0 } }}
+                        >
+                          <Flex alignItems={'center'} gap={2}>
+                            <MyIcon name={'core/dataset/weknora'} w={'24px'} flexShrink={0} />
+                            <Box
+                              fontSize={'sm'}
+                              fontWeight={'normal'}
+                              noOfLines={2}
+                              wordBreak={'break-word'}
+                            >
+                              {dataset.name}
+                              {dataset.type === 'faq' && (
+                                <Box as={'span'} ml={1} color={'myGray.500'} fontSize={'xs'}>
+                                  FAQ
+                                </Box>
+                              )}
+                            </Box>
+                          </Flex>
+                        </Checkbox>
+                      );
+                    })}
+                  </Grid>
+                  {missingDatasets.map((item) => (
+                    <Checkbox
+                      key={item.datasetId}
+                      isChecked
+                      mt={3}
+                      onChange={() => selectDataset(item.datasetId, false)}
+                    >
+                      <Box fontSize={'sm'} color={'red.600'} wordBreak={'break-all'}>
+                        {item.datasetId}（已不可访问，请取消选择）
+                      </Box>
+                    </Checkbox>
+                  ))}
+                </>
+              ) : (
+                <Box
+                  py={6}
+                  textAlign={'center'}
+                  bg={'myGray.50'}
+                  borderRadius={'md'}
+                  color={'myGray.500'}
+                >
+                  连接 WeKnoraX 后，选择需要关联的知识库
+                </Box>
+              )}
+            </Box>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'space-between'}
+              gap={3}
+              borderTopWidth={'1px'}
+              borderColor={'borderColor.low'}
+              pt={4}
+            >
+              <Box>
+                <Box fontWeight={'medium'}>引用长度</Box>
+                <Box mt={1} fontSize={'xs'} color={'myGray.500'}>
+                  最多 {draft.limit} Token
+                </Box>
+              </Box>
+              <Button size={'sm'} variant={'transparentBase'} onClick={paramsModal.onOpen}>
+                设置
+              </Button>
+            </Flex>
           </Stack>
         </ModalBody>
-        <ModalFooter gap={3}>
-          <Button variant="outline" onClick={onClose}>
+        <ModalFooter px={[4, 6]} gap={3} borderTopWidth={'1px'} borderColor={'borderColor.low'}>
+          <Button variant={'whiteBase'} onClick={onClose}>
             取消
           </Button>
-          <Button
-            isDisabled={loading || !connected || !modeAllowed || missingDatasets.length > 0}
-            onClick={apply}
-          >
+          <Button isDisabled={loading || !connected || missingDatasets.length > 0} onClick={apply}>
             确定
           </Button>
         </ModalFooter>
       </MyModal>
       {paramsModal.isOpen && (
-        <DatasetParamsModal
-          {...draft}
-          maxTokens={16000}
-          allowedSearchModes={allowedModes}
+        <WeKnoraParamsModal
+          limit={draft.limit}
+          maxTokens={maxTokens}
           onClose={paramsModal.onClose}
-          onSuccess={(params) => {
-            setDraft((state) => ({
-              ...state,
-              searchMode: params.searchMode,
-              limit: params.limit!,
-              similarity: params.similarity!,
-              usingReRank: !!params.usingReRank,
-              datasetSearchUsingExtensionQuery: !!params.datasetSearchUsingExtensionQuery,
-              datasetSearchExtensionModel: params.datasetSearchExtensionModel,
-              datasetSearchExtensionBg: params.datasetSearchExtensionBg || ''
-            }));
-            paramsModal.onClose();
-          }}
+          onSuccess={(limit) => setDraft((state) => ({ ...state, limit }))}
         />
       )}
     </>
@@ -352,30 +454,79 @@ const WeKnoraSettingsModal = ({
 };
 
 const WeKnoraSettings = (props: Props) => {
+  const theme = useTheme();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    data: datasets = [],
+    isFetching,
+    error,
+    refetch
+  } = useQuery(
+    ['weknoraKnowledgeBases', props.appId, props.value.weknoraConnectionId],
+    () => getWeKnoraKnowledgeBases(props.appId, props.value.weknoraConnectionId),
+    {
+      enabled: !!props.appId && !!props.value.weknoraConnectionId,
+      retry: false,
+      refetchOnWindowFocus: false
+    }
+  );
+  const selectedDatasets = datasets.filter((dataset) =>
+    props.value.datasets.some((item) => item.datasetId === dataset.id)
+  );
+
   return (
     <>
-      <Flex gap={3} align="center" flexWrap="wrap">
-        <Button size="sm" variant="outline" onClick={onOpen}>
-          配置连接与知识库
+      <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={4} minW={'350px'} w={'100%'}>
+        <Button
+          h={'36px'}
+          leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+          onClick={onOpen}
+        >
+          选择
         </Button>
-        {(props.value.weknoraConnectionId || props.value.datasets.length > 0) && (
-          <Button
-            size="sm"
-            variant="link"
-            colorScheme="red"
-            onClick={() => props.onChange(getDefaultWeKnoraSearchSettings())}
+        {selectedDatasets.map((dataset) => (
+          <Flex
+            key={dataset.id}
+            alignItems={'center'}
+            h={'36px'}
+            border={theme.borders.base}
+            px={2}
+            borderRadius={'md'}
           >
-            移除配置
-          </Button>
-        )}
-        <Box fontSize="sm" color="myGray.600">
-          {props.value.weknoraConnectionId
-            ? `已选择 ${props.value.datasets.length} 个知识库`
-            : '请填写 Base URL 和 API Key'}
+            <MyIcon name={'core/dataset/weknora'} w={'24px'} flexShrink={0} />
+            <Box
+              ml={3}
+              flex={'1 0 0'}
+              w={0}
+              className={'textEllipsis'}
+              fontWeight={'bold'}
+              fontSize={['md', 'lg']}
+            >
+              {dataset.name}
+            </Box>
+          </Flex>
+        ))}
+      </Grid>
+      {isFetching && (
+        <Box mt={3}>
+          <WeKnoraLoading />
         </Box>
-      </Flex>
-      {isOpen && <WeKnoraSettingsModal {...props} onClose={onClose} />}
+      )}
+      {!!error && (
+        <Box mt={3} fontSize={'sm'} color={'red.600'}>
+          知识库加载失败：{getErrText(error)}
+        </Box>
+      )}
+      {isOpen && (
+        <WeKnoraSettingsModal
+          {...props}
+          onClose={onClose}
+          onChange={(settings) => {
+            props.onChange(settings);
+            if (settings.weknoraConnectionId === props.value.weknoraConnectionId) void refetch();
+          }}
+        />
+      )}
     </>
   );
 };

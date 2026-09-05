@@ -47,17 +47,13 @@ async function handler(
     return {
       connectionId: req.query.connectionId,
       apiUrl: connection.apiUrl,
-      tenantId: connection.tenantId,
       webUrl: connection.webUrl
     } satisfies WeKnoraConnectionInfo;
   }
 
-  const { apiUrl, apiKey, tenantId, webUrl, connectionId } = req.body;
+  const { apiUrl, apiKey, webUrl, connectionId } = req.body;
   if (typeof apiUrl !== 'string' || !apiUrl.trim()) throw new Error('请填写 Base URL');
-  if (typeof tenantId !== 'string' || (tenantId && !/^\d+$/.test(tenantId))) {
-    throw new Error('空间 ID 必须为数字');
-  }
-  if (typeof webUrl !== 'string') throw new Error('WeKnora 网页地址格式错误');
+  if (typeof webUrl !== 'string') throw new Error('WeKnoraX 网页地址格式错误');
   if (apiKey !== undefined && (typeof apiKey !== 'string' || !apiKey.trim())) {
     throw new Error('API Key 不能为空');
   }
@@ -80,8 +76,7 @@ async function handler(
   const config = {
     apiUrl: normalizedApiUrl,
     apiKey: connectionApiKey,
-    tenantId,
-    webUrl: webUrl ? normalizeUrl(webUrl, 'WeKnora 网页地址') : ''
+    webUrl: webUrl ? normalizeUrl(webUrl, 'WeKnoraX 网页地址') : ''
   };
   const datasets = await listWeKnoraKnowledgeBases(config);
 
@@ -90,7 +85,6 @@ async function handler(
   return {
     connectionId: String(connection._id),
     apiUrl: config.apiUrl,
-    tenantId: config.tenantId,
     webUrl: config.webUrl,
     datasets
   };
