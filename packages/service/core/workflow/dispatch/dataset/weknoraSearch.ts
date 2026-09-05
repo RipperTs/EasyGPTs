@@ -2,7 +2,10 @@ import type {
   DispatchNodeResponseType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WeKnoraSearchSettings } from '@fastgpt/global/core/dataset/weknora';
+import {
+  getWeKnoraSettingsFromInputs,
+  type WeKnoraSearchSettings
+} from '@fastgpt/global/core/dataset/weknora';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -19,7 +22,14 @@ import type { DatasetSearchResponse } from './search';
 export const dispatchWeKnoraSearch = async (
   props: ModuleDispatchProps<WeKnoraSearchSettings & { userChatInput: string }>
 ): Promise<DatasetSearchResponse> => {
-  const { params, runningAppInfo, histories, abortSignal } = props;
+  const { params: resolvedParams, node, runningAppInfo, histories, abortSignal } = props;
+  // Filters are literal node settings. The generic resolver treats two string IDs as a reference.
+  const { weknoraKnowledgeIds, weknoraTagIds } = getWeKnoraSettingsFromInputs(node.inputs);
+  const params = {
+    ...resolvedParams,
+    weknoraKnowledgeIds,
+    weknoraTagIds
+  };
   if (!params.userChatInput?.trim()) throw new Error('请输入需要检索的问题');
   if (!Array.isArray(params.datasets) || params.datasets.length === 0) {
     throw new Error('请选择 WeKnora 知识库');
