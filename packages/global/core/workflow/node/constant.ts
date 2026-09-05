@@ -23,6 +23,7 @@ export enum FlowNodeInputTypeEnum { // render ui
 
   // dataset special input
   selectDataset = 'selectDataset',
+  selectWeKnoraDataset = 'selectWeKnoraDataset',
   selectDatasetParamsModal = 'selectDatasetParamsModal',
   settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
@@ -71,6 +72,9 @@ export const FlowNodeInputMap: Record<
   [FlowNodeInputTypeEnum.selectDataset]: {
     icon: 'core/workflow/inputType/selectDataset'
   },
+  [FlowNodeInputTypeEnum.selectWeKnoraDataset]: {
+    icon: 'core/workflow/inputType/selectDataset'
+  },
   [FlowNodeInputTypeEnum.selectDatasetParamsModal]: {
     icon: 'core/workflow/inputType/selectDataset'
   },
@@ -105,6 +109,7 @@ export enum FlowNodeTypeEnum {
   agentChat = 'agentChat',
 
   datasetSearchNode = 'datasetSearchNode',
+  weknoraSearch = 'weknoraSearch',
   datasetConcatNode = 'datasetConcatNode',
 
   answerNode = 'answerNode',

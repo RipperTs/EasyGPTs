@@ -114,7 +114,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       mode: 'test',
       runningAppInfo: {
         id: appId,
-        teamId,
+        teamId: String(app.teamId),
         tmbId
       },
       uid: tmbId,

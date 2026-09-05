@@ -162,6 +162,7 @@ export enum NodeInputKeyEnum {
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   collectionFilterMatch = 'collectionFilterMatch',
+  weknoraConnectionId = 'weknoraConnectionId',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',

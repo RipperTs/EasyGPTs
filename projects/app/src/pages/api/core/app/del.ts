@@ -6,6 +6,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoWeKnoraConnection } from '@fastgpt/service/core/dataset/weknora/connection';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import {
@@ -25,10 +26,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // Auth owner (folder owner, can delete all apps in the folder)
-  const { teamId } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
 
   await onDelOneApp({
-    teamId,
+    teamId: String(app.teamId),
     appId
   });
 }
@@ -78,6 +79,13 @@ export const onDelOneApp = async ({
       await MongoAppVersion.deleteMany(
         {
           appId
+        },
+        { session }
+      );
+      await MongoWeKnoraConnection.deleteMany(
+        {
+          appId,
+          teamId
         },
         { session }
       );

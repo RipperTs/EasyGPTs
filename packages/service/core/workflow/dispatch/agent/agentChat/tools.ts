@@ -189,6 +189,7 @@ export const withToolPreference = (
 
 const READ_ONLY_ALLOWED_TOOL_TYPES = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.datasetSearchNode,
+  FlowNodeTypeEnum.weknoraSearch,
   FlowNodeTypeEnum.datasetConcatNode,
   FlowNodeTypeEnum.queryExtension,
   FlowNodeTypeEnum.classifyQuestion,

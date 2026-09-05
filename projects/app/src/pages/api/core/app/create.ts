@@ -10,11 +10,12 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
-import { ClientSession } from '@fastgpt/service/common/mongo';
+import { ClientSession, Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { copyWeKnoraConnections } from '@fastgpt/service/core/dataset/weknora/connection';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -65,6 +66,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
 export default NextAPI(handler);
 
 export const onCreateApp = async ({
+  sourceAppId,
   parentId,
   name,
   intro,
@@ -80,6 +82,7 @@ export const onCreateApp = async ({
   userAvatar,
   session
 }: {
+  sourceAppId?: string;
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
@@ -96,16 +99,28 @@ export const onCreateApp = async ({
   session?: ClientSession;
 }) => {
   const create = async (session: ClientSession) => {
-    const [{ _id: appId }] = await MongoApp.create(
+    const appId = new Types.ObjectId().toString();
+    const nodes =
+      sourceAppId && modules
+        ? await copyWeKnoraConnections({
+            nodes: modules,
+            sourceAppId,
+            targetAppId: appId,
+            teamId,
+            session
+          })
+        : modules;
+    const [{ _id: createdAppId }] = await MongoApp.create(
       [
         {
+          _id: appId,
           ...parseParentIdInMongo(parentId),
           avatar,
           name,
           intro,
           teamId,
           tmbId,
-          modules,
+          modules: nodes,
           edges,
           chatConfig,
           type,
@@ -121,8 +136,8 @@ export const onCreateApp = async ({
       await MongoAppVersion.create(
         [
           {
-            appId,
-            nodes: modules,
+            appId: createdAppId,
+            nodes,
             edges,
             chatConfig,
             versionName: name,
@@ -134,7 +149,7 @@ export const onCreateApp = async ({
       );
     }
 
-    return appId;
+    return createdAppId;
   };
 
   if (session) {

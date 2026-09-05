@@ -67,6 +67,7 @@ const QuoteItem = ({
     let reRankScore: ScoreItemType | undefined = undefined;
     let embeddingScore: ScoreItemType | undefined = undefined;
     let fullTextScore: ScoreItemType | undefined = undefined;
+    let weknoraScore: ScoreItemType | undefined = undefined;
 
     quoteItem.score.forEach((item) => {
       if (item.type === SearchScoreTypeEnum.rrf) {
@@ -77,14 +78,23 @@ const QuoteItem = ({
         embeddingScore = item;
       } else if (item.type === SearchScoreTypeEnum.fullText) {
         fullTextScore = item;
+      } else if (item.type === SearchScoreTypeEnum.weknora) {
+        weknoraScore = item;
       }
     });
 
     const primaryScore = (rrfScore ||
       reRankScore ||
       embeddingScore ||
-      fullTextScore) as unknown as ScoreItemType;
-    const secondaryScore = [rrfScore, reRankScore, embeddingScore, fullTextScore].filter(
+      fullTextScore ||
+      weknoraScore) as unknown as ScoreItemType;
+    const secondaryScore = [
+      rrfScore,
+      reRankScore,
+      embeddingScore,
+      fullTextScore,
+      weknoraScore
+    ].filter(
       // @ts-ignore
       (item) => item && primaryScore && item.type !== primaryScore.type
     ) as unknown as ScoreItemType[];
@@ -112,7 +122,13 @@ const QuoteItem = ({
           {score?.primaryScore && (
             <>
               {canViewSource ? (
-                <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
+                <MyTooltip
+                  label={
+                    score.primaryScore.type === SearchScoreTypeEnum.weknora
+                      ? SearchScoreTypeMap.weknora.desc
+                      : t(SearchScoreTypeMap[score.primaryScore.type]?.desc)
+                  }
+                >
                   <Flex
                     px={'12px'}
                     py={'5px'}
@@ -132,7 +148,9 @@ const QuoteItem = ({
                       mx={2}
                     />
                     <Box>
-                      {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
+                      {score.primaryScore.type === SearchScoreTypeEnum.weknora
+                        ? SearchScoreTypeMap.weknora.label
+                        : t(SearchScoreTypeMap[score.primaryScore.type]?.label)}
                       {SearchScoreTypeMap[score.primaryScore.type]?.showScore
                         ? ` ${score.primaryScore.value.toFixed(4)}`
                         : ''}
@@ -159,7 +177,14 @@ const QuoteItem = ({
           )}
           {canViewSource &&
             score.secondaryScore.map((item, i) => (
-              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
+              <MyTooltip
+                key={item.type}
+                label={
+                  item.type === SearchScoreTypeEnum.weknora
+                    ? SearchScoreTypeMap.weknora.desc
+                    : t(SearchScoreTypeMap[item.type]?.desc)
+                }
+              >
                 <Box fontSize={'xs'}>
                   <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
                     <Box
@@ -174,7 +199,10 @@ const QuoteItem = ({
                       <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
                     </Box>
                     <Box transform={'scale(0.9)'}>
-                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
+                      {item.type === SearchScoreTypeEnum.weknora
+                        ? SearchScoreTypeMap.weknora.label
+                        : t(SearchScoreTypeMap[item.type]?.label)}
+                      : {item.value.toFixed(4)}
                     </Box>
                   </Flex>
                   <Box h={'4px'}>
@@ -221,10 +249,11 @@ const QuoteItem = ({
               collectionId={quoteItem.collectionId}
               sourceName={quoteItem.sourceName}
               sourceId={quoteItem.sourceId}
+              sourceType={quoteItem.sourceType}
               canView={canViewSource}
             />
             <Box flex={1} />
-            {quoteItem.id && (
+            {quoteItem.id && quoteItem.sourceType !== 'weknora' && (
               <MyTooltip label={t('common:core.dataset.data.Edit')}>
                 <Box
                   className="hover-data"
@@ -252,7 +281,7 @@ const QuoteItem = ({
                 </Box>
               </MyTooltip>
             )}
-            {linkToDataset && (
+            {linkToDataset && quoteItem.sourceType !== 'weknora' && (
               <Link
                 as={NextLink}
                 className="hover-data"

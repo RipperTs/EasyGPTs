@@ -32,6 +32,7 @@ async function handler(
   ]);
 
   const appId = await onCreateApp({
+    sourceAppId: String(app._id),
     parentId: app.parentId,
     name: app.name + ' Copy',
     intro: app.intro,

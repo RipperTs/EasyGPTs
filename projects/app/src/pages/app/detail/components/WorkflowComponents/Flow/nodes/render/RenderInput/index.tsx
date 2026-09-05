@@ -53,6 +53,10 @@ const RenderList: {
     Component: dynamic(() => import('./templates/SelectDataset'))
   },
   {
+    types: [FlowNodeInputTypeEnum.selectWeKnoraDataset],
+    Component: dynamic(() => import('./templates/SelectWeKnoraDataset'))
+  },
+  {
     types: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
     Component: dynamic(() => import('./templates/SelectDatasetParams'))
   },

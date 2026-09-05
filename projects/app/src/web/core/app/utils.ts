@@ -24,6 +24,11 @@ import {
 import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { WeKnoraSearchModule } from '@fastgpt/global/core/workflow/template/system/weknoraSearch';
+import {
+  DatasetConcatModule,
+  getOneQuoteInputTemplate
+} from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { ReadFilesNodes } from '@fastgpt/global/core/workflow/template/system/readFiles';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { Input_Template_UserChatInput } from '@fastgpt/global/core/workflow/template/input';
@@ -40,12 +45,24 @@ export function form2AppWorkflow(
 } {
   const workflowStartNodeId = 'workflowStartNodeId';
   const datasetNodeId = 'iKBoX2vIzETU';
+  const weknoraNodeId = 'weknoraSearchNode';
+  const concatNodeId = 'datasetConcatNode';
   const aiChatNodeId = '7BdojPlukIQw';
 
   const allDatasets = useDatasetStore.getState().allDatasets;
   const selectedDatasets = data.dataset.datasets.filter((item) =>
     allDatasets.some((ds) => ds._id === item.datasetId)
   );
+  const hasLocalDataset = selectedDatasets.length > 0;
+  const hasWeKnoraDataset = data.weknora.datasets.length > 0;
+  const quoteNodeId =
+    hasLocalDataset && hasWeKnoraDataset
+      ? concatNodeId
+      : hasLocalDataset
+        ? datasetNodeId
+        : hasWeKnoraDataset
+          ? weknoraNodeId
+          : undefined;
 
   function systemConfigTemplate(): StoreNodeItemType {
     return {
@@ -87,7 +104,7 @@ export function form2AppWorkflow(
       flowNodeType: AiChatModule.flowNodeType,
       showStatus: true,
       position: {
-        x: 1106.3238387960757,
+        x: hasWeKnoraDataset ? (hasLocalDataset ? 2100 : 1500) : 1106.3238387960757,
         y: -350.6030674683474
       },
       version: AiChatModule.version,
@@ -174,7 +191,7 @@ export function form2AppWorkflow(
           debugLabel: i18nT('common:core.module.Dataset quote.label'),
           description: '',
           valueType: WorkflowIOValueTypeEnum.datasetQuote,
-          value: selectedDatasets ? [datasetNodeId, 'quoteQA'] : undefined
+          value: quoteNodeId ? [quoteNodeId, 'quoteQA'] : undefined
         },
         {
           key: NodeInputKeyEnum.aiChatVision,
@@ -283,6 +300,29 @@ export function form2AppWorkflow(
     };
   }
 
+  function knowledgeNodes(
+    formData: AppSimpleEditFormType,
+    question: string | string[]
+  ): StoreNodeItemType[] {
+    const values: Record<string, unknown> = { ...formData.weknora, userChatInput: question };
+    return [
+      ...(hasLocalDataset ? [datasetNodeTemplate(formData, question)] : []),
+      ...(hasWeKnoraDataset
+        ? [
+            {
+              ...WeKnoraSearchModule,
+              nodeId: weknoraNodeId,
+              position: { x: 950, y: 450 },
+              inputs: WeKnoraSearchModule.inputs.map((input) => ({
+                ...input,
+                value: values[input.key]
+              }))
+            }
+          ]
+        : [])
+    ];
+  }
+
   // Start, AiChat
   function simpleChatTemplate(formData: AppSimpleEditFormType): WorkflowType {
     return {
@@ -299,24 +339,53 @@ export function form2AppWorkflow(
   }
   // Start, Dataset search, AiChat
   function datasetTemplate(formData: AppSimpleEditFormType): WorkflowType {
+    const searchNodes = knowledgeNodes(formData, [workflowStartNodeId, 'userChatInput']);
+    const needsConcat = searchNodes.length > 1;
+    const concatNode: StoreNodeItemType = {
+      ...DatasetConcatModule,
+      nodeId: concatNodeId,
+      name: t(DatasetConcatModule.name),
+      intro: t(DatasetConcatModule.intro),
+      position: { x: 1500, y: 200 },
+      inputs: [
+        ...DatasetConcatModule.inputs.map((input) => ({
+          ...input,
+          value:
+            input.key === NodeInputKeyEnum.datasetMaxTokens
+              ? Math.max(formData.dataset.limit ?? 1500, formData.weknora.limit)
+              : input.value
+        })),
+        ...searchNodes.map((node, index) => ({
+          ...getOneQuoteInputTemplate({ key: `quote_${index}`, index }),
+          value: [node.nodeId, 'quoteQA']
+        }))
+      ]
+    };
     return {
-      nodes: [
-        aiChatTemplate(formData),
-        datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput'])
-      ],
+      nodes: [aiChatTemplate(formData), ...searchNodes, ...(needsConcat ? [concatNode] : [])],
       edges: [
-        {
+        ...searchNodes.map((node) => ({
           source: workflowStartNodeId,
-          target: datasetNodeId,
+          target: node.nodeId,
           sourceHandle: `${workflowStartNodeId}-source-right`,
-          targetHandle: `${datasetNodeId}-target-left`
-        },
-        {
-          source: datasetNodeId,
-          target: aiChatNodeId,
-          sourceHandle: `${datasetNodeId}-source-right`,
-          targetHandle: `${aiChatNodeId}-target-left`
-        }
+          targetHandle: `${node.nodeId}-target-left`
+        })),
+        ...searchNodes.map((node) => ({
+          source: node.nodeId,
+          target: needsConcat ? concatNodeId : aiChatNodeId,
+          sourceHandle: `${node.nodeId}-source-right`,
+          targetHandle: `${needsConcat ? concatNodeId : aiChatNodeId}-target-left`
+        })),
+        ...(needsConcat
+          ? [
+              {
+                source: concatNodeId,
+                target: aiChatNodeId,
+                sourceHandle: `${concatNodeId}-source-right`,
+                targetHandle: `${aiChatNodeId}-target-left`
+              }
+            ]
+          : [])
       ]
     };
   }
@@ -324,18 +393,17 @@ export function form2AppWorkflow(
     const toolNodeId = getNanoid(6);
 
     // Dataset tool config
+    const searchNodes = knowledgeNodes(formData, '');
     const datasetTool: WorkflowType | null =
-      selectedDatasets.length > 0
+      searchNodes.length > 0
         ? {
-            nodes: [datasetNodeTemplate(formData, '')],
-            edges: [
-              {
-                source: toolNodeId,
-                target: datasetNodeId,
-                sourceHandle: 'selectedTools',
-                targetHandle: 'selectedTools'
-              }
-            ]
+            nodes: searchNodes,
+            edges: searchNodes.map((node) => ({
+              source: toolNodeId,
+              target: node.nodeId,
+              sourceHandle: 'selectedTools',
+              targetHandle: 'selectedTools'
+            }))
           }
         : null;
     // Read file tool config
@@ -530,6 +598,7 @@ export function form2AppWorkflow(
 
     // Add t
     config.nodes.forEach((node) => {
+      if (node.flowNodeType === FlowNodeTypeEnum.weknoraSearch) return;
       node.name = t(node.name);
       node.intro = t(node.intro);
 
@@ -546,7 +615,7 @@ export function form2AppWorkflow(
   const workflow = (() => {
     if (data.selectedTools.length > 0 || data.chatConfig.fileSelectConfig?.canSelectFile)
       return toolTemplates(data);
-    if (selectedDatasets.length > 0) return datasetTemplate(data);
+    if (hasLocalDataset || hasWeKnoraDataset) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();
 

@@ -14,6 +14,7 @@ import { StoreEdgeItemType } from '../workflow/type/edge';
 import { PermissionSchemaType, PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
+import type { WeKnoraSearchSettings } from '../dataset/weknora';
 
 export type AppSchema = {
   _id: string;
@@ -65,6 +66,7 @@ export type AppDetailType = AppSchema & {
 };
 
 export type AppSimpleEditFormType = {
+  weknora: WeKnoraSearchSettings;
   // templateId: string;
   aiSettings: {
     model: string;

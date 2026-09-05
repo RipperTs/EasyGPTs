@@ -52,7 +52,7 @@ async function handler(
     mode: 'debug',
     runningAppInfo: {
       id: appId,
-      teamId,
+      teamId: String(app.teamId),
       tmbId
     },
     uid: tmbId,

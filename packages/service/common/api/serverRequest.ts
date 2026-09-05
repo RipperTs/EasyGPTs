@@ -5,6 +5,7 @@ interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
   timeout?: number;
+  signal?: AbortSignal;
 }
 interface ResponseDataType {
   code: number;

@@ -58,7 +58,10 @@ const DatasetParamsModal = ({
   datasetSearchExtensionBg,
   onClose,
   onSuccess
-}: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
+}: DatasetParamsProps & {
+  onClose: () => void;
+  onSuccess: (e: DatasetParamsProps) => void;
+}) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
